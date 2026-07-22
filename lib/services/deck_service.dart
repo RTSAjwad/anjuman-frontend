@@ -104,4 +104,11 @@ class DeckService {
   Future<dynamic> deleteNote(int deckId, int noteId) async {
     return _client.delete(ApiConfig.note(deckId, noteId));
   }
+
+  // Note Types
+
+  Future<List<NoteType>> listNoteTypes() async {
+    final list = await _client.getList(ApiConfig.noteTypes);
+    return list.map((t) => NoteType.fromJson(t)).toList();
+  }
 }

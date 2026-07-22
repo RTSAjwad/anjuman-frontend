@@ -223,4 +223,26 @@ class DeckProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  // Note Types
+
+  List<NoteType> _noteTypes = [];
+  bool _noteTypesLoading = false;
+
+  List<NoteType> get noteTypes => _noteTypes;
+  bool get noteTypesLoading => _noteTypesLoading;
+
+  Future<void> loadNoteTypes() async {
+    _noteTypesLoading = true;
+    notifyListeners();
+
+    try {
+      _noteTypes = await _deckService.listNoteTypes();
+    } on Exception catch (e) {
+      _error = e.toString();
+    }
+
+    _noteTypesLoading = false;
+    notifyListeners();
+  }
 }

@@ -41,6 +41,9 @@ class ApiConfig {
   static String notes(int deckId) => '/decks/$deckId/notes';
   static String note(int deckId, int noteId) => '/decks/$deckId/notes/$noteId';
 
+  // Note Types
+  static const String noteTypes = '/note-types';
+
   // Assignments
   static String assignments(int classId) => '/classes/$classId/assignments';
   static String assignmentById(int id) => '/assignments/$id';
