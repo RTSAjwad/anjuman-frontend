@@ -1,0 +1,214 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import '../models/common.dart';
+import '../models/study.dart';
+import '../services/api_client.dart';
+import '../services/study_service.dart';
+
+class StudyProvider extends ChangeNotifier {
+  final ApiClient _apiClient;
+  late final StudyService _studyService;
+
+  StudyProvider(this._apiClient) {
+    _studyService = StudyService(_apiClient);
+  }
+
+  List<StudyCard> _cards = [];
+  int _currentIndex = 0;
+  bool _showBack = false;
+  bool _isLoading = false;
+  bool _isSubmitting = false;
+  String? _error;
+  bool _isComplete = false;
+
+  // Metadata
+  String? _deckTitle;
+  int? _deckId;
+
+  // Session-wide card state tracking (cardId → state) for live count updates
+  final Map<int, String> _cardStates = {};
+
+  List<StudyCard> get cards => _cards;
+  int get currentIndex => _currentIndex;
+  bool get showBack => _showBack;
+  bool get isLoading => _isLoading;
+  bool get isSubmitting => _isSubmitting;
+  String? get error => _error;
+  bool get isComplete => _isComplete;
+
+  StudyCard? get currentCard =>
+      _currentIndex < _cards.length ? _cards[_currentIndex] : null;
+
+  String? get deckTitle => _deckTitle;
+  int? get deckId => _deckId;
+  int get totalCount => _cards.length;
+  int get reviewedCount => _currentIndex;
+
+  int get newCount => _cards.where((c) => c.state == 'new').length;
+  int get learningCount => _cards
+      .where((c) => c.state == 'learning' || c.state == 'relearning')
+      .length;
+  int get reviewCount => _cards.where((c) => c.state == 'review').length;
+  int get relearningCount =>
+      _cards.where((c) => c.state == 'relearning').length;
+  int get dueCount => _cards.where((c) => c.state == 'review').length;
+
+  /// Incremented each time a new fetch loop starts.
+  int _loopGeneration = 0;
+
+  void _fetchLoop() async {
+    final gen = ++_loopGeneration;
+    try {
+      while (true) {
+        if (gen != _loopGeneration) return;
+
+        // Fetch the current study queue
+        _isLoading = true;
+        _error = null;
+        notifyListeners();
+
+        StudySession session;
+        try {
+          session = await _studyService.getDeckStudy(_deckId!);
+        } on Exception catch (e) {
+          _error = e.toString();
+          _isLoading = false;
+          notifyListeners();
+          return;
+        }
+
+        if (gen != _loopGeneration) return;
+
+        _deckTitle = session.deckTitle ?? 'Study';
+        _isLoading = false;
+
+        // Filter out cards that aren't actually due yet.
+        // New cards (new state) are always due. For review/learning/
+        // relearning cards, only include those with due_at <= now.
+        final now = DateTime.now();
+        final dueCards = session.cards.where((c) {
+          if (c.dueAt == null) return true;
+          final due = parseTimestamp(c.dueAt);
+          return !due.isAfter(now);
+        }).toList();
+        _cards = dueCards;
+
+        // Seed session-wide state tracking from this batch
+        for (final c in session.cards) {
+          _cardStates[c.cardId] = c.state;
+        }
+
+        // Terminal: queue is empty, study session complete
+        if (session.totalCards == 0) {
+          _isComplete = true;
+          notifyListeners();
+          return;
+        }
+
+        // No due cards available — even though totalCards > 0, none are
+        // due right now. Show the all-caught-up state.
+        if (_cards.isEmpty) {
+          _isComplete = true;
+          notifyListeners();
+          return;
+        }
+
+        notifyListeners();
+
+        // Review each card in this batch
+        for (var i = 0; i < _cards.length; i++) {
+          if (gen != _loopGeneration) return;
+          _currentIndex = i;
+          _showBack = false;
+          notifyListeners();
+
+          final rated = await _waitForRating();
+          _ratingCompleter = null;
+          if (gen != _loopGeneration) return;
+          if (!rated) return;
+        }
+      }
+    } finally {
+      if (gen == _loopGeneration) {
+        _isLoading = false;
+      }
+    }
+  }
+
+  Completer<bool>? _ratingCompleter;
+
+  Future<bool> _waitForRating() async {
+    _ratingCompleter = Completer<bool>();
+    return _ratingCompleter!.future;
+  }
+
+  void flipCard() {
+    _showBack = !_showBack;
+    notifyListeners();
+  }
+
+  Future<void> submitRating(int rating) async {
+    if (currentCard == null) return;
+
+    _isSubmitting = true;
+    notifyListeners();
+
+    try {
+      final response = await _studyService.submitReview(SubmitReview(
+        cardId: currentCard!.cardId,
+        rating: rating,
+      ));
+      // Update the session-wide card state from the review response
+      _cardStates[currentCard!.cardId] = response.state;
+
+      _isSubmitting = false;
+      notifyListeners();
+      _ratingCompleter?.complete(true);
+    } on Exception catch (e) {
+      _error = e.toString();
+      _isSubmitting = false;
+      notifyListeners();
+      _ratingCompleter?.complete(false);
+    }
+  }
+
+  void startDeckStudy(int deckId) {
+    _cancelLoop();
+    _fullReset();
+    _deckId = deckId;
+    _fetchLoop();
+  }
+
+  void reset() {
+    _cancelLoop();
+    _fullReset();
+    notifyListeners();
+  }
+
+  void _cancelLoop() {
+    _loopGeneration++;
+    if (_ratingCompleter != null && !_ratingCompleter!.isCompleted) {
+      _ratingCompleter!.complete(false);
+    }
+    _ratingCompleter = null;
+  }
+
+  void _fullReset() {
+    _cards = [];
+    _currentIndex = 0;
+    _showBack = false;
+    _isLoading = false;
+    _isSubmitting = false;
+    _error = null;
+    _isComplete = false;
+    _deckTitle = null;
+    _deckId = null;
+    _cardStates.clear();
+  }
+
+  @override
+  void dispose() {
+    _cancelLoop();
+    super.dispose();
+  }
+}
