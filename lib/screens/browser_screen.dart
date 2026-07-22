@@ -15,10 +15,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final _searchController = TextEditingController();
   final _sortField = ValueNotifier<String>('created_at');
   final _sortAsc = ValueNotifier<bool>(false);
+  final _scrollController = ScrollController();
+  bool _fetchingMore = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DeckProvider>().loadDecks();
       context.read<BrowserProvider>().loadCards();
@@ -30,7 +33,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
     _searchController.dispose();
     _sortField.dispose();
     _sortAsc.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    final provider = context.read<BrowserProvider>();
+    if (_fetchingMore || !provider.hasNextPage || provider.isLoading) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _fetchingMore = true;
+      provider.nextPage().then((_) {
+        _fetchingMore = false;
+      });
+    }
   }
 
   void _onSearch(String value) {
@@ -96,85 +112,85 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 }
 
                 final theme = Theme.of(context);
-                return Column(
+                return ListView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   children: [
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
                         children: [
-                          Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
+                          // Header
+                          Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            child: Row(
                               children: [
-                                // Header
-                                Container(
-                                  color:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
-                                  child: Row(
-                                    children: [
-                                      _SortHeader(
-                                        flex: 4,
-                                        label: 'Front',
-                                        field: 'question',
-                                        sortField: _sortField,
-                                        sortAsc: _sortAsc,
-                                        onTap: _onSort,
-                                      ),
-                                      _SortHeader(
-                                        flex: 4,
-                                        label: 'Back',
-                                        field: 'question',
-                                        sortField: _sortField,
-                                        sortAsc: _sortAsc,
-                                        onTap: _onSort,
-                                      ),
-                                      _SortHeader(
-                                        flex: 2,
-                                        label: 'Deck',
-                                        field: 'deck',
-                                        sortField: _sortField,
-                                        sortAsc: _sortAsc,
-                                        onTap: _onSort,
-                                      ),
-                                      _SortHeader(
-                                        flex: 2,
-                                        label: 'State',
-                                        field: '',
-                                        sortField: _sortField,
-                                        sortAsc: _sortAsc,
-                                        onTap: _onSort,
-                                      ),
-                                      _SortHeader(
-                                        flex: 1,
-                                        label: 'Due',
-                                        field: 'due_at',
-                                        sortField: _sortField,
-                                        sortAsc: _sortAsc,
-                                        onTap: _onSort,
-                                      ),
-                                    ],
-                                  ),
+                                _SortHeader(
+                                  flex: 4,
+                                  label: 'Front',
+                                  field: 'question',
+                                  sortField: _sortField,
+                                  sortAsc: _sortAsc,
+                                  onTap: _onSort,
                                 ),
-                                // Rows
-                                for (final card in provider.cards)
-                                  _CardRow(card: card),
+                                _SortHeader(
+                                  flex: 4,
+                                  label: 'Back',
+                                  field: 'question',
+                                  sortField: _sortField,
+                                  sortAsc: _sortAsc,
+                                  onTap: _onSort,
+                                ),
+                                _SortHeader(
+                                  flex: 2,
+                                  label: 'Deck',
+                                  field: 'deck',
+                                  sortField: _sortField,
+                                  sortAsc: _sortAsc,
+                                  onTap: _onSort,
+                                ),
+                                _SortHeader(
+                                  flex: 2,
+                                  label: 'State',
+                                  field: '',
+                                  sortField: _sortField,
+                                  sortAsc: _sortAsc,
+                                  onTap: _onSort,
+                                ),
+                                _SortHeader(
+                                  flex: 1,
+                                  label: 'Due',
+                                  field: 'due_at',
+                                  sortField: _sortField,
+                                  sortAsc: _sortAsc,
+                                  onTap: _onSort,
+                                ),
                               ],
                             ),
                           ),
+                          // Rows
+                          for (final card in provider.cards)
+                            _CardRow(card: card),
                         ],
                       ),
                     ),
-                    _PaginationBar(
-                      page: provider.page,
-                      total: provider.total,
-                      perPage: provider.perPage,
-                      hasPrev: provider.hasPrevPage,
-                      hasNext: provider.hasNextPage,
-                      onPrev: () => provider.prevPage(),
-                      onNext: () => provider.nextPage(),
-                    ),
+                    if (provider.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    if (!provider.hasNextPage && provider.cards.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          '${provider.total} cards total',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 );
               },
@@ -422,52 +438,6 @@ class _StateBadge extends StatelessWidget {
         label,
         style:
             TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-class _PaginationBar extends StatelessWidget {
-  final int page;
-  final int total;
-  final int perPage;
-  final bool hasPrev;
-  final bool hasNext;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-
-  const _PaginationBar({
-    required this.page,
-    required this.total,
-    required this.perPage,
-    required this.hasPrev,
-    required this.hasNext,
-    required this.onPrev,
-    required this.onNext,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final first = (page - 1) * perPage + 1;
-    final last = (page * perPage).clamp(0, total);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: hasPrev ? onPrev : null,
-          ),
-          Text('$first–$last of $total',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: hasNext ? onNext : null,
-          ),
-        ],
       ),
     );
   }

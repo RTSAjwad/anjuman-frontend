@@ -35,8 +35,10 @@ class BrowserProvider extends ChangeNotifier {
   bool get hasNextPage => _page * _perPage < _total;
   bool get hasPrevPage => _page > 1;
 
-  Future<void> loadCards() async {
-    _isLoading = true;
+  Future<void> loadCards({bool append = false}) async {
+    if (!append) {
+      _isLoading = true;
+    }
     _error = null;
     notifyListeners();
 
@@ -48,7 +50,11 @@ class BrowserProvider extends ChangeNotifier {
         page: _page,
         perPage: _perPage,
       );
-      _cards = response.cards;
+      if (append) {
+        _cards = [..._cards, ...response.cards];
+      } else {
+        _cards = response.cards;
+      }
       _total = response.total;
     } on Exception catch (e) {
       _error = e.toString();
@@ -76,17 +82,17 @@ class BrowserProvider extends ChangeNotifier {
     loadCards();
   }
 
-  void nextPage() {
+  Future<void> nextPage() async {
     if (hasNextPage) {
       _page++;
-      loadCards();
+      await loadCards(append: true);
     }
   }
 
-  void prevPage() {
+  Future<void> prevPage() async {
     if (hasPrevPage) {
       _page--;
-      loadCards();
+      await loadCards();
     }
   }
 }
