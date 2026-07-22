@@ -241,6 +241,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                                             fontSize: 12))),
                                 Expanded(
                                     flex: 2,
+                                    child: Text('Type',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12))),
+                                Expanded(
+                                    flex: 2,
                                     child: Text('Cards',
                                         style: TextStyle(
                                             fontWeight: FontWeight.w600,
@@ -994,6 +1000,9 @@ class _NoteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Get the front/back from the first card's rendered text
+    final front = note.cards.isNotEmpty ? note.cards.first.front : '';
+    final back = note.cards.isNotEmpty ? note.cards.first.back : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -1007,7 +1016,7 @@ class _NoteRow extends StatelessWidget {
           Expanded(
             flex: 5,
             child: Text(
-              (note.fields['Front'] ?? '').toString(),
+              front,
               style: theme.textTheme.bodyMedium,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1015,8 +1024,17 @@ class _NoteRow extends StatelessWidget {
           Expanded(
             flex: 5,
             child: Text(
-              (note.fields['Back'] ?? '').toString(),
+              back.replaceAll(RegExp(r'<[^>]*>'), ' ').trim(),
               style: theme.textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              note.noteTypeName,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1070,39 +1088,85 @@ class _NoteFormDialog extends StatefulWidget {
 
 class _NoteFormDialogState extends State<_NoteFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _frontController;
-  late final TextEditingController _backController;
   bool _isSubmitting = false;
+  bool _loadingTypes = true;
+
+  List<NoteType> _noteTypes = [];
+  NoteType? _selectedType;
+  final Map<String, TextEditingController> _fieldControllers = {};
 
   bool get _isEditing => widget.existingNote != null;
 
   @override
   void initState() {
     super.initState();
-    _frontController = TextEditingController(
-        text: _isEditing
-            ? (widget.existingNote!.fields['Front'] ?? '').toString()
-            : '');
-    _backController = TextEditingController(
-        text: _isEditing
-            ? (widget.existingNote!.fields['Back'] ?? '').toString()
-            : '');
+    _loadNoteTypes();
+  }
+
+  Future<void> _loadNoteTypes() async {
+    await widget.provider.loadNoteTypes();
+    if (!mounted) return;
+    setState(() {
+      _noteTypes = widget.provider.noteTypes;
+      _loadingTypes = false;
+
+      if (_isEditing && widget.existingNote != null) {
+        // Find the note type used by the existing note
+        _selectedType = _noteTypes.cast<NoteType?>().firstWhere(
+              (t) => t!.id == widget.existingNote!.noteTypeId,
+              orElse: () => _noteTypes.isNotEmpty ? _noteTypes.first : null,
+            );
+        // Populate field controllers from existing fields
+        if (_selectedType != null) {
+          _initFieldControllers(_selectedType!.fieldNames);
+          for (final name in _selectedType!.fieldNames) {
+            _fieldControllers[name]?.text =
+                (widget.existingNote!.fields[name] ?? '').toString();
+          }
+        }
+      } else if (_noteTypes.isNotEmpty) {
+        _selectedType = _noteTypes.first;
+        _initFieldControllers(_selectedType!.fieldNames);
+      }
+    });
+  }
+
+  void _initFieldControllers(List<String> fieldNames) {
+    _disposeControllers();
+    for (final name in fieldNames) {
+      _fieldControllers[name] = TextEditingController();
+    }
+  }
+
+  void _onTypeChanged(NoteType? type) {
+    if (type == null) return;
+    setState(() {
+      _selectedType = type;
+      _initFieldControllers(type.fieldNames);
+    });
   }
 
   @override
   void dispose() {
-    _frontController.dispose();
-    _backController.dispose();
+    _disposeControllers();
     super.dispose();
+  }
+
+  void _disposeControllers() {
+    for (final c in _fieldControllers.values) {
+      c.dispose();
+    }
+    _fieldControllers.clear();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedType == null) return;
+
     setState(() => _isSubmitting = true);
 
     final fields = {
-      'Front': _frontController.text.trim(),
-      'Back': _backController.text.trim(),
+      for (final e in _fieldControllers.entries) e.key: e.value.text.trim(),
     };
 
     final ok = _isEditing
@@ -1111,7 +1175,8 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
             widget.existingNote!.id,
             UpdateNote(fields: fields),
           )
-        : await widget.provider.createNote(widget.deckId, 1, fields);
+        : await widget.provider
+            .createNote(widget.deckId, _selectedType!.id, fields);
 
     if (mounted) {
       if (ok != null) {
@@ -1130,6 +1195,15 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingTypes) {
+      return const AlertDialog(
+        content: SizedBox(
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return AlertDialog(
       title: Text(_isEditing ? 'Edit Note' : 'Create Note'),
       content: Form(
@@ -1137,36 +1211,39 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(
-              controller: _frontController,
-              autofocus: true,
-              maxLines: 3,
+            DropdownButtonFormField<NoteType>(
+              initialValue: _selectedType,
               decoration: const InputDecoration(
-                labelText: 'Front',
+                labelText: 'Note type',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Front is required';
-                }
-                return null;
-              },
+              items: _noteTypes
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
+                  .toList(),
+              onChanged: _isEditing ? null : _onTypeChanged,
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _backController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Back',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Back is required';
-                }
-                return null;
-              },
-            ),
+            if (_selectedType != null) ...[
+              const SizedBox(height: 16),
+              for (final name in _selectedType!.fieldNames)
+                Padding(
+                  padding: EdgeInsets.only(
+                      top: _selectedType!.fieldNames.first == name ? 0 : 16),
+                  child: TextFormField(
+                    controller: _fieldControllers[name],
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: name,
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return '$name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+            ],
           ],
         ),
       ),
