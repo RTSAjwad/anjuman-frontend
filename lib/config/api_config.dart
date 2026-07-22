@@ -64,4 +64,7 @@ class ApiConfig {
 
   // Dashboard
   static const String dashboard = '/dashboard';
+
+  // Browser
+  static const String browseCards = '/cards';
 }

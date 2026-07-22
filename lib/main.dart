@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/browser_provider.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/study_provider.dart';
@@ -60,6 +61,9 @@ class AuthGate extends StatelessWidget {
               ),
               ChangeNotifierProvider(
                 create: (_) => UserProvider(auth.apiClient),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => BrowserProvider(auth.apiClient),
               ),
             ],
             child: const AppShell(),
