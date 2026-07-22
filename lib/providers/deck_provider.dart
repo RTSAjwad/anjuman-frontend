@@ -111,10 +111,10 @@ class DeckProvider extends ChangeNotifier {
   }
 
   Future<NoteResponse?> createNote(
-      int deckId, String noteType, Map<String, dynamic> fields) async {
+      int deckId, int noteTypeId, Map<String, dynamic> fields) async {
     try {
       final note = await _deckService.createNote(
-          deckId, CreateNote(noteType: noteType, fields: fields));
+          deckId, CreateNote(noteTypeId: noteTypeId, fields: fields));
       return note;
     } on Exception catch (e) {
       _error = e.toString();

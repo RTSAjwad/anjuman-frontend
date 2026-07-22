@@ -1111,7 +1111,7 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
             widget.existingNote!.id,
             UpdateNote(fields: fields),
           )
-        : await widget.provider.createNote(widget.deckId, 'Basic', fields);
+        : await widget.provider.createNote(widget.deckId, 1, fields);
 
     if (mounted) {
       if (ok != null) {

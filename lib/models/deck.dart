@@ -151,23 +151,69 @@ class DeckDetailResponse {
 
 // Notes
 
+class NoteType {
+  final int id;
+  final String name;
+  final List<String> fieldNames;
+  final List<NoteTemplate> templates;
+
+  NoteType({
+    required this.id,
+    required this.name,
+    required this.fieldNames,
+    required this.templates,
+  });
+
+  factory NoteType.fromJson(Map<String, dynamic> json) => NoteType(
+        id: json['id'],
+        name: json['name'],
+        fieldNames:
+            (json['field_names'] as List).map((e) => e as String).toList(),
+        templates: (json['templates'] as List)
+            .map((t) => NoteTemplate.fromJson(t))
+            .toList(),
+      );
+}
+
+class NoteTemplate {
+  final int index;
+  final String name;
+  final String frontPattern;
+  final String backPattern;
+
+  NoteTemplate({
+    required this.index,
+    required this.name,
+    required this.frontPattern,
+    required this.backPattern,
+  });
+
+  factory NoteTemplate.fromJson(Map<String, dynamic> json) => NoteTemplate(
+        index: json['index'],
+        name: json['name'],
+        frontPattern: json['front_pattern'],
+        backPattern: json['back_pattern'],
+      );
+}
+
 class CreateNote {
-  final String noteType;
+  final int noteTypeId;
   final Map<String, dynamic> fields;
 
-  CreateNote({required this.noteType, required this.fields});
+  CreateNote({required this.noteTypeId, required this.fields});
 
-  Map<String, dynamic> toJson() => {'note_type': noteType, 'fields': fields};
+  Map<String, dynamic> toJson() =>
+      {'note_type_id': noteTypeId, 'fields': fields};
 }
 
 class UpdateNote {
-  final String? noteType;
+  final int? noteTypeId;
   final Map<String, dynamic>? fields;
 
-  UpdateNote({this.noteType, this.fields});
+  UpdateNote({this.noteTypeId, this.fields});
 
   Map<String, dynamic> toJson() => {
-        if (noteType != null) 'note_type': noteType,
+        if (noteTypeId != null) 'note_type_id': noteTypeId,
         if (fields != null) 'fields': fields,
       };
 }
@@ -196,7 +242,8 @@ class CardSummary {
 class NoteResponse {
   final int id;
   final int deckId;
-  final String noteType;
+  final int noteTypeId;
+  final String noteTypeName;
   final Map<String, dynamic> fields;
   final List<CardSummary> cards;
   final DateTime createdAt;
@@ -204,7 +251,8 @@ class NoteResponse {
   NoteResponse({
     required this.id,
     required this.deckId,
-    required this.noteType,
+    required this.noteTypeId,
+    required this.noteTypeName,
     required this.fields,
     required this.cards,
     required this.createdAt,
@@ -213,7 +261,8 @@ class NoteResponse {
   factory NoteResponse.fromJson(Map<String, dynamic> json) => NoteResponse(
         id: json['id'],
         deckId: json['deck_id'],
-        noteType: json['note_type'],
+        noteTypeId: json['note_type_id'],
+        noteTypeName: json['note_type_name'],
         fields: json['fields'],
         cards: (json['cards'] as List)
             .map((c) => CardSummary.fromJson(c))
