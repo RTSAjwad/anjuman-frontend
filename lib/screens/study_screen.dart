@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:provider/provider.dart';
 import '../providers/study_provider.dart';
 import '../models/study.dart';
@@ -160,21 +161,19 @@ class _StudyScreenState extends State<StudyScreen> {
         children: [
           Expanded(
             child: Center(
-              child: Card(
-                elevation: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  padding: const EdgeInsets.all(32),
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Text(
-                        _provider.showBack ? card.back : card.front,
-                        style: theme.textTheme.headlineSmall,
-                        textAlign: TextAlign.center,
-                      ),
+              child: SingleChildScrollView(
+                child: Html(
+                  data: _provider.showBack ? card.back : card.front,
+                  style: {
+                    'body': Style(
+                      margin: Margins.zero,
+                      padding: HtmlPaddings.zero,
+                      fontSize: FontSize(
+                          theme.textTheme.headlineSmall?.fontSize ?? 20),
+                      fontWeight: FontWeight.w400,
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                  },
                 ),
               ),
             ),

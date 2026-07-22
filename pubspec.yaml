@@ -22,6 +22,9 @@ dependencies:
   # Searchable dropdown
   dropdown_search: ^7.0.0
 
+  # HTML rendering for card content
+  flutter_html: ^3.0.0-beta.2
+
   # Material Design icons (extended set)
   cupertino_icons: ^1.0.8
 
