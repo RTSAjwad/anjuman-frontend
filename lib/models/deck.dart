@@ -277,7 +277,7 @@ class CardSummary {
 
 class NoteResponse {
   final int id;
-  final int deckId;
+  final List<int> deckIds;
   final int noteTypeId;
   final String noteTypeName;
   final Map<String, dynamic> fields;
@@ -286,7 +286,7 @@ class NoteResponse {
 
   NoteResponse({
     required this.id,
-    required this.deckId,
+    required this.deckIds,
     required this.noteTypeId,
     required this.noteTypeName,
     required this.fields,
@@ -296,7 +296,7 @@ class NoteResponse {
 
   factory NoteResponse.fromJson(Map<String, dynamic> json) => NoteResponse(
         id: json['id'],
-        deckId: json['deck_id'],
+        deckIds: (json['deck_ids'] as List).map((e) => e as int).toList(),
         noteTypeId: json['note_type_id'],
         noteTypeName: json['note_type_name'],
         fields: json['fields'],
