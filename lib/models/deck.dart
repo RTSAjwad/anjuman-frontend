@@ -196,6 +196,42 @@ class NoteTemplate {
       );
 }
 
+class CreateNoteType {
+  final String name;
+  final List<String> fieldNames;
+  final List<CreateNoteTemplate> templates;
+
+  CreateNoteType({
+    required this.name,
+    required this.fieldNames,
+    required this.templates,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'field_names': fieldNames,
+        'templates': templates.map((t) => t.toJson()).toList(),
+      };
+}
+
+class CreateNoteTemplate {
+  final String name;
+  final String frontPattern;
+  final String backPattern;
+
+  CreateNoteTemplate({
+    required this.name,
+    required this.frontPattern,
+    required this.backPattern,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'front_pattern': frontPattern,
+        'back_pattern': backPattern,
+      };
+}
+
 class CreateNote {
   final int noteTypeId;
   final Map<String, dynamic> fields;

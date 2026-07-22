@@ -198,6 +198,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('Add Note'),
                         ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonalIcon(
+                          onPressed: () => _showManageNoteTypesDialog(context),
+                          icon: const Icon(Icons.category, size: 18),
+                          label: const Text('Manage types'),
+                        ),
                       ],
                     ],
                   ),
@@ -284,6 +290,18 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         onSuccess: () {
           Navigator.of(ctx).pop();
           _load();
+        },
+      ),
+    );
+  }
+
+  void _showManageNoteTypesDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _NoteTypeManageDialog(
+        provider: widget.provider,
+        onCreated: () {
+          Navigator.of(ctx).pop();
         },
       ),
     );
@@ -1265,4 +1283,268 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
       ],
     );
   }
+}
+
+class _NoteTypeManageDialog extends StatefulWidget {
+  final DeckProvider provider;
+  final VoidCallback onCreated;
+
+  const _NoteTypeManageDialog({
+    required this.provider,
+    required this.onCreated,
+  });
+
+  @override
+  State<_NoteTypeManageDialog> createState() => _NoteTypeManageDialogState();
+}
+
+class _NoteTypeManageDialogState extends State<_NoteTypeManageDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _fieldNamesController = TextEditingController();
+  final _templateNameController = TextEditingController();
+  final _frontPatternController = TextEditingController();
+  final _backPatternController = TextEditingController();
+  bool _isSubmitting = false;
+  final List<_TemplateEntry> _templates = [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.provider.loadNoteTypes();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _fieldNamesController.dispose();
+    _templateNameController.dispose();
+    _frontPatternController.dispose();
+    _backPatternController.dispose();
+    super.dispose();
+  }
+
+  void _addTemplate() {
+    final name = _templateNameController.text.trim();
+    final front = _frontPatternController.text.trim();
+    final back = _backPatternController.text.trim();
+    if (name.isEmpty || front.isEmpty || back.isEmpty) return;
+    setState(() {
+      _templates.add(_TemplateEntry(
+        name: name,
+        frontPattern: front,
+        backPattern: back,
+      ));
+      _templateNameController.clear();
+      _frontPatternController.clear();
+      _backPatternController.clear();
+    });
+  }
+
+  void _removeTemplate(int index) {
+    setState(() => _templates.removeAt(index));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_templates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add at least one template'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final fieldNames = _fieldNamesController.text
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final noteType = CreateNoteType(
+      name: _nameController.text.trim(),
+      fieldNames: fieldNames,
+      templates: _templates
+          .map((t) => CreateNoteTemplate(
+                name: t.name,
+                frontPattern: t.frontPattern,
+                backPattern: t.backPattern,
+              ))
+          .toList(),
+    );
+
+    final ok = await widget.provider.createNoteType(noteType);
+    if (mounted) {
+      if (ok) {
+        widget.onCreated();
+      } else {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(widget.provider.error ?? 'Failed to create note type'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final noteTypes = widget.provider.noteTypes;
+
+    return AlertDialog(
+      title: const Text('Manage Note Types'),
+      content: SizedBox(
+        width: 500,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (noteTypes.isNotEmpty) ...[
+              Text('Existing types',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              ...noteTypes.map((t) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.description_outlined,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Text('${t.name} (${t.fieldNames.join(", ")})',
+                            style: theme.textTheme.bodyMedium),
+                      ],
+                    ),
+                  )),
+              const Divider(),
+              const SizedBox(height: 8),
+            ],
+            Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      hintText: 'e.g. Basic, Cloze',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _fieldNamesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Field names',
+                      hintText: 'e.g. Front, Back',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Templates',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _templateNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Template name',
+                      hintText: 'e.g. Forward',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _frontPatternController,
+                    decoration: const InputDecoration(
+                      labelText: 'Front pattern',
+                      hintText: 'e.g. {{Front}}',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _backPatternController,
+                    decoration: const InputDecoration(
+                      labelText: 'Back pattern',
+                      hintText: 'e.g. {{Back}}',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _addTemplate,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add template'),
+                  ),
+                  if (_templates.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ..._templates.asMap().entries.map((e) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${e.value.name}: ${e.value.frontPattern} / ${e.value.backPattern}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 16),
+                                onPressed: () => _removeTemplate(e.key),
+                              ),
+                            ],
+                          ),
+                        )),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Create'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TemplateEntry {
+  final String name;
+  final String frontPattern;
+  final String backPattern;
+
+  const _TemplateEntry({
+    required this.name,
+    required this.frontPattern,
+    required this.backPattern,
+  });
 }

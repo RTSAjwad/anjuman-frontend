@@ -111,4 +111,10 @@ class DeckService {
     final list = await _client.getList(ApiConfig.noteTypes);
     return list.map((t) => NoteType.fromJson(t)).toList();
   }
+
+  Future<NoteType> createNoteType(CreateNoteType noteType) async {
+    final json =
+        await _client.post(ApiConfig.noteTypes, body: noteType.toJson());
+    return NoteType.fromJson(json);
+  }
 }
