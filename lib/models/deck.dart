@@ -155,12 +155,14 @@ class NoteType {
   final int id;
   final String name;
   final List<String> fieldNames;
+  final String sortField;
   final List<NoteTemplate> templates;
 
   NoteType({
     required this.id,
     required this.name,
     required this.fieldNames,
+    required this.sortField,
     required this.templates,
   });
 
@@ -169,6 +171,7 @@ class NoteType {
         name: json['name'],
         fieldNames:
             (json['field_names'] as List).map((e) => e as String).toList(),
+        sortField: json['sort_field'] ?? '',
         templates: (json['templates'] as List)
             .map((t) => NoteTemplate.fromJson(t))
             .toList(),
@@ -199,17 +202,20 @@ class NoteTemplate {
 class CreateNoteType {
   final String name;
   final List<String> fieldNames;
+  final String? sortField;
   final List<CreateNoteTemplate> templates;
 
   CreateNoteType({
     required this.name,
     required this.fieldNames,
+    this.sortField,
     required this.templates,
   });
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'field_names': fieldNames,
+        if (sortField != null) 'sort_field': sortField,
         'templates': templates.map((t) => t.toJson()).toList(),
       };
 }

@@ -18,6 +18,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   final _templateNameController = TextEditingController();
   final _frontPatternController = TextEditingController();
   final _backPatternController = TextEditingController();
+  final _sortFieldController = TextEditingController();
   bool _isSubmitting = false;
   final List<_TemplateEntry> _templates = [];
 
@@ -34,6 +35,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     _templateNameController.dispose();
     _frontPatternController.dispose();
     _backPatternController.dispose();
+    _sortFieldController.dispose();
     super.dispose();
   }
 
@@ -81,6 +83,9 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     final noteType = CreateNoteType(
       name: _nameController.text.trim(),
       fieldNames: fieldNames,
+      sortField: _sortFieldController.text.trim().isEmpty
+          ? null
+          : _sortFieldController.text.trim(),
       templates: _templates
           .map((t) => CreateNoteTemplate(
                 name: t.name,
@@ -140,7 +145,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
                               Text(t.name, style: theme.textTheme.titleMedium),
                               const SizedBox(height: 4),
                               Text(
-                                  'Fields: ${t.fieldNames.join(", ")}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}',
+                                  'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                       color:
                                           theme.colorScheme.onSurfaceVariant)),
@@ -181,6 +186,15 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
                   ),
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _sortFieldController,
+                  decoration: const InputDecoration(
+                    labelText: 'Sort field (optional)',
+                    hintText: 'e.g. Front — empty uses first field',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text('Templates',
