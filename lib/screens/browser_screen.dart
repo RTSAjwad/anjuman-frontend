@@ -128,22 +128,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                             child: Row(
                               children: [
                                 _SortHeader(
-                                  flex: 4,
-                                  label: 'Front',
-                                  field: 'question',
-                                  sortField: _sortField,
-                                  sortAsc: _sortAsc,
-                                  onTap: _onSort,
-                                ),
-                                _SortHeader(
-                                  flex: 4,
-                                  label: 'Back',
-                                  field: 'question',
-                                  sortField: _sortField,
-                                  sortAsc: _sortAsc,
-                                  onTap: _onSort,
-                                ),
-                                _SortHeader(
                                   flex: 2,
                                   label: 'Deck',
                                   field: 'deck',
@@ -350,22 +334,6 @@ class _CardRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 4,
-            child: Text(
-              _stripTags(card.front),
-              style: theme.textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 4,
-            child: Text(
-              _stripTags(card.back),
-              style: theme.textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
             flex: 2,
             child: Text(
               card.deckTitle,
@@ -392,13 +360,6 @@ class _CardRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _stripTags(String html) {
-    return html
-        .replaceAll(RegExp(r'<[^>]*>'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 
   String _formatDue(int timestamp) {
