@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
 import 'classes_screen.dart';
 import 'decks_screen.dart';
@@ -25,23 +25,19 @@ class _AppShellState extends State<AppShell> {
     final navItems = _navItemsForRole(role);
     final screens = _screensForRole(role);
 
-    // Clamp index if role changed
     if (_selectedIndex >= navItems.length) {
       _selectedIndex = 0;
     }
 
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 600;
-
-          if (isWide) {
-            return _buildWideLayout(navItems, screens);
-          } else {
-            return _buildNarrowLayout(navItems, screens);
-          }
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 600;
+        if (isWide) {
+          return _buildWideLayout(navItems, screens);
+        } else {
+          return _buildNarrowLayout(navItems, screens);
+        }
+      },
     );
   }
 
@@ -52,20 +48,24 @@ class _AppShellState extends State<AppShell> {
     return Row(
       children: [
         NavigationRail(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) {
-            setState(() => _selectedIndex = index);
+          selectedKey: ValueKey(navItems[_selectedIndex].key),
+          expanded: false,
+          labelType: NavigationLabelType.all,
+          labelPosition: NavigationLabelPosition.end,
+          onSelected: (key) {
+            if (key is ValueKey<int>) {
+              setState(() => _selectedIndex = key.value);
+            }
           },
-          labelType: NavigationRailLabelType.all,
-          destinations: navItems
-              .map((item) => NavigationRailDestination(
-                    icon: Icon(item.icon),
-                    selectedIcon: Icon(item.icon, fill: 1),
+          children: navItems
+              .map((item) => NavigationItem(
+                    key: ValueKey(item.key),
                     label: Text(item.label),
+                    child: Icon(item.icon),
                   ))
               .toList(),
         ),
-        const VerticalDivider(width: 1),
+        const VerticalDivider(width: 0),
         Expanded(
           child: IndexedStack(
             index: _selectedIndex,
@@ -89,15 +89,18 @@ class _AppShellState extends State<AppShell> {
           ),
         ),
         NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) {
-            setState(() => _selectedIndex = index);
+          direction: Axis.horizontal,
+          selectedKey: ValueKey(navItems[_selectedIndex].key),
+          onSelected: (key) {
+            if (key is ValueKey<int>) {
+              setState(() => _selectedIndex = key.value);
+            }
           },
-          destinations: navItems
-              .map((item) => NavigationDestination(
-                    icon: Icon(item.icon),
-                    selectedIcon: Icon(item.icon, fill: 1),
-                    label: item.label,
+          children: navItems
+              .map((item) => NavigationItem(
+                    key: ValueKey(item.key),
+                    label: Text(item.label),
+                    child: Icon(item.icon),
                   ))
               .toList(),
         ),
@@ -107,30 +110,30 @@ class _AppShellState extends State<AppShell> {
 
   List<_NavItem> _navItemsForRole(String role) {
     final base = switch (role) {
-      'admin' => const [
-          _NavItem(Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(Icons.group_rounded, 'Classes'),
-          _NavItem(Icons.style_rounded, 'Decks'),
-          _NavItem(Icons.people_rounded, 'Users'),
-          _NavItem(Icons.search_rounded, 'Browser'),
+      'admin' => [
+          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
+          _NavItem(1, Icons.group_rounded, 'Classes'),
+          _NavItem(2, Icons.style_rounded, 'Decks'),
+          _NavItem(3, Icons.people_rounded, 'Users'),
+          _NavItem(4, Icons.search_rounded, 'Browser'),
         ],
-      'teacher' => const [
-          _NavItem(Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(Icons.group_rounded, 'Classes'),
-          _NavItem(Icons.style_rounded, 'Decks'),
-          _NavItem(Icons.search_rounded, 'Browser'),
+      'teacher' => [
+          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
+          _NavItem(1, Icons.group_rounded, 'Classes'),
+          _NavItem(2, Icons.style_rounded, 'Decks'),
+          _NavItem(3, Icons.search_rounded, 'Browser'),
         ],
-      'student' => const [
-          _NavItem(Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(Icons.style_rounded, 'Decks'),
-          _NavItem(Icons.group_rounded, 'Classes'),
-          _NavItem(Icons.search_rounded, 'Browser'),
+      'student' => [
+          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
+          _NavItem(1, Icons.style_rounded, 'Decks'),
+          _NavItem(2, Icons.group_rounded, 'Classes'),
+          _NavItem(3, Icons.search_rounded, 'Browser'),
         ],
-      _ => const [
-          _NavItem(Icons.home_rounded, 'Home'),
+      _ => [
+          _NavItem(0, Icons.home_rounded, 'Home'),
         ],
     };
-    return [...base, const _NavItem(Icons.person_rounded, 'Me')];
+    return [...base, _NavItem(base.length, Icons.person_rounded, 'Me')];
   }
 
   List<Widget> _screensForRole(String role) {
@@ -169,36 +172,38 @@ class _MeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Me'),
-      ),
-      body: ListView(
+      headers: [
+        AppBar(
+          title: const Text('Me'),
+        ),
+      ],
+      child: ListView(
         children: [
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                CircleAvatar(
-                  radius: 36,
-                  child: Text(
-                    (user?.email ?? '?')[0].toUpperCase(),
-                    style: theme.textTheme.headlineMedium,
-                  ),
+                const Avatar(
+                  initials: '?',
+                  size: 72,
+                  borderRadius: 36,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim(),
-                  style: theme.textTheme.titleMedium,
+                  style: theme.typography.h4,
                 ),
                 if (user?.email != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     user?.email ?? '',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: colors.mutedForeground,
                     ),
                   ),
                 ],
@@ -206,10 +211,18 @@ class _MeScreen extends StatelessWidget {
             ),
           ),
           const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Sign out', style: TextStyle(color: Colors.red)),
+          GestureDetector(
             onTap: () => auth.logout(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.logout, size: 20, color: Colors.red),
+                  const SizedBox(width: 16),
+                  const Text('Sign out', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -218,8 +231,9 @@ class _MeScreen extends StatelessWidget {
 }
 
 class _NavItem {
+  final int key;
   final IconData icon;
   final String label;
 
-  const _NavItem(this.icon, this.label);
+  const _NavItem(this.key, this.icon, this.label);
 }
