@@ -25,6 +25,9 @@ dependencies:
   # HTML rendering for card content
   flutter_html: ^3.0.0-beta.2
 
+  # shadcn-style UI components
+  shadcn_flutter: ^0.0.53
+
   # Material Design icons (extended set)
   cupertino_icons: ^1.0.8
 

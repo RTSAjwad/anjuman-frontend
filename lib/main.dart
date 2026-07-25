@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/browser_provider.dart';
 import 'providers/class_provider.dart';
@@ -20,21 +20,17 @@ class AnkiClassroomApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider(),
-      child: MaterialApp(
+      child: const ShadcnApp(
         title: 'Anki Classroom',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorSchemeSeed: Colors.deepPurple,
-          brightness: Brightness.light,
-          useMaterial3: true,
+          colorScheme: ColorSchemes.lightNeutral,
         ),
-        darkTheme: ThemeData(
-          colorSchemeSeed: Colors.deepPurple,
-          brightness: Brightness.dark,
-          useMaterial3: true,
+        darkTheme: ThemeData.dark(
+          colorScheme: ColorSchemes.darkNeutral,
         ),
         themeMode: ThemeMode.system,
-        home: const AuthGate(),
+        home: AuthGate(),
       ),
     );
   }
