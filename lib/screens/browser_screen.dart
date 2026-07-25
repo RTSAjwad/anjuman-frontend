@@ -365,7 +365,7 @@ class _CardRow extends StatelessWidget {
           if (!isTeacher) ...[
             Expanded(
               flex: 2,
-              child: _StateBadge(state: card.state),
+              child: _StateBadge(card: card),
             ),
             Expanded(
               flex: 1,
@@ -403,20 +403,23 @@ class _CardRow extends StatelessWidget {
 }
 
 class _StateBadge extends StatelessWidget {
-  final String? state;
+  final BrowserCard card;
 
-  const _StateBadge({this.state});
+  const _StateBadge({required this.card});
 
   @override
   Widget build(BuildContext context) {
-    if (state == null) return const Text('—', style: TextStyle(fontSize: 13));
+    final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
+    if (displayState == null) {
+      return const Text('—', style: TextStyle(fontSize: 13));
+    }
     final theme = Theme.of(context);
-    final (label, color) = switch (state) {
+    final (label, color) = switch (displayState) {
       'new' => ('new', Colors.blue),
       'learning' => ('learning', Colors.orange),
       'review' => ('review', Colors.green),
       'relearning' => ('relearn', Colors.purple),
-      _ => (state!, theme.colorScheme.onSurfaceVariant),
+      _ => (displayState, theme.colorScheme.onSurfaceVariant),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
