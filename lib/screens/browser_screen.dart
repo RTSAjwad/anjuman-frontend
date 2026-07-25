@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
 import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
@@ -66,6 +67,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Browser'),
@@ -127,6 +131,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                 horizontal: 16, vertical: 10),
                             child: Row(
                               children: [
+                                Expanded(
+                                  child: _SortHeader(
+                                    label: 'Sort Field',
+                                    field: 'question',
+                                    sortField: _sortField,
+                                    sortAsc: _sortAsc,
+                                    onTap: _onSort,
+                                  ),
+                                ),
                                 _SortHeader(
                                   flex: 2,
                                   label: 'Deck',
@@ -135,28 +148,30 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   sortAsc: _sortAsc,
                                   onTap: _onSort,
                                 ),
-                                _SortHeader(
-                                  flex: 2,
-                                  label: 'State',
-                                  field: '',
-                                  sortField: _sortField,
-                                  sortAsc: _sortAsc,
-                                  onTap: _onSort,
-                                ),
-                                _SortHeader(
-                                  flex: 1,
-                                  label: 'Due',
-                                  field: 'due_at',
-                                  sortField: _sortField,
-                                  sortAsc: _sortAsc,
-                                  onTap: _onSort,
-                                ),
+                                if (!isTeacher) ...[
+                                  _SortHeader(
+                                    flex: 2,
+                                    label: 'State',
+                                    field: '',
+                                    sortField: _sortField,
+                                    sortAsc: _sortAsc,
+                                    onTap: _onSort,
+                                  ),
+                                  _SortHeader(
+                                    flex: 1,
+                                    label: 'Due',
+                                    field: 'due_at',
+                                    sortField: _sortField,
+                                    sortAsc: _sortAsc,
+                                    onTap: _onSort,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
                           // Rows
                           for (final card in provider.cards)
-                            _CardRow(card: card),
+                            _CardRow(card: card, isTeacher: isTeacher),
                         ],
                       ),
                     ),
@@ -242,7 +257,7 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _SortHeader extends StatelessWidget {
-  final int flex;
+  final int? flex;
   final String label;
   final String field;
   final ValueNotifier<String> sortField;
@@ -250,7 +265,7 @@ class _SortHeader extends StatelessWidget {
   final void Function(String) onTap;
 
   const _SortHeader({
-    required this.flex,
+    this.flex,
     required this.label,
     required this.field,
     required this.sortField,
@@ -260,65 +275,63 @@ class _SortHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (field.isEmpty) {
-      return Expanded(
-        flex: flex,
-        child: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-        ),
-      );
-    }
-
-    return Expanded(
-      flex: flex,
-      child: ValueListenableBuilder(
-        valueListenable: sortField,
-        builder: (context, activeField, _) {
-          final active = activeField == field;
-          return ValueListenableBuilder(
-            valueListenable: sortAsc,
-            builder: (context, ascending, _) {
-              return InkWell(
-                onTap: () => onTap(field),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontWeight:
-                              active ? FontWeight.w700 : FontWeight.w600,
-                          fontSize: 12,
-                          color: active
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
+    final child = field.isEmpty
+        ? Text(label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))
+        : ValueListenableBuilder(
+            valueListenable: sortField,
+            builder: (context, activeField, _) {
+              final active = activeField == field;
+              return ValueListenableBuilder(
+                valueListenable: sortAsc,
+                builder: (context, ascending, _) {
+                  return InkWell(
+                    onTap: () => onTap(field),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontWeight:
+                                  active ? FontWeight.w700 : FontWeight.w600,
+                              fontSize: 12,
+                              color: active
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        if (active)
+                          Icon(
+                            ascending
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                      ],
                     ),
-                    if (active)
-                      Icon(
-                        ascending ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 14,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           );
-        },
-      ),
-    );
+
+    if (flex != null) {
+      return Expanded(flex: flex!, child: child);
+    }
+    return child;
   }
 }
 
 class _CardRow extends StatelessWidget {
   final BrowserCard card;
+  final bool isTeacher;
 
-  const _CardRow({required this.card});
+  const _CardRow({required this.card, required this.isTeacher});
 
   @override
   Widget build(BuildContext context) {
@@ -334,6 +347,13 @@ class _CardRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
+            child: Text(
+              _stripTags(card.front),
+              style: theme.textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
             flex: 2,
             child: Text(
               card.deckTitle,
@@ -342,24 +362,33 @@ class _CardRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: _StateBadge(state: card.state),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              card.state != null && card.dueAt != null
-                  ? _formatDue(card.dueAt!)
-                  : '—',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              overflow: TextOverflow.ellipsis,
+          if (!isTeacher) ...[
+            Expanded(
+              flex: 2,
+              child: _StateBadge(state: card.state),
             ),
-          ),
+            Expanded(
+              flex: 1,
+              child: Text(
+                card.state != null && card.dueAt != null
+                    ? _formatDue(card.dueAt!)
+                    : '—',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String _stripTags(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   String _formatDue(int timestamp) {
