@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
 import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
@@ -67,9 +66,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Browser'),
@@ -122,56 +118,60 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   children: [
                     Card(
                       clipBehavior: Clip.antiAlias,
-                      child: Column(
+                      child: Table(
+                        columnWidths: const {
+                          0: IntrinsicColumnWidth(),
+                          1: IntrinsicColumnWidth(),
+                          2: IntrinsicColumnWidth(),
+                          3: IntrinsicColumnWidth(),
+                        },
                         children: [
                           // Header
-                          Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 10),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _SortHeader(
-                                    label: 'Sort Field',
-                                    field: 'question',
-                                    sortField: _sortField,
-                                    sortAsc: _sortAsc,
-                                    onTap: _onSort,
-                                  ),
-                                ),
-                                _SortHeader(
-                                  flex: 2,
-                                  label: 'Deck',
-                                  field: 'deck',
-                                  sortField: _sortField,
-                                  sortAsc: _sortAsc,
-                                  onTap: _onSort,
-                                ),
-                                if (!isTeacher) ...[
-                                  _SortHeader(
-                                    flex: 2,
-                                    label: 'State',
-                                    field: '',
-                                    sortField: _sortField,
-                                    sortAsc: _sortAsc,
-                                    onTap: _onSort,
-                                  ),
-                                  _SortHeader(
-                                    flex: 1,
-                                    label: 'Due',
-                                    field: 'due_at',
-                                    sortField: _sortField,
-                                    sortAsc: _sortAsc,
-                                    onTap: _onSort,
-                                  ),
-                                ],
-                              ],
+                          TableRow(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
                             ),
+                            children: [
+                              _SortCell(
+                                label: 'Sort Field',
+                                field: 'question',
+                                sortField: _sortField,
+                                sortAsc: _sortAsc,
+                                onTap: () => _onSort('question'),
+                              ),
+                              _SortCell(
+                                label: 'Deck',
+                                field: 'deck',
+                                sortField: _sortField,
+                                sortAsc: _sortAsc,
+                                onTap: () => _onSort('deck'),
+                              ),
+                              _SortCell(
+                                label: 'State',
+                                field: '',
+                                sortField: _sortField,
+                                sortAsc: _sortAsc,
+                                onTap: null,
+                              ),
+                              _SortCell(
+                                label: 'Due',
+                                field: 'due_at',
+                                sortField: _sortField,
+                                sortAsc: _sortAsc,
+                                onTap: () => _onSort('due_at'),
+                              ),
+                            ],
                           ),
                           // Rows
                           for (final card in provider.cards)
-                            _CardRow(card: card, isTeacher: isTeacher),
+                            TableRow(
+                              children: [
+                                _CardCell(card: card),
+                                _DeckCell(card: card),
+                                _StateCell(card: card),
+                                _DueCell(card: card),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -256,29 +256,25 @@ class _FilterBar extends StatelessWidget {
   }
 }
 
-class _SortHeader extends StatelessWidget {
-  final int? flex;
+class _SortCell extends StatelessWidget {
   final String label;
   final String field;
   final ValueNotifier<String> sortField;
   final ValueNotifier<bool> sortAsc;
-  final void Function(String) onTap;
+  final VoidCallback? onTap;
 
-  const _SortHeader({
-    this.flex,
+  const _SortCell({
     required this.label,
     required this.field,
     required this.sortField,
     required this.sortAsc,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final child = field.isEmpty
-        ? Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))
-        : ValueListenableBuilder(
+    final child = field.isNotEmpty
+        ? ValueListenableBuilder(
             valueListenable: sortField,
             builder: (context, activeField, _) {
               final active = activeField == field;
@@ -286,100 +282,66 @@ class _SortHeader extends StatelessWidget {
                 valueListenable: sortAsc,
                 builder: (context, ascending, _) {
                   return InkWell(
-                    onTap: () => onTap(field),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontWeight:
-                                  active ? FontWeight.w700 : FontWeight.w600,
-                              fontSize: 12,
-                              color: active
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
+                    onTap: () => onTap?.call(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                fontWeight:
+                                    active ? FontWeight.w700 : FontWeight.w600,
+                                fontSize: 12,
+                                color: active
+                                    ? Theme.of(context).colorScheme.primary
+                                    : null,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        if (active)
-                          Icon(
-                            ascending
-                                ? Icons.arrow_upward
-                                : Icons.arrow_downward,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                      ],
+                          if (active)
+                            Icon(
+                              ascending
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },
               );
             },
+          )
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Text(label,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
           );
-
-    if (flex != null) {
-      return Expanded(flex: flex!, child: child);
-    }
     return child;
   }
 }
 
-class _CardRow extends StatelessWidget {
+class _CardCell extends StatelessWidget {
   final BrowserCard card;
-  final bool isTeacher;
 
-  const _CardRow({required this.card, required this.isTeacher});
+  const _CardCell({required this.card});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _stripTags(card.front),
-              style: theme.textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              card.deckTitle,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (!isTeacher) ...[
-            Expanded(
-              flex: 2,
-              child: _StateBadge(card: card),
-            ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                card.state != null && card.dueAt != null
-                    ? _formatDue(card.dueAt!)
-                    : '—',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Text(
+        _stripTags(card.front),
+        style: Theme.of(context).textTheme.bodySmall,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -390,28 +352,42 @@ class _CardRow extends StatelessWidget {
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
+}
 
-  String _formatDue(int timestamp) {
-    final due = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final now = DateTime.now();
-    final diff = due.difference(now);
-    if (diff.inDays > 1) return '${diff.inDays}d';
-    if (diff.inHours > 1) return '${diff.inHours}h';
-    if (diff.inMinutes > 1) return '${diff.inMinutes}m';
-    return 'now';
+class _DeckCell extends StatelessWidget {
+  final BrowserCard card;
+
+  const _DeckCell({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Text(
+        card.deckTitle,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
   }
 }
 
-class _StateBadge extends StatelessWidget {
+class _StateCell extends StatelessWidget {
   final BrowserCard card;
 
-  const _StateBadge({required this.card});
+  const _StateCell({required this.card});
 
   @override
   Widget build(BuildContext context) {
     final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
     if (displayState == null) {
-      return const Text('—', style: TextStyle(fontSize: 13));
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Text('—', style: TextStyle(fontSize: 13)),
+      );
     }
     final theme = Theme.of(context);
     final (label, color) = switch (displayState) {
@@ -421,17 +397,55 @@ class _StateBadge extends StatelessWidget {
       'relearning' => ('relearn', Colors.purple),
       _ => (displayState, theme.colorScheme.onSurfaceVariant),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style:
-            TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withAlpha(30),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+              fontSize: 11, color: color, fontWeight: FontWeight.w600),
+        ),
       ),
     );
+  }
+}
+
+class _DueCell extends StatelessWidget {
+  final BrowserCard card;
+
+  const _DueCell({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
+    final isNew = displayState == 'new';
+
+    final text = isNew && card.newCardPosition != null
+        ? 'New #${card.newCardPosition}'
+        : card.dueAt != null
+            ? _formatDate(card.dueAt!)
+            : '—';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: isNew && card.newCardPosition != null
+                ? Colors.blue
+                : Theme.of(context).colorScheme.onSurfaceVariant),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  String _formatDate(int timestamp) {
+    final due = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    return '${due.year}-${due.month.toString().padLeft(2, '0')}-${due.day.toString().padLeft(2, '0')}';
   }
 }

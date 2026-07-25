@@ -15,6 +15,7 @@ class BrowserCard {
   final int reps;
   final int lapses;
   final DateTime createdAt;
+  final int? newCardPosition;
 
   BrowserCard({
     required this.cardId,
@@ -33,6 +34,7 @@ class BrowserCard {
     required this.reps,
     required this.lapses,
     required this.createdAt,
+    this.newCardPosition,
   });
 
   factory BrowserCard.fromJson(Map<String, dynamic> json) => BrowserCard(
@@ -56,6 +58,7 @@ class BrowserCard {
                     ? int.parse(json['created_at'])
                     : json['created_at']) *
                 1000),
+        newCardPosition: json['new_card_position'],
       );
 }
 
