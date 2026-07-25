@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
@@ -48,30 +48,32 @@ class _DecksScreenState extends State<DecksScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Decks'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () => context.read<DeckProvider>().loadDecks(),
-          ),
-        ],
-      ),
-      body: Consumer<DeckProvider>(
+      headers: [
+        AppBar(
+          title: const Text('Decks'),
+          trailing: [
+            IconButton.ghost(
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: () => context.read<DeckProvider>().loadDecks(),
+            ),
+          ],
+        ),
+      ],
+      child: Consumer<DeckProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.decks.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (provider.error != null && provider.decks.isEmpty) {
-            return _errorView(context, provider);
+            return _errorView(context, provider, colors);
           }
 
           if (provider.decks.isEmpty) {
-            return _emptyView(context, isTeacher);
+            return _emptyView(context, isTeacher, colors);
           }
 
           final sorted = _sort.sort(
@@ -85,71 +87,75 @@ class _DecksScreenState extends State<DecksScreen> {
                     DeckSortField.cards => d.totalCount ?? 0,
                   });
 
-          return RefreshIndicator(
-            onRefresh: () => provider.loadDecks(),
-            child: ListView(
-              padding: const EdgeInsets.all(8),
-              children: [
-                _DeckTable(
-                  decks: sorted,
-                  sort: _sort,
-                  isTeacher: isTeacher,
-                  onSortChanged: () => setState(() {}),
-                  onStudy: (deck) async {
-                    final studyProvider = context.read<StudyProvider>();
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => StudyScreen(
-                          deckId: deck.id,
-                          provider: studyProvider,
-                        ),
+          return ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              _DeckTable(
+                decks: sorted,
+                sort: _sort,
+                isTeacher: isTeacher,
+                onSortChanged: () => setState(() {}),
+                onStudy: (deck) async {
+                  final studyProvider = context.read<StudyProvider>();
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => StudyScreen(
+                        deckId: deck.id,
+                        provider: studyProvider,
                       ),
-                    );
-                    provider.loadDecks();
-                  },
-                  onTapDetail: (deck) {
-                    final classProvider = context.read<ClassProvider>();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => DeckDetailScreen(
-                          deck: deck,
-                          provider: provider,
-                          classProvider: classProvider,
-                        ),
+                    ),
+                  );
+                  provider.loadDecks();
+                },
+                onTapDetail: (deck) {
+                  final classProvider = context.read<ClassProvider>();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DeckDetailScreen(
+                        deck: deck,
+                        provider: provider,
+                        classProvider: classProvider,
                       ),
-                    );
-                  },
-                  onDelete: isTeacher
-                      ? (deck) => _confirmDelete(context, deck)
-                      : null,
-                ),
-              ],
-            ),
+                    ),
+                  );
+                },
+                onDelete:
+                    isTeacher ? (deck) => _confirmDelete(context, deck) : null,
+                colors: colors,
+              ),
+            ],
           );
         },
       ),
-      floatingActionButton: isTeacher
-          ? FloatingActionButton.extended(
-              heroTag: 'create_deck',
-              onPressed: () => _showCreateDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Create Deck'),
-            )
-          : null,
+      footers: isTeacher
+          ? [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Button.primary(
+                    onPressed: () => _showCreateDialog(context),
+                    leading: const Icon(Icons.add, size: 18),
+                    child: const Text('Create Deck'),
+                  ),
+                ),
+              ),
+            ]
+          : [],
     );
   }
 
-  Widget _errorView(BuildContext context, DeckProvider provider) {
-    final theme = Theme.of(context);
+  Widget _errorView(
+      BuildContext context, DeckProvider provider, ColorScheme colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+          Icon(Icons.error_outline, size: 48, color: colors.destructive),
           const SizedBox(height: 16),
-          Text('Failed to load decks', style: theme.textTheme.titleMedium),
+          const Text('Failed to load decks'),
           const SizedBox(height: 8),
-          FilledButton.tonal(
+          Button.secondary(
             onPressed: () => provider.loadDecks(),
             child: const Text('Retry'),
           ),
@@ -158,26 +164,20 @@ class _DecksScreenState extends State<DecksScreen> {
     );
   }
 
-  Widget _emptyView(BuildContext context, bool isTeacher) {
-    final theme = Theme.of(context);
+  Widget _emptyView(BuildContext context, bool isTeacher, ColorScheme colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.style_outlined,
-              size: 64, color: theme.colorScheme.onSurfaceVariant),
+          Icon(Icons.style_outlined, size: 64, color: colors.mutedForeground),
           const SizedBox(height: 16),
-          Text(
-            isTeacher ? 'No decks yet' : 'No decks available',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text(isTeacher ? 'No decks yet' : 'No decks available'),
           const SizedBox(height: 8),
           Text(
             isTeacher
                 ? 'Create your first deck to get started'
                 : 'No decks are available yet',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: TextStyle(color: colors.mutedForeground, fontSize: 14),
           ),
         ],
       ),
@@ -185,36 +185,43 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   void _showCreateDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _DeckFormDialog(
-        title: 'Create Deck',
-        provider: context.read<DeckProvider>(),
-        onSuccess: () => Navigator.of(ctx).pop(),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) {
+          final provider = context.read<DeckProvider>();
+          return _DeckFormDialog(
+            title: 'Create Deck',
+            provider: provider,
+            onSuccess: () => Navigator.of(ctx).pop(),
+          );
+        },
       ),
     );
   }
 
   void _confirmDelete(BuildContext context, DeckResponse deck) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Deck'),
-        content: Text('Delete "${deck.title}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final ok = await context.read<DeckProvider>().deleteDeck(deck.id);
-              if (ok && ctx.mounted) Navigator.of(ctx).pop();
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Deck'),
+          content: Text('Delete "${deck.title}"? This cannot be undone.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.destructive(
+              onPressed: () async {
+                final ok =
+                    await context.read<DeckProvider>().deleteDeck(deck.id);
+                if (ok && ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -228,6 +235,7 @@ class _DeckTable extends StatelessWidget {
   final void Function(DeckResponse) onStudy;
   final void Function(DeckResponse) onTapDetail;
   final void Function(DeckResponse)? onDelete;
+  final ColorScheme colors;
 
   const _DeckTable({
     required this.decks,
@@ -237,27 +245,22 @@ class _DeckTable extends StatelessWidget {
     required this.onStudy,
     required this.onTapDetail,
     this.onDelete,
+    required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Pre-compute the maximum count value string width.
-    // Used to align the count columns across header and rows.
     final countWidth = _maxCountWidth(decks);
 
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
         child: Card(
-          clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Container(
-                color: theme.colorScheme.surfaceContainerHighest,
+                color: colors.muted,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
@@ -319,9 +322,9 @@ class _DeckTable extends StatelessWidget {
                   ],
                 ),
               ),
-              // Rows
               for (final deck in decks)
-                InkWell(
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => isTeacher ? onTapDetail(deck) : onStudy(deck),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -329,17 +332,9 @@ class _DeckTable extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  deck.title,
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w500),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            deck.title,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isTeacher)
@@ -347,7 +342,7 @@ class _DeckTable extends StatelessWidget {
                             width: countWidth,
                             child: _CountText(
                               value: deck.totalCount ?? 0,
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: colors.foreground,
                             ),
                           )
                         else ...[
@@ -355,7 +350,7 @@ class _DeckTable extends StatelessWidget {
                             width: countWidth,
                             child: _CountText(
                               value: deck.newCount ?? 0,
-                              color: Colors.blue,
+                              color: const Color(0xFF3B82F6),
                             ),
                           ),
                           SizedBox(
@@ -363,14 +358,14 @@ class _DeckTable extends StatelessWidget {
                             child: _CountText(
                               value: (deck.learningCount ?? 0) +
                                   (deck.relearningCount ?? 0),
-                              color: Colors.orange,
+                              color: const Color(0xFFF97316),
                             ),
                           ),
                           SizedBox(
                             width: countWidth,
                             child: _CountText(
                               value: deck.dueCount ?? 0,
-                              color: Colors.green,
+                              color: const Color(0xFF22C55E),
                             ),
                           ),
                         ],
@@ -401,7 +396,6 @@ class _DeckTable extends StatelessWidget {
         ],
     ];
 
-    // Use a TextPainter to measure the widest string at fontSize 13 with weight 600.
     double maxWidth = 0;
     for (final text in allValues) {
       final tp = TextPainter(
@@ -413,7 +407,7 @@ class _DeckTable extends StatelessWidget {
       )..layout();
       if (tp.width > maxWidth) maxWidth = tp.width;
     }
-    return maxWidth + 16; // 8px padding on each side
+    return maxWidth + 16;
   }
 }
 
@@ -434,7 +428,10 @@ class _SortCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cell = InkWell(
+    final colors = Theme.of(context).colorScheme;
+
+    final cell = GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -447,7 +444,7 @@ class _SortCell extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                   fontSize: 12,
-                  color: active ? Theme.of(context).colorScheme.primary : null,
+                  color: active ? colors.primary : null,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -456,7 +453,7 @@ class _SortCell extends StatelessWidget {
               Icon(
                 ascending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 14,
-                color: Theme.of(context).colorScheme.primary,
+                color: colors.primary,
               ),
           ],
         ),
@@ -477,12 +474,11 @@ class _CountText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Text(
       value > 0 ? '$value' : '—',
       style: TextStyle(
-        color: value > 0
-            ? color
-            : Theme.of(context).colorScheme.onSurfaceVariant.withAlpha(100),
+        color: value > 0 ? color : colors.mutedForeground,
         fontWeight: value > 0 ? FontWeight.w600 : FontWeight.w400,
         fontSize: 13,
       ),
@@ -509,28 +505,16 @@ class _DeckFormDialog extends StatefulWidget {
 }
 
 class _DeckFormDialogState extends State<_DeckFormDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  static const _titleKey = TextFieldKey('title');
+  static const _descKey = TextFieldKey('description');
   bool _isSubmitting = false;
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
+  Future<void> _submit(String title, String description) async {
     setState(() => _isSubmitting = true);
 
     final ok = await widget.provider.createDeck(
-      _titleController.text.trim(),
-      _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
+      title.trim(),
+      description.trim().isEmpty ? null : description.trim(),
     );
 
     if (mounted) {
@@ -538,12 +522,6 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
         widget.onSuccess();
       } else {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.provider.error ?? 'Failed to create deck'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     }
   }
@@ -553,53 +531,56 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
     return AlertDialog(
       title: Text(widget.title),
       content: Form(
-        key: _formKey,
+        onSubmit: (context, values) {
+          final title = _titleKey[values] ?? '';
+          final description = _descKey[values] ?? '';
+          _submit(title, description);
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(
-              controller: _titleController,
-              autofocus: true,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'e.g. Biology Chapter 5',
-                border: OutlineInputBorder(),
+            FormField<String>(
+              key: _titleKey,
+              label: const Text('Title'),
+              validator:
+                  const LengthValidator(min: 1, message: 'Title is required'),
+              child: const TextField(
+                initialValue: '',
+                autofocus: true,
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Title is required';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 2,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+            FormField<String>(
+              key: _descKey,
+              label: const Text('Description (optional)'),
+              child: const TextField(
+                initialValue: '',
+                maxLines: 2,
               ),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(
+        Button.ghost(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _isSubmitting ? null : _submit,
-          child: _isSubmitting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Create'),
+        FormErrorBuilder(
+          builder: (context, errors, child) {
+            return Button.primary(
+              onPressed: _isSubmitting || errors.isNotEmpty
+                  ? null
+                  : () => context.submitForm(),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(widget.title),
+            );
+          },
         ),
       ],
     );
