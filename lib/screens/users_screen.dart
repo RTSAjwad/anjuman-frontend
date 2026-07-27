@@ -187,9 +187,12 @@ class _UsersScreenState extends State<UsersScreen> {
                               ),
                             ),
                             TableCell(
-                              child: Container(
+                              child: Padding(
                                 padding: const EdgeInsets.all(8),
-                                child: _RoleBadge(role: user.role),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _RoleBadge(role: user.role),
+                                ),
                               ),
                             ),
                             TableCell(
@@ -345,32 +348,8 @@ class _RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor;
-
-    switch (role) {
-      case 'admin':
-        bgColor = const Color(0xFFDC2626);
-      case 'teacher':
-        bgColor = const Color(0xFF2563EB);
-      default:
-        bgColor = const Color(0xFF16A34A);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        role,
-        style: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-        ),
-        textAlign: TextAlign.center,
-      ),
+    return OutlineBadge(
+      child: Text(role),
     );
   }
 }
