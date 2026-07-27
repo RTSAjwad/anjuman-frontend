@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'
+    show ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
-import '../models/class.dart';
 import 'class_detail_screen.dart';
 
 class ClassesScreen extends StatefulWidget {
@@ -25,19 +26,26 @@ class _ClassesScreenState extends State<ClassesScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Classes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () => context.read<ClassProvider>().loadClasses(),
-          ),
-        ],
-      ),
-      body: Consumer<ClassProvider>(
+      headers: [
+        AppBar(
+          title: const Text('Classes'),
+          trailing: [
+            if (isTeacher)
+              IconButton.ghost(
+                icon: const Icon(LucideIcons.plus, size: 20),
+                onPressed: () => _showCreateDialog(context),
+              ),
+            IconButton.ghost(
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
+              onPressed: () => context.read<ClassProvider>().loadClasses(),
+            ),
+          ],
+        ),
+      ],
+      child: Consumer<ClassProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.classes.isEmpty) {
             return const Center(child: CircularProgressIndicator());
@@ -48,13 +56,12 @@ class _ClassesScreenState extends State<ClassesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline,
-                      size: 48, color: Theme.of(context).colorScheme.error),
+                  Icon(LucideIcons.circleAlert,
+                      size: 48, color: colors.destructive),
                   const SizedBox(height: 16),
-                  Text('Failed to load classes',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  const Text('Failed to load classes'),
                   const SizedBox(height: 8),
-                  FilledButton.tonal(
+                  Button.secondary(
                     onPressed: () => provider.loadClasses(),
                     child: const Text('Retry'),
                   ),
@@ -68,140 +75,113 @@ class _ClassesScreenState extends State<ClassesScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.group_outlined,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(LucideIcons.users,
+                      size: 64, color: colors.mutedForeground),
                   const SizedBox(height: 16),
                   Text(
                     isTeacher ? 'No classes yet' : 'No classes',
-                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     isTeacher
                         ? 'Create your first class to get started'
                         : 'You are not enrolled in any classes yet',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style:
+                        TextStyle(color: colors.mutedForeground, fontSize: 14),
                   ),
                 ],
               ),
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: () => provider.loadClasses(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.classes.length,
-              itemBuilder: (context, index) {
-                return _ClassCard(
-                  classResponse: provider.classes[index],
-                  isTeacher: isTeacher,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ClassDetailScreen(
-                          classResponse: provider.classes[index],
-                          provider: provider,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+          return ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 700),
+                  child: OutlinedContainer(
+                    child: Table(
+                      rows: [
+                        for (final c in provider.classes)
+                          TableRow(cells: [
+                            TableCell(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ClassDetailScreen(
+                                        classResponse: c,
+                                        provider: provider,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(c.name).semiBold(),
+                                                if (c.archived) ...[
+                                                  const SizedBox(width: 8),
+                                                  OutlineBadge(
+                                                    child:
+                                                        const Text('Archived'),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            if (c.description != null &&
+                                                c.description!.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                c.description!,
+                                                style: TextStyle(
+                                                    color:
+                                                        colors.mutedForeground),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(LucideIcons.chevronRight,
+                                          size: 20,
+                                          color: colors.mutedForeground),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ]),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
-      floatingActionButton: isTeacher
-          ? FloatingActionButton.extended(
-              heroTag: 'create_class',
-              onPressed: () => _showCreateDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Create Class'),
-            )
-          : null,
     );
   }
 
   void _showCreateDialog(BuildContext context) {
     final provider = context.read<ClassProvider>();
-    showDialog(
-      context: context,
-      builder: (ctx) => _CreateClassDialog(provider: provider),
-    );
-  }
-}
-
-class _ClassCard extends StatelessWidget {
-  final ClassResponse classResponse;
-  final bool isTeacher;
-  final VoidCallback onTap;
-
-  const _ClassCard({
-    required this.classResponse,
-    required this.isTeacher,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      classResponse.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  if (classResponse.archived)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('Archived',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
-                    ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-              if (classResponse.description != null &&
-                  classResponse.description!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  classResponse.description!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
-          ),
-        ),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _CreateClassDialog(provider: provider),
       ),
     );
   }
@@ -217,10 +197,10 @@ class _CreateClassDialog extends StatefulWidget {
 }
 
 class _CreateClassDialogState extends State<_CreateClassDialog> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSubmitting = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -230,12 +210,19 @@ class _CreateClassDialogState extends State<_CreateClassDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name is required');
+      return;
+    }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
 
     final result = await widget.provider.createClass(
-      _nameController.text.trim(),
+      name,
       _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
@@ -260,46 +247,49 @@ class _CreateClassDialogState extends State<_CreateClassDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Create Class'),
-      content: Form(
-        key: _formKey,
+      content: SizedBox(
+        width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextFormField(
+            const Text('Class name', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 6),
+            TextField(
               controller: _nameController,
+              placeholder: const Text('e.g. Biology 101'),
+              initialValue: '',
               autofocus: true,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Class name',
-                hintText: 'e.g. Biology 101',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Name is required';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            const Text('Description (optional)', style: TextStyle(fontSize: 13))
+                .semiBold(),
+            const SizedBox(height: 6),
+            TextField(
               controller: _descriptionController,
+              placeholder: const Text('Add a description'),
+              initialValue: '',
               maxLines: 2,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
-              ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.destructive,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
-        TextButton(
+        Button.ghost(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
+        Button.primary(
           onPressed: _isSubmitting ? null : _submit,
           child: _isSubmitting
               ? const SizedBox(
