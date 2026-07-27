@@ -294,30 +294,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
       );
     }
 
-    final (label, bgColor, textColor) = switch (displayState) {
-      'new' => (
-          'new',
-          const Color(0xFF3B82F6).withValues(alpha: 0.15),
-          const Color(0xFF3B82F6)
-        ),
-      'learning' => (
-          'learning',
-          const Color(0xFFF97316).withValues(alpha: 0.15),
-          const Color(0xFFF97316)
-        ),
-      'review' => (
-          'review',
-          const Color(0xFF22C55E).withValues(alpha: 0.15),
-          const Color(0xFF22C55E)
-        ),
-      'relearning' => (
-          'relearn',
-          const Color(0xFFA855F7).withValues(alpha: 0.15),
-          const Color(0xFFA855F7)
-        ),
-      _ => (displayState, colors.muted, colors.foreground),
-    };
-
     return TableCell(
       theme: TableCellTheme(
         border: WidgetStatePropertyAll(
@@ -330,17 +306,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-                fontSize: 11, color: textColor, fontWeight: FontWeight.w600),
-          ),
+        child: OutlineBadge(
+          child: Text(displayState),
         ),
       ),
     );
