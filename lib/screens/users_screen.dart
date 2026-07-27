@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'
+    show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../models/user.dart';
@@ -26,20 +28,25 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Users'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () => context.read<UserProvider>().loadUsers(),
-          ),
-        ],
-      ),
-      body: Consumer<UserProvider>(
+      headers: [
+        AppBar(
+          title: const Text('Users'),
+          trailing: [
+            IconButton.ghost(
+              icon: const Icon(Icons.person_add, size: 20),
+              onPressed: () => _showCreateDialog(context),
+            ),
+            IconButton.ghost(
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: () => context.read<UserProvider>().loadUsers(),
+            ),
+          ],
+        ),
+      ],
+      child: Consumer<UserProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.users.isEmpty) {
             return const Center(child: CircularProgressIndicator());
@@ -54,17 +61,16 @@ class _UsersScreenState extends State<UsersScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.error_outline,
-                        size: 48, color: theme.colorScheme.error),
+                        size: 48, color: colors.destructive),
                     const SizedBox(height: 16),
-                    Text('Failed to load users',
-                        style: theme.textTheme.titleMedium),
+                    const Text('Failed to load users'),
                     const SizedBox(height: 8),
                     Text(err,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
+                        style: TextStyle(
+                            color: colors.mutedForeground, fontSize: 13),
                         textAlign: TextAlign.center),
                     const SizedBox(height: 16),
-                    FilledButton.tonal(
+                    Button.secondary(
                       onPressed: () => provider.loadUsers(),
                       child: const Text('Retry'),
                     ),
@@ -80,9 +86,9 @@ class _UsersScreenState extends State<UsersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.people_outline,
-                      size: 64, color: theme.colorScheme.onSurfaceVariant),
+                      size: 64, color: colors.mutedForeground),
                   const SizedBox(height: 16),
-                  Text('No users found', style: theme.textTheme.titleMedium),
+                  const Text('No users found'),
                 ],
               ),
             );
@@ -99,68 +105,166 @@ class _UsersScreenState extends State<UsersScreen> {
                     UserSortField.created => u.createdAt,
                   });
 
-          return RefreshIndicator(
-            onRefresh: () => provider.loadUsers(),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 40),
-                            _sortableHeader('ID', UserSortField.id),
-                            _sortableHeader('First', UserSortField.firstName),
-                            _sortableHeader('Last', UserSortField.lastName),
-                            _sortableHeader('Email', UserSortField.email),
-                            _sortableHeader('Role', UserSortField.role),
-                            _sortableHeader('Created', UserSortField.created),
-                            const SizedBox(width: 80),
-                          ],
-                        ),
-                      ),
-                      ...sorted.map((user) => _UserRow(
-                            user: user,
-                            onEdit: () => _showEditDialog(context, user),
-                            onDelete: () => _confirmDelete(context, user),
-                          )),
-                    ],
+          return ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: OutlinedContainer(
+                    child: Table(
+                      columnWidths: {
+                        0: const IntrinsicTableSize(),
+                        1: const FlexTableSize(),
+                        2: const FlexTableSize(),
+                        3: const FlexTableSize(flex: 3),
+                        4: const IntrinsicTableSize(),
+                        5: const IntrinsicTableSize(),
+                        6: const IntrinsicTableSize(),
+                      },
+                      rows: [
+                        TableHeader(cells: [
+                          TableCell(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              child: const Text('',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
+                            ),
+                          ),
+                          TableCell(
+                              child:
+                                  _sortCell('First', UserSortField.firstName)),
+                          TableCell(
+                              child: _sortCell('Last', UserSortField.lastName)),
+                          TableCell(
+                              child: _sortCell('Email', UserSortField.email)),
+                          TableCell(
+                              child: _sortCell('Role', UserSortField.role)),
+                          TableCell(
+                              child:
+                                  _sortCell('Created', UserSortField.created)),
+                          const TableCell(
+                            child: SizedBox(width: 80),
+                          ),
+                        ]),
+                        for (final user in sorted)
+                          TableRow(cells: [
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Avatar(
+                                  size: 28,
+                                  borderRadius: 14,
+                                  initials: user.firstName.isNotEmpty
+                                      ? user.firstName[0].toUpperCase()
+                                      : user.email[0].toUpperCase(),
+                                ),
+                              ),
+                            ),
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(user.firstName,
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                            ),
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(user.lastName,
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                            ),
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(user.email,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: colors.mutedForeground)),
+                              ),
+                            ),
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: _RoleBadge(role: user.role),
+                              ),
+                            ),
+                            TableCell(
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  '${user.createdAt.year}-${user.createdAt.month.toString().padLeft(2, '0')}-${user.createdAt.day.toString().padLeft(2, '0')}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      TextStyle(color: colors.mutedForeground),
+                                ),
+                              ),
+                            ),
+                            TableCell(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton.ghost(
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18),
+                                    onPressed: () =>
+                                        _showEditDialog(context, user),
+                                  ),
+                                  IconButton.ghost(
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18, color: Colors.red),
+                                    onPressed: () =>
+                                        _confirmDelete(context, user),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ]),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'create_user',
-        onPressed: () => _showCreateDialog(context),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Create User'),
       ),
     );
   }
 
-  Widget _sortableHeader(String label, UserSortField field) {
-    return Expanded(
-      flex: field == UserSortField.email
-          ? 3
-          : field == UserSortField.firstName ||
-                  field == UserSortField.lastName ||
-                  field == UserSortField.role
-              ? 2
-              : 1,
-      child: SortableHeader(
-        label: label,
-        isActive: _sort.field == field,
-        ascending: _sort.ascending,
-        onTap: () => setState(() => _sort.toggle(field)),
+  Widget _sortCell(String label, UserSortField field) {
+    final active = _sort.field == field;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _sort.toggle(field)),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: active
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.mutedForeground,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (active)
+              Icon(
+                _sort.ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 14,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -168,159 +272,69 @@ class _UsersScreenState extends State<UsersScreen> {
   void _showCreateDialog(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final schoolId = auth.user?.schoolId ?? 0;
-    showDialog(
-      context: context,
-      builder: (ctx) => _UserFormDialog(
-        title: 'Create User',
-        provider: context.read<UserProvider>(),
-        schoolId: schoolId,
-        onSuccess: () => Navigator.of(ctx).pop(),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _UserFormDialog(
+          title: 'Create User',
+          provider: context.read<UserProvider>(),
+          schoolId: schoolId,
+          onSuccess: () => Navigator.of(ctx).pop(),
+        ),
       ),
     );
   }
 
   void _showEditDialog(BuildContext context, UserDetail user) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _UserFormDialog(
-        title: 'Edit User',
-        provider: context.read<UserProvider>(),
-        existingUser: user,
-        onSuccess: () => Navigator.of(ctx).pop(),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _UserFormDialog(
+          title: 'Edit User',
+          provider: context.read<UserProvider>(),
+          existingUser: user,
+          onSuccess: () => Navigator.of(ctx).pop(),
+        ),
       ),
     );
   }
 
   void _confirmDelete(BuildContext context, UserDetail user) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete User'),
-        content: Text(
-            'Delete ${user.displayName.isEmpty ? user.email : user.displayName}? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final provider = context.read<UserProvider>();
-              final success = await provider.deleteUser(user.id);
-              if (ctx.mounted) {
-                Navigator.of(ctx).pop();
-                if (!success && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(provider.error ?? 'Failed to delete user'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UserRow extends StatelessWidget {
-  final UserDetail user;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _UserRow({
-    required this.user,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 14,
-            child: Text(
-              user.firstName.isNotEmpty
-                  ? user.firstName[0].toUpperCase()
-                  : user.email[0].toUpperCase(),
-              style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete User'),
+          content: Text(
+              'Delete ${user.displayName.isEmpty ? user.email : user.displayName}? This cannot be undone.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
             ),
-          ),
-          const SizedBox(width: 12),
-          _col(user.id.toString(), 1, theme),
-          _col(user.firstName, 2, theme),
-          _col(user.lastName, 2, theme),
-          _col(user.email, 3, theme),
-          Expanded(flex: 2, child: _RoleBadge(role: user.role)),
-          _col(
-              '${user.createdAt.year}-${user.createdAt.month.toString().padLeft(2, '0')}-${user.createdAt.day.toString().padLeft(2, '0')}',
-              2,
-              theme,
-              isSecondary: true),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                tooltip: 'Edit',
-                onPressed: onEdit,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18),
-                color: theme.colorScheme.error,
-                tooltip: 'Delete',
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _col(String text, int flex, ThemeData theme,
-      {bool isSecondary = false}) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: isSecondary ? theme.colorScheme.onSurfaceVariant : null,
+            Button.destructive(
+              onPressed: () async {
+                final provider = context.read<UserProvider>();
+                final success = await provider.deleteUser(user.id);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  if (!success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text(provider.error ?? 'Failed to delete user'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
         ),
-        overflow: TextOverflow.ellipsis,
       ),
     );
-  }
-
-  // ignore: unused_element
-  Color _roleColor(String role, ThemeData theme) {
-    switch (role) {
-      case 'admin':
-        return theme.colorScheme.errorContainer;
-      case 'teacher':
-        return theme.colorScheme.primaryContainer;
-      default:
-        return theme.colorScheme.tertiaryContainer;
-    }
   }
 }
 
@@ -331,34 +345,29 @@ class _RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     Color bgColor;
-    Color textColor;
 
     switch (role) {
       case 'admin':
-        bgColor = theme.colorScheme.errorContainer;
-        textColor = theme.colorScheme.onErrorContainer;
+        bgColor = const Color(0xFFDC2626);
       case 'teacher':
-        bgColor = theme.colorScheme.primaryContainer;
-        textColor = theme.colorScheme.onPrimaryContainer;
+        bgColor = const Color(0xFF2563EB);
       default:
-        bgColor = theme.colorScheme.tertiaryContainer;
-        textColor = theme.colorScheme.onTertiaryContainer;
+        bgColor = const Color(0xFF16A34A);
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         role,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.w600,
+        style: const TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
         ),
         textAlign: TextAlign.center,
       ),
@@ -386,13 +395,13 @@ class _UserFormDialog extends StatefulWidget {
 }
 
 class _UserFormDialogState extends State<_UserFormDialog> {
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
   late String _role;
   bool _isSubmitting = false;
+  String? _error;
 
   bool get _isEditing => widget.existingUser != null;
 
@@ -419,15 +428,39 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Manual validation
+    if (_firstNameController.text.trim().isEmpty) {
+      setState(() => _error = 'First name is required');
+      return;
+    }
+    if (_lastNameController.text.trim().isEmpty) {
+      setState(() => _error = 'Last name is required');
+      return;
+    }
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Email is required');
+      return;
+    }
+    if (!email.contains('@')) {
+      setState(() => _error = 'Enter a valid email');
+      return;
+    }
+    if (!_isEditing && _passwordController.text.isEmpty) {
+      setState(() => _error = 'Password is required');
+      return;
+    }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
 
     bool success;
     if (_isEditing) {
       success = await widget.provider.updateUser(
         widget.existingUser!.id,
-        email: _emailController.text.trim(),
+        email: email,
         password:
             _passwordController.text.isEmpty ? null : _passwordController.text,
         role: _role,
@@ -437,7 +470,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     } else {
       success = await widget.provider.createUser(
         widget.schoolId,
-        _emailController.text.trim(),
+        email,
         _passwordController.text,
         _role,
         _firstNameController.text.trim(),
@@ -464,107 +497,108 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: Form(
-        key: _formKey,
+      content: SizedBox(
+        width: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    controller: _firstNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'First Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('First Name', style: TextStyle(fontSize: 13))
+                          .semiBold(),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _firstNameController,
+                        placeholder: const Text('First Name'),
+                        initialValue: _firstNameController.text,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    controller: _lastNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Last Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Last Name', style: TextStyle(fontSize: 13))
+                          .semiBold(),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _lastNameController,
+                        placeholder: const Text('Last Name'),
+                        initialValue: _lastNameController.text,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            const Text('Email', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 6),
+            TextField(
               controller: _emailController,
+              placeholder: const Text('Email'),
+              initialValue: _emailController.text,
               keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required';
-                }
-                if (!value.contains('@')) {
-                  return 'Enter a valid email';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
-            TextFormField(
+            Text(_isEditing ? 'New password (optional)' : 'Password',
+                    style: const TextStyle(fontSize: 13))
+                .semiBold(),
+            const SizedBox(height: 6),
+            TextField(
               controller: _passwordController,
+              placeholder:
+                  Text(_isEditing ? 'Leave blank to keep current' : 'Password'),
+              initialValue: '',
               obscureText: true,
-              decoration: InputDecoration(
-                labelText: _isEditing ? 'New password (optional)' : 'Password',
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.lock_outlined),
-              ),
-              validator: (value) {
-                if (!_isEditing && (value == null || value.isEmpty)) {
-                  return 'Password is required';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _role,
-              decoration: const InputDecoration(
-                labelText: 'Role',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                DropdownMenuItem(value: 'teacher', child: Text('Teacher')),
-                DropdownMenuItem(value: 'student', child: Text('Student')),
-              ],
+            const Text('Role', style: const TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 6),
+            Select<String>(
+              value: _role,
+              placeholder: const Text('Select role'),
               onChanged: (value) {
                 if (value != null) setState(() => _role = value);
               },
+              popup: const SelectPopup(
+                items: SelectItemList(children: [
+                  SelectItemButton(value: 'admin', child: Text('Admin')),
+                  SelectItemButton(value: 'teacher', child: Text('Teacher')),
+                  SelectItemButton(value: 'student', child: Text('Student')),
+                ]),
+              ),
+              itemBuilder: (context, value) =>
+                  Text(value[0].toUpperCase() + value.substring(1)),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.destructive,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
-        TextButton(
+        Button.ghost(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
+        Button.primary(
           onPressed: _isSubmitting ? null : _submit,
           child: _isSubmitting
               ? const SizedBox(
