@@ -22,7 +22,12 @@ class _StudyScreenState extends State<StudyScreen> {
     super.initState();
     _provider = widget.provider ?? context.read<StudyProvider>();
     _provider.addListener(_onProviderChanged);
-    _provider.startDeckStudy(widget.deckId);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _provider.startDeckStudy(widget.deckId);
+      }
+    });
   }
 
   @override
