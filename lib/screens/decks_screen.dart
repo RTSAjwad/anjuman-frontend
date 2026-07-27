@@ -505,59 +505,83 @@ class _DeckFormDialog extends StatefulWidget {
 }
 
 class _DeckFormDialogState extends State<_DeckFormDialog> {
-  static const _titleKey = TextFieldKey('title');
-  static const _descKey = TextFieldKey('description');
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
   bool _isSubmitting = false;
+  String? _error;
 
-  Future<void> _submit(String title, String description) async {
-    setState(() => _isSubmitting = true);
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
+  Future<void> _submit() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _error = 'Title is required');
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    final description = _descriptionController.text.trim();
     final ok = await widget.provider.createDeck(
-      title.trim(),
-      description.trim().isEmpty ? null : description.trim(),
+      title,
+      description.isEmpty ? null : description,
     );
 
     if (mounted) {
       if (ok) {
         widget.onSuccess();
       } else {
-        setState(() => _isSubmitting = false);
+        setState(() {
+          _isSubmitting = false;
+          _error = widget.provider.error ?? 'Failed to create deck';
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return AlertDialog(
       title: Text(widget.title),
-      content: Form(
-        onSubmit: (context, values) {
-          final title = _titleKey[values] ?? '';
-          final description = _descKey[values] ?? '';
-          _submit(title, description);
-        },
+      content: SizedBox(
+        width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FormField<String>(
-              key: _titleKey,
-              label: const Text('Title'),
-              validator:
-                  const LengthValidator(min: 1, message: 'Title is required'),
-              child: const TextField(
-                initialValue: '',
-                autofocus: true,
-              ),
+            TextField(
+              controller: _titleController,
+              placeholder: const Text('Title'),
+              initialValue: '',
+              autofocus: true,
             ),
             const SizedBox(height: 16),
-            FormField<String>(
-              key: _descKey,
-              label: const Text('Description (optional)'),
-              child: const TextField(
-                initialValue: '',
-                maxLines: 2,
-              ),
+            TextField(
+              controller: _descriptionController,
+              placeholder: const Text('Description (optional)'),
+              initialValue: '',
+              maxLines: 2,
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: colors.destructive,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -566,21 +590,15 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FormErrorBuilder(
-          builder: (context, errors, child) {
-            return Button.primary(
-              onPressed: _isSubmitting || errors.isNotEmpty
-                  ? null
-                  : () => context.submitForm(),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(widget.title),
-            );
-          },
+        Button.primary(
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Create'),
         ),
       ],
     );
