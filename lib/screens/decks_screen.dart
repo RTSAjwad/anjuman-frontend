@@ -55,6 +55,11 @@ class _DecksScreenState extends State<DecksScreen> {
         AppBar(
           title: const Text('Decks'),
           trailing: [
+            if (isTeacher)
+              IconButton.ghost(
+                icon: const Icon(Icons.add, size: 20),
+                onPressed: () => _showCreateDialog(context),
+              ),
             IconButton.ghost(
               icon: const Icon(Icons.refresh, size: 20),
               onPressed: () => context.read<DeckProvider>().loadDecks(),
@@ -127,21 +132,6 @@ class _DecksScreenState extends State<DecksScreen> {
           );
         },
       ),
-      footers: isTeacher
-          ? [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: Button.primary(
-                    onPressed: () => _showCreateDialog(context),
-                    leading: const Icon(Icons.add, size: 18),
-                    child: const Text('Create Deck'),
-                  ),
-                ),
-              ),
-            ]
-          : [],
     );
   }
 
