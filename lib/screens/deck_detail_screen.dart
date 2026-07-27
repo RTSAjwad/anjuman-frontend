@@ -1,6 +1,7 @@
-import 'package:dropdown_search/dropdown_search.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'
+    show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
@@ -8,6 +9,7 @@ import '../models/deck.dart';
 import '../models/class_info.dart';
 import '../models/search_result.dart';
 import '../services/user_service.dart';
+import '../widgets/shadcn_search_dropdown.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final DeckResponse deck;
@@ -70,266 +72,321 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     final isAdmin = auth.role == 'admin';
     final canManage = isOwner || isAdmin;
     final isTeacher = auth.role == 'teacher' || isAdmin;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_deckTitle),
-        actions: [
-          if (isTeacher)
-            PopupMenuButton<String>(
-              onSelected: (action) {
-                switch (action) {
-                  case 'rename':
-                    _showRenameDialog(context);
-                  case 'duplicate':
-                    widget.provider.duplicateDeck(widget.deck.id);
-                    _load();
-                  case 'delete':
-                    _confirmDeleteDeck(context);
-                }
-              },
-              itemBuilder: (ctx) => [
-                const PopupMenuItem(
-                  value: 'rename',
-                  child: Row(
+      headers: [
+        AppBar(
+          leading: [
+            IconButton.ghost(
+              icon: const Icon(Icons.arrow_back, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+          title: Text(_deckTitle),
+          trailing: [
+            if (isTeacher)
+              IconButton.ghost(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: () => _showRenameDialog(context),
+              ),
+            if (isTeacher)
+              IconButton.ghost(
+                icon: const Icon(Icons.copy, size: 20),
+                onPressed: () => _confirmDuplicate(context),
+              ),
+            if (isTeacher && canManage)
+              IconButton.ghost(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () => _confirmDeleteDeck(context),
+              ),
+          ],
+        ),
+      ],
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null || _detail == null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.edit_outlined, size: 20),
-                      SizedBox(width: 8),
-                      Text('Rename'),
+                      Icon(Icons.error_outline,
+                          size: 48, color: colors.destructive),
+                      const SizedBox(height: 16),
+                      Text(_error ?? 'Failed to load deck details'),
+                      const SizedBox(height: 8),
+                      Button.secondary(
+                        onPressed: _load,
+                        child: const Text('Retry'),
+                      ),
                     ],
                   ),
+                )
+              : _buildContent(
+                  context, _detail!, _notes, canManage, isTeacher, colors),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    DeckDetailResponse detail,
+    List<NoteResponse> notes,
+    bool canManage,
+    bool isTeacher,
+    ColorScheme colors,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _DeckInfoCard(
+            deck: widget.deck,
+            collaborators: detail.collaborators,
+            classes: detail.classes,
+            canManage: canManage,
+            onAddCollaborator: () => _showShareDialog(context),
+            onRemoveCollaborator: (userId) => _confirmUnshare(context, userId),
+            onTransfer: () => _showTransferOwnerDialog(context),
+            onAddToClass: () => _showAddToClassDialog(context),
+            onRemoveFromClass: (classId) =>
+                _confirmRemoveFromClass(context, classId),
+            provider: widget.provider,
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              const Text('Notes').semiBold(),
+              const Spacer(),
+              Text('${notes.length} total',
+                  style:
+                      TextStyle(color: colors.mutedForeground, fontSize: 13)),
+              if (isTeacher) ...[
+                const SizedBox(width: 8),
+                Button.secondary(
+                  leading: const Icon(Icons.add, size: 18),
+                  onPressed: () => _showCreateNoteDialog(context),
+                  child: const Text('Add Note'),
                 ),
-                const PopupMenuItem(
-                  value: 'duplicate',
-                  child: Row(
-                    children: [
-                      Icon(Icons.copy, size: 20),
-                      SizedBox(width: 8),
-                      Text('Duplicate'),
-                    ],
-                  ),
-                ),
-                if (canManage)
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Delete Deck',
-                            style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
               ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (notes.isEmpty)
+            OutlinedContainer(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  canManage ? 'Add your first note' : 'No notes yet',
+                  style: TextStyle(color: colors.mutedForeground),
+                ),
+              ),
+            )
+          else
+            OutlinedContainer(
+              child: Table(
+                columnWidths: {
+                  0: const FlexTableSize(),
+                  1: const FlexTableSize(),
+                  2: const IntrinsicTableSize(),
+                  3: const IntrinsicTableSize(),
+                  if (isTeacher) 4: const IntrinsicTableSize(),
+                },
+                rows: [
+                  TableHeader(cells: [
+                    TableCell(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Text('Front',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                    ),
+                    TableCell(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Text('Back',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                    ),
+                    TableCell(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Text('Type',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                    ),
+                    TableCell(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: const Text('Cards',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 14)),
+                      ),
+                    ),
+                    if (isTeacher)
+                      const TableCell(
+                        child: SizedBox(width: 80),
+                      ),
+                  ]),
+                  for (final note in notes)
+                    TableRow(cells: [
+                      TableCell(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            note.cards.isNotEmpty ? note.cards.first.front : '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      TableCell(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            (note.cards.isNotEmpty ? note.cards.first.back : '')
+                                .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                                .trim(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      TableCell(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(note.noteTypeName,
+                              style: TextStyle(
+                                  color: colors.mutedForeground, fontSize: 14),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                      TableCell(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Text('${note.cards.length}',
+                              style: TextStyle(
+                                  color: colors.mutedForeground, fontSize: 14)),
+                        ),
+                      ),
+                      if (isTeacher)
+                        TableCell(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton.ghost(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                onPressed: () =>
+                                    _showEditNoteDialog(context, note),
+                              ),
+                              IconButton.ghost(
+                                icon: const Icon(Icons.delete_outline,
+                                    size: 18, color: Colors.red),
+                                onPressed: () =>
+                                    _confirmDeleteNote(context, note),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ]),
+                ],
+              ),
             ),
         ],
-      ),
-      body: Builder(
-        builder: (context) {
-          final theme = Theme.of(context);
-
-          if (_isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (_error != null || _detail == null) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 48, color: theme.colorScheme.error),
-                  const SizedBox(height: 16),
-                  Text(_error ?? 'Failed to load deck details',
-                      style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  FilledButton.tonal(
-                    onPressed: _load,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final detail = _detail!;
-          final notes = _notes;
-
-          return RefreshIndicator(
-            onRefresh: () async => _load(),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Deck info
-                  _DeckInfoCard(
-                    deck: widget.deck,
-                    collaborators: detail.collaborators,
-                    classes: detail.classes,
-                    canManage: canManage,
-                    onAddCollaborator: () => _showShareDialog(context),
-                    onRemoveCollaborator: (userId) =>
-                        _confirmUnshare(context, userId),
-                    onTransfer: () => _showTransferOwnerDialog(context),
-                    onAddToClass: () => _showAddToClassDialog(context),
-                    onRemoveFromClass: (classId) =>
-                        _confirmRemoveFromClass(context, classId),
-                    provider: widget.provider,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Notes section
-                  Row(
-                    children: [
-                      Text('Notes',
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      Text('${notes.length} total',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant)),
-                      if (isTeacher) ...[
-                        const SizedBox(width: 8),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _showCreateNoteDialog(context),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Note'),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (notes.isEmpty)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(
-                          child: Text(
-                            canManage ? 'Add your first note' : 'No notes yet',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Card(
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: [
-                          Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: const Row(
-                              children: [
-                                Expanded(
-                                    flex: 5,
-                                    child: Text('Front',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12))),
-                                Expanded(
-                                    flex: 5,
-                                    child: Text('Back',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12))),
-                                Expanded(
-                                    flex: 2,
-                                    child: Text('Type',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12))),
-                                Expanded(
-                                    flex: 2,
-                                    child: Text('Cards',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12))),
-                                SizedBox(width: 80),
-                              ],
-                            ),
-                          ),
-                          ...notes.map((note) => _NoteRow(
-                                note: note,
-                                canManage: isTeacher,
-                                onEdit: () =>
-                                    _showEditNoteDialog(context, note),
-                                onDelete: () =>
-                                    _confirmDeleteNote(context, note),
-                              )),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
 
   void _showCreateNoteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _NoteFormDialog(
-        deckId: widget.deck.id,
-        provider: widget.provider,
-        onSuccess: () {
-          Navigator.of(ctx).pop();
-          _load();
-        },
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _NoteFormDialog(
+          deckId: widget.deck.id,
+          provider: widget.provider,
+          onSuccess: () {
+            Navigator.of(ctx).pop();
+            _load();
+          },
+        ),
       ),
     );
   }
 
   void _showEditNoteDialog(BuildContext context, NoteResponse note) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _NoteFormDialog(
-        deckId: widget.deck.id,
-        provider: widget.provider,
-        existingNote: note,
-        onSuccess: () {
-          Navigator.of(ctx).pop();
-          _load();
-        },
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _NoteFormDialog(
+          deckId: widget.deck.id,
+          provider: widget.provider,
+          existingNote: note,
+          onSuccess: () {
+            Navigator.of(ctx).pop();
+            _load();
+          },
+        ),
       ),
     );
   }
 
   void _confirmDeleteNote(BuildContext context, NoteResponse note) {
     final front = (note.fields['Front'] ?? '').toString();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Note'),
-        content:
-            Text('Delete "$front"? All cards for this note will be removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final ok =
-                  await widget.provider.deleteNote(widget.deck.id, note.id);
-              if (ok && ctx.mounted) {
-                Navigator.of(ctx).pop();
-                _load();
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Note'),
+          content:
+              Text('Delete "$front"? All cards for this note will be removed.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.destructive(
+              onPressed: () async {
+                final ok =
+                    await widget.provider.deleteNote(widget.deck.id, note.id);
+                if (ok && ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  _load();
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDuplicate(BuildContext context) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Duplicate Deck'),
+          content: Text('Duplicate "${widget.deck.title}"? '
+              'This will create a copy with "(copy)" in the title.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.primary(
+              onPressed: () async {
+                await widget.provider.duplicateDeck(widget.deck.id);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  _load();
+                }
+              },
+              child: const Text('Duplicate'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -337,73 +394,60 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showTransferOwnerDialog(BuildContext context) {
     final service = UserService(widget.provider.apiClient);
     int? selectedUserId;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Transfer Ownership'),
-          content: SizedBox(
-            width: 400,
-            child: DropdownSearch<SearchResult>(
-              items: (filter, _) async => service.searchUsers(filter),
-              compareFn: (a, b) => a.id == b.id,
-              itemAsString: (u) => '${u.displayName} ${u.email}',
-              popupProps: PopupProps.menu(
-                showSearchBox: true,
-                searchDelay: const Duration(milliseconds: 300),
-                itemBuilder: (ctx, user, isDisabled, isSelected) {
-                  return ListTile(
-                    title: Text(user.displayName),
-                    subtitle: Text(user.email),
-                  );
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Transfer Ownership'),
+            content: SizedBox(
+              width: 400,
+              child: ShadcnSearchDropdown<SearchResult>(
+                hintText: 'Select new owner',
+                loader: (query) async => service.searchUsers(query),
+                itemBuilder: (ctx, user) =>
+                    Text('${user.displayName} (${user.email})'),
+                onChanged: (user) {
+                  setDialogState(() => selectedUserId = user?.id);
                 },
               ),
-              onSelected: (user) {
-                setDialogState(() => selectedUserId = user?.id);
-              },
-              decoratorProps: const DropDownDecoratorProps(
-                decoration: InputDecoration(
-                  labelText: 'New owner',
-                  border: OutlineInputBorder(),
-                ),
+            ),
+            actions: [
+              Button.ghost(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
               ),
-            ),
+              Button.primary(
+                onPressed: () async {
+                  if (selectedUserId == null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a teacher'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  final ok = await widget.provider
+                      .transferOwner(widget.deck.id, selectedUserId!);
+                  if (!ctx.mounted) return;
+                  if (ok) {
+                    Navigator.of(ctx).pop();
+                    _load();
+                  } else {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(widget.provider.error ??
+                            'Failed to transfer ownership'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Transfer'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (selectedUserId == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a teacher'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  return;
-                }
-                final ok = await widget.provider
-                    .transferOwner(widget.deck.id, selectedUserId!);
-                if (!ctx.mounted) return;
-                if (ok) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                } else {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(widget.provider.error ??
-                          'Failed to transfer ownership'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Transfer'),
-            ),
-          ],
         ),
       ),
     );
@@ -412,102 +456,91 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showShareDialog(BuildContext context) {
     final service = UserService(widget.provider.apiClient);
     int? selectedUserId;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Share Deck'),
-          content: SizedBox(
-            width: 400,
-            child: DropdownSearch<SearchResult>(
-              items: (filter, _) async => service.searchUsers(filter),
-              compareFn: (a, b) => a.id == b.id,
-              itemAsString: (u) => '${u.displayName} ${u.email}',
-              popupProps: PopupProps.menu(
-                showSearchBox: true,
-                searchDelay: const Duration(milliseconds: 300),
-                itemBuilder: (ctx, user, isDisabled, isSelected) {
-                  return ListTile(
-                    title: Text(user.displayName),
-                    subtitle: Text(user.email),
-                  );
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Share Deck'),
+            content: SizedBox(
+              width: 400,
+              child: ShadcnSearchDropdown<SearchResult>(
+                hintText: 'Select a collaborator',
+                loader: (query) async => service.searchUsers(query),
+                itemBuilder: (ctx, user) =>
+                    Text('${user.displayName} (${user.email})'),
+                onChanged: (user) {
+                  setDialogState(() => selectedUserId = user?.id);
                 },
               ),
-              onSelected: (user) {
-                setDialogState(() => selectedUserId = user?.id);
-              },
-              decoratorProps: const DropDownDecoratorProps(
-                decoration: InputDecoration(
-                  labelText: 'Search teacher',
-                  border: OutlineInputBorder(),
-                ),
+            ),
+            actions: [
+              Button.ghost(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
               ),
-            ),
+              Button.primary(
+                onPressed: () async {
+                  if (selectedUserId == null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a user'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  final ok = await widget.provider
+                      .shareDeck(widget.deck.id, selectedUserId!);
+                  if (!ctx.mounted) return;
+                  if (ok) {
+                    Navigator.of(ctx).pop();
+                    _load();
+                  } else {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            widget.provider.error ?? 'Failed to share deck'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Share'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (selectedUserId == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a user'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  return;
-                }
-                final ok = await widget.provider
-                    .shareDeck(widget.deck.id, selectedUserId!);
-                if (!ctx.mounted) return;
-                if (ok) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                } else {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text(widget.provider.error ?? 'Failed to share deck'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Share'),
-            ),
-          ],
         ),
       ),
     );
   }
 
   void _confirmUnshare(BuildContext context, int userId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove Collaborator'),
-        content: const Text('Remove this teacher from the deck collaborators?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final ok =
-                  await widget.provider.unshareDeck(widget.deck.id, userId);
-              if (ok && ctx.mounted) {
-                Navigator.of(ctx).pop();
-                _load();
-              }
-            },
-            child: const Text('Remove'),
-          ),
-        ],
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Remove Collaborator'),
+          content:
+              const Text('Remove this teacher from the deck collaborators?'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.destructive(
+              onPressed: () async {
+                final ok =
+                    await widget.provider.unshareDeck(widget.deck.id, userId);
+                if (ok && ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  _load();
+                }
+              },
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -515,59 +548,96 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showAddToClassDialog(BuildContext context) {
     final classes = widget.classProvider.classes;
     int? selectedClassId;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Add to Class'),
-          content: SizedBox(
-            width: 300,
-            child: DropdownButtonFormField<int>(
-              initialValue: null,
-              hint: const Text('Select class'),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Add to Class'),
+            content: SizedBox(
+              width: 300,
+              child: Select<int>(
+                value: selectedClassId,
+                placeholder: const Text('Select class'),
+                onChanged: (v) => setDialogState(() => selectedClassId = v),
+                popup: SelectPopup(
+                  items: SelectItemList(children: [
+                    for (final c in classes)
+                      SelectItemButton(
+                        value: c.id,
+                        child: Text(c.name),
+                      ),
+                  ]),
+                ),
+                itemBuilder: (context, value) {
+                  final c = classes.where((c) => c.id == value).firstOrNull;
+                  return Text(c?.name ?? '');
+                },
               ),
-              items: classes
-                  .map(
-                      (c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-                  .toList(),
-              onChanged: (v) => setDialogState(() => selectedClassId = v),
             ),
+            actions: [
+              Button.ghost(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              Button.primary(
+                onPressed: () async {
+                  if (selectedClassId == null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a class'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  final ok = await widget.provider
+                      .addDeckToClass(widget.deck.id, selectedClassId!);
+                  if (!ctx.mounted) return;
+                  if (ok) {
+                    Navigator.of(ctx).pop();
+                    _load();
+                  } else {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(widget.provider.error ??
+                            'Failed to add deck to class'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmRemoveFromClass(BuildContext context, int classId) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Remove from Class'),
+          content: const Text('Remove this deck from the class?'),
           actions: [
-            TextButton(
+            Button.ghost(
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            Button.destructive(
               onPressed: () async {
-                if (selectedClassId == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a class'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                  return;
-                }
                 final ok = await widget.provider
-                    .addDeckToClass(widget.deck.id, selectedClassId!);
-                if (!ctx.mounted) return;
-                if (ok) {
+                    .removeDeckFromClass(widget.deck.id, classId);
+                if (ok && ctx.mounted) {
                   Navigator.of(ctx).pop();
                   _load();
-                } else {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(widget.provider.error ??
-                          'Failed to add deck to class'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
                 }
               },
-              child: const Text('Add'),
+              child: const Text('Remove'),
             ),
           ],
         ),
@@ -575,97 +645,75 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     );
   }
 
-  void _confirmRemoveFromClass(BuildContext context, int classId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove from Class'),
-        content: const Text('Remove this deck from the class?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final ok = await widget.provider
-                  .removeDeckFromClass(widget.deck.id, classId);
-              if (ok && ctx.mounted) {
-                Navigator.of(ctx).pop();
-                _load();
-              }
-            },
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showRenameDialog(BuildContext context) {
     final controller = TextEditingController(text: _deckTitle);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Rename Deck'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'New name',
-            border: OutlineInputBorder(),
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Rename Deck'),
+          content: SizedBox(
+            width: 400,
+            child: TextField(
+              controller: controller,
+              placeholder: const Text('New name'),
+              initialValue: _deckTitle,
+              autofocus: true,
+            ),
           ),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.primary(
+              onPressed: () async {
+                if (controller.text.trim().isEmpty) return;
+                final ok = await widget.provider
+                    .renameDeck(widget.deck.id, controller.text.trim());
+                if (ok && ctx.mounted) {
+                  if (mounted) {
+                    setState(() => _deckTitle = controller.text.trim());
+                  }
+                  Navigator.of(ctx).pop();
+                  _load();
+                }
+              },
+              child: const Text('Rename'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
-              final ok = await widget.provider
-                  .renameDeck(widget.deck.id, controller.text.trim());
-              if (ok && ctx.mounted) {
-                setState(() => _deckTitle = controller.text.trim());
-                Navigator.of(ctx).pop();
-                _load();
-              }
-            },
-            child: const Text('Rename'),
-          ),
-        ],
       ),
     );
   }
 
   void _confirmDeleteDeck(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Deck'),
-        content: Text('Delete "${widget.deck.title}"? '
-            'This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(),
-            onPressed: () async {
-              final ok = await widget.provider.deleteDeck(widget.deck.id);
-              if (ctx.mounted) {
-                Navigator.of(ctx).pop();
-                if (ok) {
-                  Navigator.of(context).pop();
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Deck'),
+          content: Text('Delete "${widget.deck.title}"? '
+              'This cannot be undone.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.destructive(
+              onPressed: () async {
+                final ok = await widget.provider.deleteDeck(widget.deck.id);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  if (ok) {
+                    Navigator.of(context).pop();
+                  }
                 }
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -751,318 +799,197 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = Theme.of(context).colorScheme;
     final isTeacher = widget.canManage;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Description
-            Row(
-              children: [
-                Expanded(
-                  child: _isEditingDesc
-                      ? TextField(
-                          controller: _descController,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            hintText: 'Deck description...',
+    return OutlinedContainer(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _isEditingDesc
+                    ? TextField(
+                        controller: _descController,
+                        placeholder: const Text('Deck description...'),
+                        initialValue: _descController.text,
+                        maxLines: 2,
+                      )
+                    : widget.deck.description != null &&
+                            widget.deck.description!.isNotEmpty
+                        ? Text(widget.deck.description!,
+                            style: TextStyle(color: colors.mutedForeground))
+                        : isTeacher
+                            ? Text('Add a description',
+                                style: TextStyle(color: colors.mutedForeground))
+                            : const SizedBox.shrink(),
+              ),
+              if (isTeacher)
+                _isEditingDesc
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton.ghost(
+                            icon: const Icon(Icons.check, size: 18),
+                            onPressed: _isSavingDesc ? null : _saveDescription,
                           ),
-                        )
-                      : widget.deck.description != null &&
-                              widget.deck.description!.isNotEmpty
-                          ? Text(widget.deck.description!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant))
-                          : isTeacher
-                              ? Text('Add a description',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant))
-                              : const SizedBox.shrink(),
+                          IconButton.ghost(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _isEditingDesc = false;
+                                _descController.text =
+                                    widget.deck.description ?? '';
+                              });
+                            },
+                          ),
+                        ],
+                      )
+                    : IconButton.ghost(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        onPressed: () => setState(() => _isEditingDesc = true),
+                      ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('Owner').semiBold(),
+              if (widget.canManage) ...[
+                const Spacer(),
+                Button.ghost(
+                  leading: const Icon(Icons.swap_horiz, size: 18),
+                  onPressed: widget.onTransfer,
+                  child: const Text('Transfer'),
                 ),
-                if (isTeacher)
-                  _isEditingDesc
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.check, size: 18),
-                              tooltip: 'Save',
-                              onPressed:
-                                  _isSavingDesc ? null : _saveDescription,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, size: 18),
-                              tooltip: 'Cancel',
-                              onPressed: () {
-                                setState(() {
-                                  _isEditingDesc = false;
-                                  _descController.text =
-                                      widget.deck.description ?? '';
-                                });
-                              },
-                            ),
-                          ],
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          tooltip: 'Edit description',
-                          onPressed: () =>
-                              setState(() => _isEditingDesc = true),
-                        ),
+              ],
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Avatar(
+                  size: 24,
+                  borderRadius: 12,
+                  initials: widget.deck.ownerFirstName?.isNotEmpty == true
+                      ? widget.deck.ownerFirstName![0].toUpperCase()
+                      : widget.deck.createdBy.toString()[0],
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.deck.ownerDisplayName),
+                    if (widget.deck.ownerEmail != null &&
+                        widget.deck.ownerDisplayName != widget.deck.ownerEmail)
+                      Text(widget.deck.ownerEmail!,
+                          style: TextStyle(color: colors.mutedForeground)),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Owner
+          ),
+          const SizedBox(height: 16),
+          if (widget.collaborators.isNotEmpty || widget.canManage) ...[
             Row(
               children: [
-                Text('Owner',
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const Text('Collaborators').semiBold(),
                 if (widget.canManage) ...[
                   const Spacer(),
-                  TextButton.icon(
-                    onPressed: widget.onTransfer,
-                    icon: const Icon(Icons.swap_horiz, size: 18),
-                    label: const Text('Transfer'),
+                  Button.ghost(
+                    leading: const Icon(Icons.person_add, size: 18),
+                    onPressed: widget.onAddCollaborator,
+                    child: const Text('Share'),
                   ),
                 ],
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                      radius: 12,
-                      child: Text(
-                          widget.deck.ownerFirstName?.isNotEmpty == true
-                              ? widget.deck.ownerFirstName![0].toUpperCase()
-                              : widget.deck.createdBy.toString()[0],
-                          style: const TextStyle(fontSize: 12))),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.deck.ownerDisplayName,
-                          style: theme.textTheme.bodyMedium),
-                      if (widget.deck.ownerEmail != null &&
-                          widget.deck.ownerDisplayName !=
-                              widget.deck.ownerEmail)
-                        Text(widget.deck.ownerEmail!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Collaborators
-            if (widget.collaborators.isNotEmpty || widget.canManage) ...[
-              Row(
-                children: [
-                  Text('Collaborators',
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  if (widget.canManage) ...[
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: widget.onAddCollaborator,
-                      icon: const Icon(Icons.person_add, size: 18),
-                      label: const Text('Share'),
-                    ),
-                  ],
-                ],
-              ),
-              if (widget.collaborators.isNotEmpty)
-                ...widget.collaborators.map((c) => Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                              radius: 12,
-                              child: Text(
-                                  c.firstName.isNotEmpty
-                                      ? c.firstName[0].toUpperCase()
-                                      : c.email[0].toUpperCase(),
-                                  style: const TextStyle(fontSize: 12))),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  c.displayName.isNotEmpty
-                                      ? c.displayName
-                                      : c.email,
-                                  style: theme.textTheme.bodyMedium),
-                              if (c.displayName.isNotEmpty)
-                                Text(c.email,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme
-                                            .colorScheme.onSurfaceVariant)),
-                            ],
+            if (widget.collaborators.isNotEmpty)
+              ...widget.collaborators.map((c) => Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Avatar(
+                          size: 24,
+                          borderRadius: 12,
+                          initials: c.firstName.isNotEmpty
+                              ? c.firstName[0].toUpperCase()
+                              : c.email[0].toUpperCase(),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(c.displayName.isNotEmpty
+                                ? c.displayName
+                                : c.email),
+                            if (c.displayName.isNotEmpty)
+                              Text(c.email,
+                                  style:
+                                      TextStyle(color: colors.mutedForeground)),
+                          ],
+                        ),
+                        const Spacer(),
+                        if (widget.canManage)
+                          IconButton.ghost(
+                            icon: const Icon(Icons.remove_circle_outline,
+                                size: 18, color: Colors.red),
+                            onPressed: () =>
+                                widget.onRemoveCollaborator(c.userId),
                           ),
-                          const Spacer(),
-                          if (widget.canManage)
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline,
-                                  size: 18),
-                              color: theme.colorScheme.error,
-                              tooltip: 'Remove',
-                              onPressed: () =>
-                                  widget.onRemoveCollaborator(c.userId),
-                            ),
-                        ],
-                      ),
-                    ))
-              else if (widget.canManage)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('Not shared with anyone yet',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
-                ),
-            ],
-            // Classes
-            if (widget.canManage || widget.classes.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Text('Assigned Classes',
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  if (widget.canManage) ...[
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: widget.onAddToClass,
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Add'),
+                      ],
                     ),
-                  ],
-                ],
+                  ))
+            else if (widget.canManage)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('Not shared with anyone yet',
+                    style: TextStyle(color: colors.mutedForeground)),
               ),
-              if (widget.classes.isNotEmpty)
-                ...widget.classes.map((c) => Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.group, size: 18),
-                          const SizedBox(width: 8),
-                          Text(c.name, style: theme.textTheme.bodyMedium),
-                          const Spacer(),
-                          if (widget.canManage)
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle_outline,
-                                  size: 18),
-                              color: theme.colorScheme.error,
-                              tooltip: 'Remove',
-                              onPressed: () => widget.onRemoveFromClass(c.id),
-                            ),
-                        ],
-                      ),
-                    ))
-              else if (widget.canManage)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('Not assigned to any class',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
-                ),
-            ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NoteRow extends StatelessWidget {
-  final NoteResponse note;
-  final bool canManage;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _NoteRow({
-    required this.note,
-    required this.canManage,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Get the front/back from the first card's rendered text
-    final front = note.cards.isNotEmpty ? note.cards.first.front : '';
-    final back = note.cards.isNotEmpty ? note.cards.first.back : '';
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 5,
-            child: Text(
-              front,
-              style: theme.textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 5,
-            child: Text(
-              back.replaceAll(RegExp(r'<[^>]*>'), ' ').trim(),
-              style: theme.textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              note.noteTypeName,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '${note.cards.length}',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          ),
-          if (canManage)
+          if (widget.canManage || widget.classes.isNotEmpty) ...[
+            const SizedBox(height: 16),
             Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: 'Edit',
-                  onPressed: onEdit,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  color: theme.colorScheme.error,
-                  tooltip: 'Delete',
-                  onPressed: onDelete,
-                ),
+                const Text('Assigned Classes').semiBold(),
+                if (widget.canManage) ...[
+                  const Spacer(),
+                  Button.ghost(
+                    leading: const Icon(Icons.add, size: 18),
+                    onPressed: widget.onAddToClass,
+                    child: const Text('Add'),
+                  ),
+                ],
               ],
             ),
+            if (widget.classes.isNotEmpty)
+              ...widget.classes.map((c) => Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.group, size: 18),
+                        const SizedBox(width: 8),
+                        Text(c.name),
+                        const Spacer(),
+                        if (widget.canManage)
+                          IconButton.ghost(
+                            icon: const Icon(Icons.remove_circle_outline,
+                                size: 18, color: Colors.red),
+                            onPressed: () => widget.onRemoveFromClass(c.id),
+                          ),
+                      ],
+                    ),
+                  ))
+            else if (widget.canManage)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('Not assigned to any class',
+                    style: TextStyle(color: colors.mutedForeground)),
+              ),
+          ],
         ],
       ),
     );
@@ -1087,9 +1014,9 @@ class _NoteFormDialog extends StatefulWidget {
 }
 
 class _NoteFormDialogState extends State<_NoteFormDialog> {
-  final _formKey = GlobalKey<FormState>();
   bool _isSubmitting = false;
   bool _loadingTypes = true;
+  String? _error;
 
   List<NoteType> _noteTypes = [];
   NoteType? _selectedType;
@@ -1111,12 +1038,10 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
       _loadingTypes = false;
 
       if (_isEditing && widget.existingNote != null) {
-        // Find the note type used by the existing note
         _selectedType = _noteTypes.cast<NoteType?>().firstWhere(
               (t) => t!.id == widget.existingNote!.noteTypeId,
               orElse: () => _noteTypes.isNotEmpty ? _noteTypes.first : null,
             );
-        // Populate field controllers from existing fields
         if (_selectedType != null) {
           _initFieldControllers(_selectedType!.fieldNames);
           for (final name in _selectedType!.fieldNames) {
@@ -1160,10 +1085,21 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
     if (_selectedType == null) return;
 
-    setState(() => _isSubmitting = true);
+    // Manual validation
+    for (final name in _selectedType!.fieldNames) {
+      final text = _fieldControllers[name]?.text.trim() ?? '';
+      if (text.isEmpty) {
+        setState(() => _error = '$name is required');
+        return;
+      }
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
 
     final fields = {
       for (final e in _fieldControllers.entries) e.key: e.value.text.trim(),
@@ -1206,21 +1142,26 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
 
     return AlertDialog(
       title: Text(_isEditing ? 'Edit Note' : 'Create Note'),
-      content: Form(
-        key: _formKey,
+      content: SizedBox(
+        width: 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<NoteType>(
-              initialValue: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Note type',
-                border: OutlineInputBorder(),
-              ),
-              items: _noteTypes
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
-                  .toList(),
+            Select<NoteType>(
+              value: _selectedType,
+              placeholder: const Text('Select note type'),
               onChanged: _isEditing ? null : _onTypeChanged,
+              popup: SelectPopup(
+                items: SelectItemList(children: [
+                  for (final t in _noteTypes)
+                    SelectItemButton(
+                      value: t,
+                      child: Text(t.name),
+                    ),
+                ]),
+              ),
+              itemBuilder: (context, value) => Text(value.name),
             ),
             if (_selectedType != null) ...[
               const SizedBox(height: 16),
@@ -1228,31 +1169,42 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
                 Padding(
                   padding: EdgeInsets.only(
                       top: _selectedType!.fieldNames.first == name ? 0 : 16),
-                  child: TextFormField(
-                    controller: _fieldControllers[name],
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: name,
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return '$name is required';
-                      }
-                      return null;
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 13))
+                          .semiBold(),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _fieldControllers[name],
+                        placeholder: Text('Enter $name'),
+                        initialValue: '',
+                        maxLines: 3,
+                      ),
+                    ],
                   ),
                 ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.destructive,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ],
         ),
       ),
       actions: [
-        TextButton(
+        Button.ghost(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
+        Button.primary(
           onPressed: _isSubmitting ? null : _submit,
           child: _isSubmitting
               ? const SizedBox(
