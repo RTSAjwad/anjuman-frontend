@@ -52,7 +52,7 @@ class _AppShellState extends State<AppShell> {
           selectedKey: ValueKey(navItems[_selectedIndex].key),
           expanded: false,
           labelType: NavigationLabelType.all,
-          labelPosition: NavigationLabelPosition.end,
+          labelPosition: NavigationLabelPosition.bottom,
           onSelected: (key) {
             if (key is ValueKey<int>) {
               setState(() => _selectedIndex = key.value);

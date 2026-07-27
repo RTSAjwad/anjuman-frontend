@@ -141,7 +141,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _DeckInfoCard(
-            deck: widget.deck,
+            deck: detail.deck,
             collaborators: detail.collaborators,
             classes: detail.classes,
             canManage: canManage,
