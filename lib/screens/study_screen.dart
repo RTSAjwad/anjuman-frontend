@@ -63,7 +63,7 @@ class _StudyScreenState extends State<StudyScreen> {
         AppBar(
           leading: [
             IconButton.ghost(
-              icon: const Icon(Icons.arrow_back, size: 20),
+              icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -85,7 +85,7 @@ class _StudyScreenState extends State<StudyScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: colors.destructive),
+            Icon(LucideIcons.circleAlert, size: 48, color: colors.destructive),
             const SizedBox(height: 16),
             const Text('Failed to load cards'),
             const SizedBox(height: 8),
@@ -111,7 +111,7 @@ class _StudyScreenState extends State<StudyScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.check_circle_outline,
+          const Icon(LucideIcons.circleCheck,
               size: 64, color: Color(0xFF22C55E)),
           const SizedBox(height: 16),
           const Text('All caught up!').semiBold(),
@@ -146,7 +146,7 @@ class _StudyScreenState extends State<StudyScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.emoji_events, size: 64, color: colors.primary),
+          Icon(LucideIcons.trophy, size: 64, color: colors.primary),
           const SizedBox(height: 16),
           const Text('No cards due').semiBold(),
           const SizedBox(height: 8),
@@ -188,7 +188,7 @@ class _StudyScreenState extends State<StudyScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Button.primary(
-                leading: const Icon(Icons.touch_app, size: 18),
+                leading: const Icon(LucideIcons.hand, size: 18),
                 onPressed: () => _provider.flipCard(),
                 child: const Text('Show Answer'),
               ),
@@ -336,7 +336,7 @@ class _CardCountBar extends StatelessWidget {
         children: [
           if (hasNew)
             _StatChip(
-              icon: Icons.fiber_new,
+              icon: LucideIcons.sparkles,
               label: '${provider.newCount} new',
               color: const Color(0xFF3B82F6),
             ),
@@ -344,7 +344,7 @@ class _CardCountBar extends StatelessWidget {
             Padding(
               padding: EdgeInsets.only(left: hasNew ? 12 : 0),
               child: _StatChip(
-                icon: Icons.school,
+                icon: LucideIcons.graduationCap,
                 label:
                     '${provider.learningCount + provider.relearningCount} learning',
                 color: const Color(0xFFF97316),
@@ -354,7 +354,7 @@ class _CardCountBar extends StatelessWidget {
             Padding(
               padding: EdgeInsets.only(left: hasNew || hasLearning ? 12 : 0),
               child: _StatChip(
-                icon: Icons.schedule,
+                icon: LucideIcons.clock,
                 label: '${provider.dueCount} due',
                 color: const Color(0xFF22C55E),
               ),

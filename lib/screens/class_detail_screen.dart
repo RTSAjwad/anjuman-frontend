@@ -44,7 +44,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         AppBar(
           leading: [
             IconButton.ghost(
-              icon: const Icon(Icons.arrow_back, size: 20),
+              icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -52,8 +52,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           trailing: [
             if (isTeacher)
               IconButton.ghost(
-                icon: const Icon(Icons.delete_outline,
-                    size: 20, color: Colors.red),
+                icon:
+                    const Icon(LucideIcons.trash2, size: 20, color: Colors.red),
                 onPressed: () => _confirmDelete(context),
               ),
           ],
@@ -71,7 +71,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline,
+                  Icon(LucideIcons.circleAlert,
                       size: 48, color: colors.destructive),
                   const SizedBox(height: 16),
                   const Text('Failed to load roster'),
@@ -109,14 +109,14 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       const Text('Members').semiBold(),
                       const SizedBox(width: 16),
                       _InfoChip(
-                        icon: Icons.school_outlined,
+                        icon: LucideIcons.graduationCap,
                         label:
                             '$teacherCount teacher${teacherCount == 1 ? '' : 's'}',
                         color: const Color(0xFF2563EB),
                       ),
                       const SizedBox(width: 12),
                       _InfoChip(
-                        icon: Icons.people_outline,
+                        icon: LucideIcons.users,
                         label:
                             '$studentCount student${studentCount == 1 ? '' : 's'}',
                         color: const Color(0xFF16A34A),
@@ -124,7 +124,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                       const Spacer(),
                       if (isTeacher)
                         Button.secondary(
-                          leading: const Icon(Icons.person_add, size: 18),
+                          leading: const Icon(LucideIcons.userPlus, size: 18),
                           onPressed: () => _showAddMemberDialog(context),
                           child: const Text('Add'),
                         ),
@@ -227,10 +227,8 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(4),
                                   child: IconButton.ghost(
-                                    icon: const Icon(
-                                        Icons.remove_circle_outline,
-                                        size: 18,
-                                        color: Colors.red),
+                                    icon: const Icon(LucideIcons.userMinus,
+                                        size: 18, color: Colors.red),
                                     onPressed: () =>
                                         _confirmRemoveMember(context, member),
                                   ),

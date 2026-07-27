@@ -57,11 +57,11 @@ class _DecksScreenState extends State<DecksScreen> {
           trailing: [
             if (isTeacher)
               IconButton.ghost(
-                icon: const Icon(Icons.add, size: 20),
+                icon: const Icon(LucideIcons.plus, size: 20),
                 onPressed: () => _showCreateDialog(context),
               ),
             IconButton.ghost(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<DeckProvider>().loadDecks(),
             ),
           ],
@@ -141,7 +141,7 @@ class _DecksScreenState extends State<DecksScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 48, color: colors.destructive),
+          Icon(LucideIcons.circleAlert, size: 48, color: colors.destructive),
           const SizedBox(height: 16),
           const Text('Failed to load decks'),
           const SizedBox(height: 8),
@@ -159,7 +159,7 @@ class _DecksScreenState extends State<DecksScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.style_outlined, size: 64, color: colors.mutedForeground),
+          Icon(LucideIcons.layers, size: 64, color: colors.mutedForeground),
           const SizedBox(height: 16),
           Text(isTeacher ? 'No decks yet' : 'No decks available'),
           const SizedBox(height: 8),
@@ -342,7 +342,7 @@ class _DeckTable extends StatelessWidget {
             ),
             if (active)
               Icon(
-                sort.ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                sort.ascending ? LucideIcons.arrowUp : LucideIcons.arrowDown,
                 size: 14,
                 color: colors.primary,
               ),

@@ -9,7 +9,7 @@ class DashboardStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Dashboard',
-      icon: Icons.dashboard_rounded,
+      icon: LucideIcons.layoutDashboard,
     );
   }
 }
@@ -21,7 +21,7 @@ class ClassesStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Classes',
-      icon: Icons.group_rounded,
+      icon: LucideIcons.users,
     );
   }
 }
@@ -33,7 +33,7 @@ class DecksStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Decks',
-      icon: Icons.style_rounded,
+      icon: LucideIcons.layers,
     );
   }
 }
@@ -45,7 +45,7 @@ class AssignmentsStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Assignments',
-      icon: Icons.assignment_rounded,
+      icon: LucideIcons.clipboardList,
     );
   }
 }
@@ -57,7 +57,7 @@ class UsersStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Users',
-      icon: Icons.people_rounded,
+      icon: LucideIcons.users,
     );
   }
 }
@@ -69,7 +69,7 @@ class StudyStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'Study',
-      icon: Icons.psychology_rounded,
+      icon: LucideIcons.brain,
     );
   }
 }
@@ -81,7 +81,7 @@ class MyStatsStub extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StubPage(
       title: 'My Stats',
-      icon: Icons.bar_chart_rounded,
+      icon: LucideIcons.chartBar,
     );
   }
 }

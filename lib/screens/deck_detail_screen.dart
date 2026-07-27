@@ -79,7 +79,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         AppBar(
           leading: [
             IconButton.ghost(
-              icon: const Icon(Icons.arrow_back, size: 20),
+              icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -87,17 +87,17 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           trailing: [
             if (isTeacher)
               IconButton.ghost(
-                icon: const Icon(Icons.edit_outlined, size: 20),
+                icon: const Icon(LucideIcons.pencil, size: 20),
                 onPressed: () => _showRenameDialog(context),
               ),
             if (isTeacher)
               IconButton.ghost(
-                icon: const Icon(Icons.copy, size: 20),
+                icon: const Icon(LucideIcons.copy, size: 20),
                 onPressed: () => _confirmDuplicate(context),
               ),
             if (isTeacher && canManage)
               IconButton.ghost(
-                icon: const Icon(Icons.delete_outline, size: 20),
+                icon: const Icon(LucideIcons.trash2, size: 20),
                 onPressed: () => _confirmDeleteDeck(context),
               ),
           ],
@@ -110,7 +110,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.error_outline,
+                      Icon(LucideIcons.circleAlert,
                           size: 48, color: colors.destructive),
                       const SizedBox(height: 16),
                       Text(_error ?? 'Failed to load deck details'),
@@ -164,7 +164,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               if (isTeacher) ...[
                 const SizedBox(width: 8),
                 Button.secondary(
-                  leading: const Icon(Icons.add, size: 18),
+                  leading: const Icon(LucideIcons.plus, size: 18),
                   onPressed: () => _showCreateNoteDialog(context),
                   child: const Text('Add Note'),
                 ),
@@ -276,12 +276,12 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton.ghost(
-                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                icon: const Icon(LucideIcons.pencil, size: 18),
                                 onPressed: () =>
                                     _showEditNoteDialog(context, note),
                               ),
                               IconButton.ghost(
-                                icon: const Icon(Icons.delete_outline,
+                                icon: const Icon(LucideIcons.trash2,
                                     size: 18, color: Colors.red),
                                 onPressed: () =>
                                     _confirmDeleteNote(context, note),
@@ -832,11 +832,11 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton.ghost(
-                            icon: const Icon(Icons.check, size: 18),
+                            icon: const Icon(LucideIcons.check, size: 18),
                             onPressed: _isSavingDesc ? null : _saveDescription,
                           ),
                           IconButton.ghost(
-                            icon: const Icon(Icons.close, size: 18),
+                            icon: const Icon(LucideIcons.x, size: 18),
                             onPressed: () {
                               setState(() {
                                 _isEditingDesc = false;
@@ -848,7 +848,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                         ],
                       )
                     : IconButton.ghost(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        icon: const Icon(LucideIcons.pencil, size: 18),
                         onPressed: () => setState(() => _isEditingDesc = true),
                       ),
             ],
@@ -860,7 +860,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
               if (widget.canManage) ...[
                 const Spacer(),
                 Button.ghost(
-                  leading: const Icon(Icons.swap_horiz, size: 18),
+                  leading: const Icon(LucideIcons.arrowLeftRight, size: 18),
                   onPressed: widget.onTransfer,
                   child: const Text('Transfer'),
                 ),
@@ -900,7 +900,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                 if (widget.canManage) ...[
                   const Spacer(),
                   Button.ghost(
-                    leading: const Icon(Icons.person_add, size: 18),
+                    leading: const Icon(LucideIcons.userPlus, size: 18),
                     onPressed: widget.onAddCollaborator,
                     child: const Text('Share'),
                   ),
@@ -935,7 +935,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                         const Spacer(),
                         if (widget.canManage)
                           IconButton.ghost(
-                            icon: const Icon(Icons.remove_circle_outline,
+                            icon: const Icon(LucideIcons.userMinus,
                                 size: 18, color: Colors.red),
                             onPressed: () =>
                                 widget.onRemoveCollaborator(c.userId),
@@ -958,7 +958,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                 if (widget.canManage) ...[
                   const Spacer(),
                   Button.ghost(
-                    leading: const Icon(Icons.add, size: 18),
+                    leading: const Icon(LucideIcons.plus, size: 18),
                     onPressed: widget.onAddToClass,
                     child: const Text('Add'),
                   ),
@@ -970,13 +970,13 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
                     padding: const EdgeInsets.only(top: 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.group, size: 18),
+                        const Icon(LucideIcons.users, size: 18),
                         const SizedBox(width: 8),
                         Text(c.name),
                         const Spacer(),
                         if (widget.canManage)
                           IconButton.ghost(
-                            icon: const Icon(Icons.remove_circle_outline,
+                            icon: const Icon(LucideIcons.userMinus,
                                 size: 18, color: Colors.red),
                             onPressed: () => widget.onRemoveFromClass(c.id),
                           ),

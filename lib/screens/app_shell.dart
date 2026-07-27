@@ -112,31 +112,31 @@ class _AppShellState extends State<AppShell> {
   List<_NavItem> _navItemsForRole(String role) {
     final base = switch (role) {
       'admin' => [
-          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(1, Icons.group_rounded, 'Classes'),
-          _NavItem(2, Icons.style_rounded, 'Decks'),
-          _NavItem(3, Icons.people_rounded, 'Users'),
-          _NavItem(4, Icons.category_rounded, 'Note Types'),
-          _NavItem(5, Icons.search_rounded, 'Browser'),
+          _NavItem(0, LucideIcons.layoutDashboard, 'Dashboard'),
+          _NavItem(1, LucideIcons.users, 'Classes'),
+          _NavItem(2, LucideIcons.layers, 'Decks'),
+          _NavItem(3, LucideIcons.users, 'Users'),
+          _NavItem(4, LucideIcons.shapes, 'Note Types'),
+          _NavItem(5, LucideIcons.search, 'Browser'),
         ],
       'teacher' => [
-          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(1, Icons.group_rounded, 'Classes'),
-          _NavItem(2, Icons.style_rounded, 'Decks'),
-          _NavItem(3, Icons.category_rounded, 'Note Types'),
-          _NavItem(4, Icons.search_rounded, 'Browser'),
+          _NavItem(0, LucideIcons.layoutDashboard, 'Dashboard'),
+          _NavItem(1, LucideIcons.users, 'Classes'),
+          _NavItem(2, LucideIcons.layers, 'Decks'),
+          _NavItem(3, LucideIcons.shapes, 'Note Types'),
+          _NavItem(4, LucideIcons.search, 'Browser'),
         ],
       'student' => [
-          _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
-          _NavItem(1, Icons.style_rounded, 'Decks'),
-          _NavItem(2, Icons.group_rounded, 'Classes'),
-          _NavItem(3, Icons.search_rounded, 'Browser'),
+          _NavItem(0, LucideIcons.layoutDashboard, 'Dashboard'),
+          _NavItem(1, LucideIcons.layers, 'Decks'),
+          _NavItem(2, LucideIcons.users, 'Classes'),
+          _NavItem(3, LucideIcons.search, 'Browser'),
         ],
       _ => [
-          _NavItem(0, Icons.home_rounded, 'Home'),
+          _NavItem(0, LucideIcons.house, 'Home'),
         ],
     };
-    return [...base, _NavItem(base.length, Icons.person_rounded, 'Me')];
+    return [...base, _NavItem(base.length, LucideIcons.user, 'Me')];
   }
 
   List<Widget> _screensForRole(String role) {
@@ -222,7 +222,7 @@ class _MeScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.logout, size: 20, color: Colors.red),
+                  const Icon(LucideIcons.logOut, size: 20, color: Colors.red),
                   const SizedBox(width: 16),
                   const Text('Sign out', style: TextStyle(color: Colors.red)),
                 ],

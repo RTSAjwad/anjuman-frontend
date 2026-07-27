@@ -36,11 +36,11 @@ class _UsersScreenState extends State<UsersScreen> {
           title: const Text('Users'),
           trailing: [
             IconButton.ghost(
-              icon: const Icon(Icons.person_add, size: 20),
+              icon: const Icon(LucideIcons.userPlus, size: 20),
               onPressed: () => _showCreateDialog(context),
             ),
             IconButton.ghost(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<UserProvider>().loadUsers(),
             ),
           ],
@@ -60,7 +60,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.error_outline,
+                    Icon(LucideIcons.circleAlert,
                         size: 48, color: colors.destructive),
                     const SizedBox(height: 16),
                     const Text('Failed to load users'),
@@ -85,7 +85,7 @@ class _UsersScreenState extends State<UsersScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.people_outline,
+                  Icon(LucideIcons.users,
                       size: 64, color: colors.mutedForeground),
                   const SizedBox(height: 16),
                   const Text('No users found'),
@@ -211,13 +211,13 @@ class _UsersScreenState extends State<UsersScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton.ghost(
-                                    icon: const Icon(Icons.edit_outlined,
+                                    icon: const Icon(LucideIcons.pencil,
                                         size: 18),
                                     onPressed: () =>
                                         _showEditDialog(context, user),
                                   ),
                                   IconButton.ghost(
-                                    icon: const Icon(Icons.delete_outline,
+                                    icon: const Icon(LucideIcons.trash2,
                                         size: 18, color: Colors.red),
                                     onPressed: () =>
                                         _confirmDelete(context, user),
@@ -262,7 +262,7 @@ class _UsersScreenState extends State<UsersScreen> {
             ),
             if (active)
               Icon(
-                _sort.ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                _sort.ascending ? LucideIcons.arrowUp : LucideIcons.arrowDown,
                 size: 14,
                 color: Theme.of(context).colorScheme.primary,
               ),

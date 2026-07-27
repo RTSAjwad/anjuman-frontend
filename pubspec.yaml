@@ -34,6 +34,9 @@ dependencies:
   # Material Design icons (extended set)
   cupertino_icons: ^1.0.8
 
+  # Lucide icons
+  lucide_icons: ^0.257.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

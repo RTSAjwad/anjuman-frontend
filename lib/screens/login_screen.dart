@@ -71,7 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.school_rounded, size: 64, color: colors.primary),
+                    Icon(LucideIcons.graduationCap,
+                        size: 64, color: colors.primary),
                     const SizedBox(height: 16),
                     const Text('Anki Classroom').semiBold(),
                     const SizedBox(height: 8),
@@ -136,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Button.outline(
                             onPressed: () =>
                                 _quickLogin('admin@school1.com', 'admin123'),
-                            leading: const Icon(Icons.shield, size: 16),
+                            leading: const Icon(LucideIcons.shield, size: 16),
                             child: const Text('Admin',
                                 style: TextStyle(fontSize: 12)),
                           ),
@@ -146,7 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Button.outline(
                             onPressed: () =>
                                 _quickLogin('teacher@school1.com', 'teach123'),
-                            leading: const Icon(Icons.school, size: 16),
+                            leading:
+                                const Icon(LucideIcons.graduationCap, size: 16),
                             child: const Text('Teacher',
                                 style: TextStyle(fontSize: 12)),
                           ),
@@ -156,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Button.outline(
                             onPressed: () =>
                                 _quickLogin('student@school1.com', 'stud123'),
-                            leading: const Icon(Icons.person, size: 16),
+                            leading: const Icon(LucideIcons.user, size: 16),
                             child: const Text('Student',
                                 style: TextStyle(fontSize: 12)),
                           ),

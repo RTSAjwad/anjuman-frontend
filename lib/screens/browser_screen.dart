@@ -120,7 +120,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           title: const Text('Browser'),
           trailing: [
             IconButton.ghost(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<BrowserProvider>().loadCards(),
             ),
           ],
@@ -199,8 +199,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
                             if (active)
                               Icon(
                                 _sortAsc
-                                    ? Icons.arrow_upward
-                                    : Icons.arrow_downward,
+                                    ? LucideIcons.arrowUp
+                                    : LucideIcons.arrowDown,
                                 size: 14,
                                 color: colors.primary,
                               ),
@@ -416,7 +416,7 @@ class _FilterBar extends StatelessWidget {
                 const InputFeature.leading(
                   Padding(
                     padding: EdgeInsets.only(right: 6),
-                    child: Icon(Icons.search, size: 18),
+                    child: Icon(LucideIcons.search, size: 18),
                   ),
                 ),
               ],
