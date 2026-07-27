@@ -5,6 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
+import '../widgets/shadcn_page_route.dart';
 
 class ClassesScreen extends StatefulWidget {
   const ClassesScreen({super.key});
@@ -110,7 +111,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                                 behavior: HitTestBehavior.opaque,
                                 onTap: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(
+                                    ShadcnPageRoute(
                                       builder: (_) => ClassDetailScreen(
                                         classResponse: c,
                                         provider: provider,

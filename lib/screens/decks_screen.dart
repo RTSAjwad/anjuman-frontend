@@ -6,6 +6,7 @@ import '../providers/deck_provider.dart';
 import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/sortable_table.dart';
+import '../widgets/shadcn_page_route.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
@@ -103,7 +104,7 @@ class _DecksScreenState extends State<DecksScreen> {
                 onStudy: (deck) async {
                   final studyProvider = context.read<StudyProvider>();
                   await Navigator.of(context).push(
-                    MaterialPageRoute(
+                    ShadcnPageRoute(
                       builder: (_) => StudyScreen(
                         deckId: deck.id,
                         provider: studyProvider,
@@ -115,7 +116,7 @@ class _DecksScreenState extends State<DecksScreen> {
                 onTapDetail: (deck) {
                   final classProvider = context.read<ClassProvider>();
                   Navigator.of(context).push(
-                    MaterialPageRoute(
+                    ShadcnPageRoute(
                       builder: (_) => DeckDetailScreen(
                         deck: deck,
                         provider: provider,
