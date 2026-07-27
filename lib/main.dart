@@ -29,7 +29,7 @@ class AnkiClassroomApp extends StatelessWidget {
         darkTheme: ThemeData.dark(
           colorScheme: ColorSchemes.darkNeutral,
         ),
-        themeMode: ThemeMode.system,
+        themeMode: ThemeMode.dark,
         home: AuthGate(),
       ),
     );
