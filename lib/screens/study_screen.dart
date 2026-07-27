@@ -202,13 +202,8 @@ class _StudyScreenState extends State<StudyScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Button(
+                      child: Button.outline(
                         onPressed: () => _submitRating(1),
-                        style: const ButtonStyle.primary()
-                            .withBackgroundColor(
-                                color: Color(0xFFDC2626),
-                                hoverColor: Color(0xFFB91C1C))
-                            .withForegroundColor(color: Colors.black),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -226,13 +221,8 @@ class _StudyScreenState extends State<StudyScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Button(
+                      child: Button.outline(
                         onPressed: () => _submitRating(2),
-                        style: const ButtonStyle.primary()
-                            .withBackgroundColor(
-                                color: Color(0xFFEA580C),
-                                hoverColor: Color(0xFFC2410C))
-                            .withForegroundColor(color: Colors.black),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -250,13 +240,8 @@ class _StudyScreenState extends State<StudyScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Button(
+                      child: Button.outline(
                         onPressed: () => _submitRating(3),
-                        style: const ButtonStyle.primary()
-                            .withBackgroundColor(
-                                color: Color(0xFF16A34A),
-                                hoverColor: Color(0xFF15803D))
-                            .withForegroundColor(color: Colors.black),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -274,13 +259,8 @@ class _StudyScreenState extends State<StudyScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Button(
+                      child: Button.outline(
                         onPressed: () => _submitRating(4),
-                        style: const ButtonStyle.primary()
-                            .withBackgroundColor(
-                                color: Color(0xFF2563EB),
-                                hoverColor: Color(0xFF1D4ED8))
-                            .withForegroundColor(color: Colors.black),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -335,68 +315,27 @@ class _CardCountBar extends StatelessWidget {
       child: Row(
         children: [
           if (hasNew)
-            _StatChip(
-              icon: LucideIcons.sparkles,
-              label: '${provider.newCount} new',
-              color: const Color(0xFF3B82F6),
+            OutlineBadge(
+              leading: const Icon(LucideIcons.sparkles, size: 12),
+              child: Text('${provider.newCount} new'),
             ),
           if (hasLearning)
             Padding(
-              padding: EdgeInsets.only(left: hasNew ? 12 : 0),
-              child: _StatChip(
-                icon: LucideIcons.graduationCap,
-                label:
-                    '${provider.learningCount + provider.relearningCount} learning',
-                color: const Color(0xFFF97316),
+              padding: EdgeInsets.only(left: hasNew ? 8 : 0),
+              child: OutlineBadge(
+                leading: const Icon(LucideIcons.graduationCap, size: 12),
+                child: Text(
+                    '${provider.learningCount + provider.relearningCount} learning'),
               ),
             ),
           if (hasDue)
             Padding(
-              padding: EdgeInsets.only(left: hasNew || hasLearning ? 12 : 0),
-              child: _StatChip(
-                icon: LucideIcons.clock,
-                label: '${provider.dueCount} due',
-                color: const Color(0xFF22C55E),
+              padding: EdgeInsets.only(left: hasNew || hasLearning ? 8 : 0),
+              child: OutlineBadge(
+                leading: const Icon(LucideIcons.clock, size: 12),
+                child: Text('${provider.dueCount} due'),
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.black),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
-            ),
-          ),
         ],
       ),
     );
