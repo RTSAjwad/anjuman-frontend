@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 // Stub screens — placeholders that will be replaced with real implementations
 
@@ -10,7 +10,6 @@ class DashboardStub extends StatelessWidget {
     return _StubPage(
       title: 'Dashboard',
       icon: Icons.dashboard_rounded,
-      theme: Theme.of(context).colorScheme.primaryContainer,
     );
   }
 }
@@ -23,7 +22,6 @@ class ClassesStub extends StatelessWidget {
     return _StubPage(
       title: 'Classes',
       icon: Icons.group_rounded,
-      theme: Theme.of(context).colorScheme.secondaryContainer,
     );
   }
 }
@@ -36,7 +34,6 @@ class DecksStub extends StatelessWidget {
     return _StubPage(
       title: 'Decks',
       icon: Icons.style_rounded,
-      theme: Theme.of(context).colorScheme.tertiaryContainer,
     );
   }
 }
@@ -49,7 +46,6 @@ class AssignmentsStub extends StatelessWidget {
     return _StubPage(
       title: 'Assignments',
       icon: Icons.assignment_rounded,
-      theme: Theme.of(context).colorScheme.errorContainer,
     );
   }
 }
@@ -62,7 +58,6 @@ class UsersStub extends StatelessWidget {
     return _StubPage(
       title: 'Users',
       icon: Icons.people_rounded,
-      theme: Theme.of(context).colorScheme.surfaceContainerHighest,
     );
   }
 }
@@ -75,7 +70,6 @@ class StudyStub extends StatelessWidget {
     return _StubPage(
       title: 'Study',
       icon: Icons.psychology_rounded,
-      theme: Theme.of(context).colorScheme.secondaryContainer,
     );
   }
 }
@@ -88,7 +82,6 @@ class MyStatsStub extends StatelessWidget {
     return _StubPage(
       title: 'My Stats',
       icon: Icons.bar_chart_rounded,
-      theme: Theme.of(context).colorScheme.tertiaryContainer,
     );
   }
 }
@@ -96,38 +89,36 @@ class MyStatsStub extends StatelessWidget {
 class _StubPage extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Color theme;
 
   const _StubPage({
     required this.title,
     required this.icon,
-    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-      ),
-      body: Center(
+      headers: [
+        AppBar(
+          title: Text(title),
+        ),
+      ],
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 64,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(icon, size: 64, color: colors.mutedForeground),
             const SizedBox(height: 16),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text(title).semiBold(),
             const SizedBox(height: 8),
             Text(
               'Coming soon',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: TextStyle(
+                color: colors.mutedForeground,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
