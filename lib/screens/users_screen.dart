@@ -126,12 +126,10 @@ class _UsersScreenState extends State<UsersScreen> {
                         TableHeader(cells: [
                           TableCell(
                             child: Container(
-                              padding: const EdgeInsets.all(8),
-                              child: const Text('',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14)),
-                            ),
+                                padding: const EdgeInsets.all(8),
+                                child: const Text('',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
                           ),
                           TableCell(
                               child:

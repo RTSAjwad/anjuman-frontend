@@ -104,8 +104,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         alignment: alignRight ? Alignment.centerRight : Alignment.centerLeft,
-        child: Text(text,
-            overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14)),
+        child: Text(text, overflow: TextOverflow.ellipsis),
       ),
     );
   }
@@ -290,8 +289,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           alignment: Alignment.centerLeft,
-          child: Text('—',
-              style: TextStyle(color: colors.mutedForeground, fontSize: 14)),
+          child: Text('—', style: TextStyle(color: colors.mutedForeground)),
         ),
       );
     }
@@ -376,8 +374,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           style: TextStyle(
               color: isNew && card.newCardPosition != null
                   ? const Color(0xFF3B82F6)
-                  : colors.mutedForeground,
-              fontSize: 14),
+                  : colors.mutedForeground),
           overflow: TextOverflow.ellipsis,
         ),
       ),

@@ -198,32 +198,28 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         child: const Text('Front',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 14)),
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                     TableCell(
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         child: const Text('Back',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 14)),
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                     TableCell(
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         child: const Text('Type',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 14)),
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                     TableCell(
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         child: const Text('Cards',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 14)),
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     ),
                     if (isTeacher)
@@ -257,8 +253,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: Text(note.noteTypeName,
-                              style: TextStyle(
-                                  color: colors.mutedForeground, fontSize: 14),
+                              style: TextStyle(color: colors.mutedForeground),
                               overflow: TextOverflow.ellipsis),
                         ),
                       ),
@@ -266,8 +261,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           child: Text('${note.cards.length}',
-                              style: TextStyle(
-                                  color: colors.mutedForeground, fontSize: 14)),
+                              style: TextStyle(color: colors.mutedForeground)),
                         ),
                       ),
                       if (isTeacher)
