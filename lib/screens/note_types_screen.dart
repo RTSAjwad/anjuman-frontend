@@ -137,24 +137,37 @@ class _CreateNoteTypeDialog extends StatefulWidget {
 
 class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
   final _nameController = TextEditingController();
-  final _fieldNamesController = TextEditingController();
+  final _fieldNameController = TextEditingController();
   final _templateNameController = TextEditingController();
   final _frontPatternController = TextEditingController();
   final _backPatternController = TextEditingController();
-  final _sortFieldController = TextEditingController();
   bool _isSubmitting = false;
   String? _error;
+  String? _sortField;
+  final List<String> _fieldNames = [];
   final List<_TemplateEntry> _templates = [];
 
   @override
   void dispose() {
     _nameController.dispose();
-    _fieldNamesController.dispose();
+    _fieldNameController.dispose();
     _templateNameController.dispose();
     _frontPatternController.dispose();
     _backPatternController.dispose();
-    _sortFieldController.dispose();
     super.dispose();
+  }
+
+  void _addFieldName() {
+    final name = _fieldNameController.text.trim();
+    if (name.isEmpty || _fieldNames.contains(name)) return;
+    setState(() {
+      _fieldNames.add(name);
+      _fieldNameController.clear();
+    });
+  }
+
+  void _removeFieldName(int index) {
+    setState(() => _fieldNames.removeAt(index));
   }
 
   void _addTemplate() {
@@ -184,9 +197,8 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
       setState(() => _error = 'Name is required');
       return;
     }
-    final fieldNamesText = _fieldNamesController.text.trim();
-    if (fieldNamesText.isEmpty) {
-      setState(() => _error = 'Field names are required');
+    if (_fieldNames.isEmpty) {
+      setState(() => _error = 'Add at least one field name');
       return;
     }
     if (_templates.isEmpty) {
@@ -199,18 +211,12 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
       _error = null;
     });
 
-    final fieldNames = fieldNamesText
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    final fieldNames = List<String>.from(_fieldNames);
 
     final noteType = CreateNoteType(
       name: name,
       fieldNames: fieldNames,
-      sortField: _sortFieldController.text.trim().isEmpty
-          ? null
-          : _sortFieldController.text.trim(),
+      sortField: _sortField,
       templates: _templates
           .map((t) => CreateNoteTemplate(
                 name: t.name,
@@ -241,131 +247,153 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
       title: const Text('Create Note Type'),
       content: SizedBox(
         width: 500,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Name', style: TextStyle(fontSize: 13)).semiBold(),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _nameController,
-                placeholder: const Text('e.g. Basic, Cloze'),
-                initialValue: '',
-              ),
-              const SizedBox(height: 12),
-              const Text('Field names', style: TextStyle(fontSize: 13))
-                  .semiBold(),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _fieldNamesController,
-                placeholder: const Text('e.g. Front, Back'),
-                initialValue: '',
-              ),
-              const SizedBox(height: 12),
-              const Text('Sort field (optional)',
-                      style: TextStyle(fontSize: 13))
-                  .semiBold(),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _sortFieldController,
-                placeholder: const Text('e.g. Front — empty uses first field'),
-                initialValue: '',
-              ),
-              const SizedBox(height: 16),
-              const Text('Templates').semiBold(),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Template name',
-                                style: TextStyle(fontSize: 13))
-                            .semiBold(),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _templateNameController,
-                          placeholder: const Text('e.g. Forward'),
-                          initialValue: '',
-                        ),
-                      ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 500),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Name', style: TextStyle(fontSize: 13)).semiBold(),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _nameController,
+                  placeholder: const Text('e.g. Basic, Cloze'),
+                  initialValue: '',
+                ),
+                const SizedBox(height: 12),
+                const Text('Field names', style: TextStyle(fontSize: 13))
+                    .semiBold(),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _fieldNameController,
+                        placeholder: const Text('e.g. Front'),
+                        initialValue: '',
+                        onSubmitted: (_) => _addFieldName(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Front pattern',
-                                style: TextStyle(fontSize: 13))
-                            .semiBold(),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _frontPatternController,
-                          placeholder: const Text('e.g. {{Front}}'),
-                          initialValue: '',
+                    const SizedBox(width: 8),
+                    IconButton.ghost(
+                      icon: const Icon(LucideIcons.plus, size: 18),
+                      onPressed: _addFieldName,
+                    ),
+                  ],
+                ),
+                if (_fieldNames.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _fieldNames.asMap().entries.map((e) {
+                      return Chip(
+                        style: const ButtonStyle.outline(),
+                        trailing: ChipButton(
+                          onPressed: () => _removeFieldName(e.key),
+                          child: const Icon(LucideIcons.x, size: 12),
                         ),
-                      ],
+                        child: Text(e.value),
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                const Text('Sort field (optional)',
+                        style: TextStyle(fontSize: 13))
+                    .semiBold(),
+                const SizedBox(height: 6),
+                Select<String>(
+                  value: _sortField,
+                  placeholder: const Text('First field (default)'),
+                  onChanged: (v) => setState(() => _sortField = v),
+                  canUnselect: true,
+                  popup: SelectPopup(
+                    items: SelectItemList(children: [
+                      for (final name in _fieldNames)
+                        SelectItemButton(
+                          value: name,
+                          child: Text(name),
+                        ),
+                    ]),
+                  ),
+                  itemBuilder: (context, value) => Text(value),
+                ),
+                const SizedBox(height: 16),
+                const Text('Templates').semiBold(),
+                const SizedBox(height: 8),
+                const Text('Template name', style: TextStyle(fontSize: 13))
+                    .semiBold(),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _templateNameController,
+                  placeholder: const Text('e.g. Forward'),
+                  initialValue: '',
+                ),
+                const SizedBox(height: 12),
+                const Text('Front pattern', style: TextStyle(fontSize: 13))
+                    .semiBold(),
+                const SizedBox(height: 6),
+                TextArea(
+                  controller: _frontPatternController,
+                  placeholder: const Text('e.g. {{Front}}'),
+                  initialValue: '',
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 12),
+                const Text('Back pattern', style: TextStyle(fontSize: 13))
+                    .semiBold(),
+                const SizedBox(height: 6),
+                TextArea(
+                  controller: _backPatternController,
+                  placeholder: const Text('e.g. {{Back}}'),
+                  initialValue: '',
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 8),
+                Button.secondary(
+                  leading: const Icon(LucideIcons.plus, size: 16),
+                  onPressed: _addTemplate,
+                  child: const Text('Add template'),
+                ),
+                if (_templates.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ..._templates.asMap().entries.map((e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: OutlinedContainer(
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${e.value.name}: ${e.value.frontPattern} / ${e.value.backPattern}',
+                                  style: TextStyle(
+                                      color: colors.mutedForeground,
+                                      fontSize: 13),
+                                ),
+                              ),
+                              IconButton.ghost(
+                                icon: const Icon(LucideIcons.x, size: 16),
+                                onPressed: () => _removeTemplate(e.key),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: colors.destructive,
+                      fontSize: 13,
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              const Text('Back pattern', style: TextStyle(fontSize: 13))
-                  .semiBold(),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _backPatternController,
-                placeholder: const Text('e.g. {{Back}}'),
-                initialValue: '',
-              ),
-              const SizedBox(height: 8),
-              Button.secondary(
-                leading: const Icon(LucideIcons.plus, size: 16),
-                onPressed: _addTemplate,
-                child: const Text('Add template'),
-              ),
-              if (_templates.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                ..._templates.asMap().entries.map((e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: OutlinedContainer(
-                        padding: const EdgeInsets.all(8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${e.value.name}: ${e.value.frontPattern} / ${e.value.backPattern}',
-                                style: TextStyle(
-                                    color: colors.mutedForeground,
-                                    fontSize: 13),
-                              ),
-                            ),
-                            IconButton.ghost(
-                              icon: const Icon(LucideIcons.x, size: 16),
-                              onPressed: () => _removeTemplate(e.key),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )),
               ],
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: TextStyle(
-                    color: colors.destructive,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
