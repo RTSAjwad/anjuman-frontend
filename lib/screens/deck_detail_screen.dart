@@ -78,7 +78,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       headers: [
         AppBar(
           leading: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -86,17 +86,17 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           title: Text(_deckTitle),
           trailing: [
             if (isTeacher)
-              IconButton.ghost(
+              IconButton.outline(
                 icon: const Icon(LucideIcons.pencil, size: 20),
                 onPressed: () => _showRenameDialog(context),
               ),
             if (isTeacher)
-              IconButton.ghost(
+              IconButton.outline(
                 icon: const Icon(LucideIcons.copy, size: 20),
                 onPressed: () => _confirmDuplicate(context),
               ),
             if (isTeacher && canManage)
-              IconButton.ghost(
+              IconButton.outline(
                 icon: const Icon(LucideIcons.trash2, size: 20),
                 onPressed: () => _confirmDeleteDeck(context),
               ),

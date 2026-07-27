@@ -35,11 +35,11 @@ class _UsersScreenState extends State<UsersScreen> {
         AppBar(
           title: const Text('Users'),
           trailing: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.userPlus, size: 20),
               onPressed: () => _showCreateDialog(context),
             ),
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<UserProvider>().loadUsers(),
             ),

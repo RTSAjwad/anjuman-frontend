@@ -57,11 +57,11 @@ class _DecksScreenState extends State<DecksScreen> {
           title: const Text('Decks'),
           trailing: [
             if (isTeacher)
-              IconButton.ghost(
+              IconButton.outline(
                 icon: const Icon(LucideIcons.plus, size: 20),
                 onPressed: () => _showCreateDialog(context),
               ),
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<DeckProvider>().loadDecks(),
             ),

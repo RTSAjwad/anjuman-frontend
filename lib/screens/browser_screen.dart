@@ -118,7 +118,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         AppBar(
           title: const Text('Browser'),
           trailing: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => context.read<BrowserProvider>().loadCards(),
             ),

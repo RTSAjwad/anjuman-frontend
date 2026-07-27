@@ -185,7 +185,7 @@ class _MeScreen extends StatelessWidget {
         AppBar(
           title: const Text('Me'),
           trailing: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.logOut, size: 20, color: Colors.red),
               onPressed: () => auth.logout(),
             ),

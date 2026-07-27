@@ -62,7 +62,7 @@ class _StudyScreenState extends State<StudyScreen> {
       headers: [
         AppBar(
           leading: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),

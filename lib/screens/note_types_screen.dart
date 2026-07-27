@@ -31,11 +31,11 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
         AppBar(
           title: const Text('Note Types'),
           trailing: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.plus, size: 20),
               onPressed: () => _showCreateDialog(context),
             ),
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
               onPressed: () => _provider.loadNoteTypes(),
             ),

@@ -43,7 +43,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       headers: [
         AppBar(
           leading: [
-            IconButton.ghost(
+            IconButton.outline(
               icon: const Icon(LucideIcons.arrowLeft, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -51,7 +51,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           title: Text(widget.classResponse.name),
           trailing: [
             if (isTeacher)
-              IconButton.ghost(
+              IconButton.outline(
                 icon:
                     const Icon(LucideIcons.trash2, size: 20, color: Colors.red),
                 onPressed: () => _confirmDelete(context),
