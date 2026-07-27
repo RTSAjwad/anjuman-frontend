@@ -85,6 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           .semiBold(),
                       validator: const LengthValidator(
                           min: 1, message: 'Email is required'),
+                      showErrors: const {
+                        FormValidationMode.changed,
+                        FormValidationMode.submitted,
+                      },
                       child: const TextField(
                         initialValue: '',
                         keyboardType: TextInputType.emailAddress,
@@ -99,6 +103,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               .semiBold(),
                       validator: const LengthValidator(
                           min: 1, message: 'Password is required'),
+                      showErrors: const {
+                        FormValidationMode.changed,
+                        FormValidationMode.submitted,
+                      },
                       child: const TextField(
                         initialValue: '',
                         obscureText: true,
