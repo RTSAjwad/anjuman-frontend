@@ -8,7 +8,6 @@ import '../models/deck.dart';
 import '../models/class_info.dart';
 import '../models/search_result.dart';
 import '../services/user_service.dart';
-import 'note_types_screen.dart';
 
 class DeckDetailScreen extends StatefulWidget {
   final DeckResponse deck;
@@ -199,12 +198,6 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('Add Note'),
                         ),
-                        const SizedBox(width: 8),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _showManageNoteTypesDialog(context),
-                          icon: const Icon(Icons.category, size: 18),
-                          label: const Text('Manage types'),
-                        ),
                       ],
                     ],
                   ),
@@ -292,14 +285,6 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           Navigator.of(ctx).pop();
           _load();
         },
-      ),
-    );
-  }
-
-  void _showManageNoteTypesDialog(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => NoteTypesScreen(provider: widget.provider),
       ),
     );
   }

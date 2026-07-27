@@ -5,6 +5,7 @@ import 'classes_screen.dart';
 import 'decks_screen.dart';
 import 'users_screen.dart';
 import 'browser_screen.dart';
+import 'note_types_screen.dart';
 import 'stubs.dart';
 
 class AppShell extends StatefulWidget {
@@ -115,13 +116,15 @@ class _AppShellState extends State<AppShell> {
           _NavItem(1, Icons.group_rounded, 'Classes'),
           _NavItem(2, Icons.style_rounded, 'Decks'),
           _NavItem(3, Icons.people_rounded, 'Users'),
-          _NavItem(4, Icons.search_rounded, 'Browser'),
+          _NavItem(4, Icons.category_rounded, 'Note Types'),
+          _NavItem(5, Icons.search_rounded, 'Browser'),
         ],
       'teacher' => [
           _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
           _NavItem(1, Icons.group_rounded, 'Classes'),
           _NavItem(2, Icons.style_rounded, 'Decks'),
-          _NavItem(3, Icons.search_rounded, 'Browser'),
+          _NavItem(3, Icons.category_rounded, 'Note Types'),
+          _NavItem(4, Icons.search_rounded, 'Browser'),
         ],
       'student' => [
           _NavItem(0, Icons.dashboard_rounded, 'Dashboard'),
@@ -143,12 +146,14 @@ class _AppShellState extends State<AppShell> {
           const ClassesScreen(),
           const DecksScreen(),
           const UsersScreen(),
+          const NoteTypesScreen(provider: null),
           const BrowserScreen(),
         ],
       'teacher' => <Widget>[
           const DashboardStub(),
           const ClassesScreen(),
           const DecksScreen(),
+          const NoteTypesScreen(provider: null),
           const BrowserScreen(),
         ],
       'student' => <Widget>[

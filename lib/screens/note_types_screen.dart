@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
 
 class NoteTypesScreen extends StatefulWidget {
-  final DeckProvider provider;
+  final DeckProvider? provider;
 
-  const NoteTypesScreen({super.key, required this.provider});
+  const NoteTypesScreen({super.key, this.provider});
 
   @override
   State<NoteTypesScreen> createState() => _NoteTypesScreenState();
@@ -22,10 +23,12 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   bool _isSubmitting = false;
   final List<_TemplateEntry> _templates = [];
 
+  DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
+
   @override
   void initState() {
     super.initState();
-    widget.provider.loadNoteTypes();
+    _provider.loadNoteTypes();
   }
 
   @override
@@ -95,16 +98,24 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
           .toList(),
     );
 
-    final ok = await widget.provider.createNoteType(noteType);
+    final ok = await _provider.createNoteType(noteType);
     if (mounted) {
       if (ok) {
-        Navigator.of(context).pop();
+        _nameController.clear();
+        _fieldNamesController.clear();
+        _templateNameController.clear();
+        _frontPatternController.clear();
+        _backPatternController.clear();
+        _sortFieldController.clear();
+        setState(() {
+          _templates.clear();
+          _isSubmitting = false;
+        });
       } else {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text(widget.provider.error ?? 'Failed to create note type'),
+            content: Text(_provider.error ?? 'Failed to create note type'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -115,7 +126,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final noteTypes = widget.provider.noteTypes;
+    final noteTypes = _provider.noteTypes;
 
     return Scaffold(
       appBar: AppBar(
