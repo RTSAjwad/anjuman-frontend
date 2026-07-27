@@ -28,6 +28,9 @@ dependencies:
   # shadcn-style UI components
   shadcn_flutter: ^0.0.53
 
+  # Google Fonts
+  google_fonts: ^6.2.1
+
   # Material Design icons (extended set)
   cupertino_icons: ^1.0.8
 

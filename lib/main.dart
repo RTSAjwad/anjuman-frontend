@@ -1,3 +1,4 @@
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
@@ -13,6 +14,10 @@ void main() {
   runApp(const AnkiClassroomApp());
 }
 
+final _interTypography = Typography.geist().copyWith(
+  sans: () => GoogleFonts.interTextTheme().bodyMedium!,
+);
+
 class AnkiClassroomApp extends StatelessWidget {
   const AnkiClassroomApp({super.key});
 
@@ -20,17 +25,19 @@ class AnkiClassroomApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider(),
-      child: const ShadcnApp(
+      child: ShadcnApp(
         title: 'Anki Classroom',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorSchemes.lightNeutral,
+          typography: _interTypography,
         ),
         darkTheme: ThemeData.dark(
           colorScheme: ColorSchemes.darkNeutral,
+          typography: _interTypography,
         ),
         themeMode: ThemeMode.dark,
-        home: AuthGate(),
+        home: const AuthGate(),
       ),
     );
   }
