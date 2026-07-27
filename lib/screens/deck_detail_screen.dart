@@ -863,27 +863,16 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                Avatar(
-                  size: 24,
-                  borderRadius: 12,
-                  initials: widget.deck.ownerFirstName?.isNotEmpty == true
-                      ? widget.deck.ownerFirstName![0].toUpperCase()
-                      : widget.deck.createdBy.toString()[0],
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.deck.ownerDisplayName),
-                    if (widget.deck.ownerEmail != null &&
-                        widget.deck.ownerDisplayName != widget.deck.ownerEmail)
-                      Text(widget.deck.ownerEmail!,
-                          style: TextStyle(color: colors.mutedForeground)),
-                  ],
-                ),
-              ],
+            child: Chip(
+              style: const ButtonStyle.outline(),
+              leading: Avatar(
+                size: 18,
+                borderRadius: 9,
+                initials: widget.deck.ownerFirstName?.isNotEmpty == true
+                    ? widget.deck.ownerFirstName![0].toUpperCase()
+                    : widget.deck.createdBy.toString()[0],
+              ),
+              child: Text(widget.deck.ownerDisplayName),
             ),
           ),
           const SizedBox(height: 16),
@@ -902,41 +891,34 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
               ],
             ),
             if (widget.collaborators.isNotEmpty)
-              ...widget.collaborators.map((c) => Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        Avatar(
-                          size: 24,
-                          borderRadius: 12,
-                          initials: c.firstName.isNotEmpty
-                              ? c.firstName[0].toUpperCase()
-                              : c.email[0].toUpperCase(),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(c.displayName.isNotEmpty
-                                ? c.displayName
-                                : c.email),
-                            if (c.displayName.isNotEmpty)
-                              Text(c.email,
-                                  style:
-                                      TextStyle(color: colors.mutedForeground)),
-                          ],
-                        ),
-                        const Spacer(),
-                        if (widget.canManage)
-                          IconButton.ghost(
-                            icon: const Icon(LucideIcons.userMinus,
-                                size: 18, color: Colors.red),
-                            onPressed: () =>
-                                widget.onRemoveCollaborator(c.userId),
-                          ),
-                      ],
-                    ),
-                  ))
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: widget.collaborators.map((c) {
+                    return Chip(
+                      style: const ButtonStyle.outline(),
+                      leading: Avatar(
+                        size: 18,
+                        borderRadius: 9,
+                        initials: c.firstName.isNotEmpty
+                            ? c.firstName[0].toUpperCase()
+                            : c.email[0].toUpperCase(),
+                      ),
+                      trailing: widget.canManage
+                          ? ChipButton(
+                              onPressed: () =>
+                                  widget.onRemoveCollaborator(c.userId),
+                              child: const Icon(LucideIcons.x, size: 12),
+                            )
+                          : null,
+                      child: Text(
+                          c.displayName.isNotEmpty ? c.displayName : c.email),
+                    );
+                  }).toList(),
+                ),
+              )
             else if (widget.canManage)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -960,23 +942,26 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
               ],
             ),
             if (widget.classes.isNotEmpty)
-              ...widget.classes.map((c) => Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        const Icon(LucideIcons.users, size: 18),
-                        const SizedBox(width: 8),
-                        Text(c.name),
-                        const Spacer(),
-                        if (widget.canManage)
-                          IconButton.ghost(
-                            icon: const Icon(LucideIcons.userMinus,
-                                size: 18, color: Colors.red),
-                            onPressed: () => widget.onRemoveFromClass(c.id),
-                          ),
-                      ],
-                    ),
-                  ))
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: widget.classes.map((c) {
+                    return Chip(
+                      style: const ButtonStyle.outline(),
+                      leading: const Icon(LucideIcons.users, size: 14),
+                      trailing: widget.canManage
+                          ? ChipButton(
+                              onPressed: () => widget.onRemoveFromClass(c.id),
+                              child: const Icon(LucideIcons.x, size: 12),
+                            )
+                          : null,
+                      child: Text(c.name),
+                    );
+                  }).toList(),
+                ),
+              )
             else if (widget.canManage)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
