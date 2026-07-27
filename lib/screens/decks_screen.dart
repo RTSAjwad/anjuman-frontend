@@ -250,191 +250,93 @@ class _DeckTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final countWidth = _maxCountWidth(decks);
+    final columnWidths = <int, TableSize>{
+      0: const FlexTableSize(),
+    };
+    if (isTeacher) {
+      columnWidths[1] = const IntrinsicTableSize();
+    } else {
+      columnWidths[1] = const IntrinsicTableSize();
+      columnWidths[2] = const IntrinsicTableSize();
+      columnWidths[3] = const IntrinsicTableSize();
+    }
+
+    final headerCells = <TableCell>[
+      TableCell(child: _buildSortCell(DeckSortField.title, 'Deck')),
+    ];
+    if (isTeacher) {
+      headerCells
+          .add(TableCell(child: _buildSortCell(DeckSortField.cards, 'Cards')));
+    } else {
+      headerCells
+          .add(TableCell(child: _buildSortCell(DeckSortField.newCount, 'New')));
+      headerCells.add(
+          TableCell(child: _buildSortCell(DeckSortField.learning, 'Learning')));
+      headerCells
+          .add(TableCell(child: _buildSortCell(DeckSortField.due, 'Due')));
+    }
+
+    final rows = <TableRow>[
+      TableHeader(cells: headerCells),
+    ];
+
+    for (final deck in decks) {
+      final deckCells = <TableCell>[
+        TableCell(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => isTeacher ? onTapDetail(deck) : onStudy(deck),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: Text(deck.title, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+        ),
+      ];
+      if (isTeacher) {
+        deckCells.add(TableCell(
+          child: _buildCountCell(deck.totalCount ?? 0, colors.foreground),
+        ));
+      } else {
+        deckCells.add(TableCell(
+          child: _buildCountCell(deck.newCount ?? 0, const Color(0xFF3B82F6)),
+        ));
+        deckCells.add(TableCell(
+          child: _buildCountCell(
+            (deck.learningCount ?? 0) + (deck.relearningCount ?? 0),
+            const Color(0xFFF97316),
+          ),
+        ));
+        deckCells.add(TableCell(
+          child: _buildCountCell(deck.dueCount ?? 0, const Color(0xFF22C55E)),
+        ));
+      }
+      rows.add(TableRow(cells: deckCells));
+    }
 
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
-        child: Card(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                color: colors.muted,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _SortCell(
-                        active: sort.field == DeckSortField.title,
-                        ascending: sort.ascending,
-                        label: 'Deck',
-                        onTap: () {
-                          sort.toggle(DeckSortField.title);
-                          onSortChanged();
-                        },
-                      ),
-                    ),
-                    if (isTeacher)
-                      _SortCell(
-                        active: sort.field == DeckSortField.cards,
-                        ascending: sort.ascending,
-                        label: 'Cards',
-                        width: countWidth,
-                        onTap: () {
-                          sort.toggle(DeckSortField.cards);
-                          onSortChanged();
-                        },
-                      )
-                    else ...[
-                      _SortCell(
-                        active: sort.field == DeckSortField.newCount,
-                        ascending: sort.ascending,
-                        label: 'New',
-                        width: countWidth,
-                        onTap: () {
-                          sort.toggle(DeckSortField.newCount);
-                          onSortChanged();
-                        },
-                      ),
-                      _SortCell(
-                        active: sort.field == DeckSortField.learning,
-                        ascending: sort.ascending,
-                        label: 'Learning',
-                        width: countWidth,
-                        onTap: () {
-                          sort.toggle(DeckSortField.learning);
-                          onSortChanged();
-                        },
-                      ),
-                      _SortCell(
-                        active: sort.field == DeckSortField.due,
-                        ascending: sort.ascending,
-                        label: 'Due',
-                        width: countWidth,
-                        onTap: () {
-                          sort.toggle(DeckSortField.due);
-                          onSortChanged();
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              for (final deck in decks)
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => isTeacher ? onTapDetail(deck) : onStudy(deck),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            deck.title,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isTeacher)
-                          SizedBox(
-                            width: countWidth,
-                            child: _CountText(
-                              value: deck.totalCount ?? 0,
-                              color: colors.foreground,
-                            ),
-                          )
-                        else ...[
-                          SizedBox(
-                            width: countWidth,
-                            child: _CountText(
-                              value: deck.newCount ?? 0,
-                              color: const Color(0xFF3B82F6),
-                            ),
-                          ),
-                          SizedBox(
-                            width: countWidth,
-                            child: _CountText(
-                              value: (deck.learningCount ?? 0) +
-                                  (deck.relearningCount ?? 0),
-                              color: const Color(0xFFF97316),
-                            ),
-                          ),
-                          SizedBox(
-                            width: countWidth,
-                            child: _CountText(
-                              value: deck.dueCount ?? 0,
-                              color: const Color(0xFF22C55E),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+        child: OutlinedContainer(
+          child: Table(
+            columnWidths: columnWidths,
+            rows: rows,
           ),
         ),
       ),
     );
   }
 
-  double _maxCountWidth(List<DeckResponse> decks) {
-    final labels =
-        isTeacher ? <String>['Cards'] : <String>['New', 'Learning', 'Due'];
-    final allValues = <String>[
-      ...labels,
-      for (final d in decks)
-        if (isTeacher)
-          '${d.totalCount ?? 0}'
-        else ...[
-          '${d.newCount ?? 0}',
-          '${(d.learningCount ?? 0) + (d.relearningCount ?? 0)}',
-          '${d.dueCount ?? 0}',
-          '—',
-        ],
-    ];
-
-    double maxWidth = 0;
-    for (final text in allValues) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: text,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      if (tp.width > maxWidth) maxWidth = tp.width;
-    }
-    return maxWidth + 16;
-  }
-}
-
-class _SortCell extends StatelessWidget {
-  final bool active;
-  final bool ascending;
-  final String label;
-  final double? width;
-  final VoidCallback onTap;
-
-  const _SortCell({
-    required this.active,
-    required this.ascending,
-    required this.label,
-    this.width,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    final cell = GestureDetector(
+  Widget _buildSortCell(DeckSortField field, String label) {
+    final active = sort.field == field;
+    return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      onTap: () {
+        sort.toggle(field);
+        onSortChanged();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -442,16 +344,15 @@ class _SortCell extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: 12,
-                  color: active ? colors.primary : null,
+                  fontWeight: FontWeight.w600,
+                  color: active ? colors.primary : colors.mutedForeground,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (active)
               Icon(
-                ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                sort.ascending ? Icons.arrow_upward : Icons.arrow_downward,
                 size: 14,
                 color: colors.primary,
               ),
@@ -459,30 +360,19 @@ class _SortCell extends StatelessWidget {
         ),
       ),
     );
-    if (width != null) {
-      return SizedBox(width: width, child: cell);
-    }
-    return cell;
   }
-}
 
-class _CountText extends StatelessWidget {
-  final int value;
-  final Color color;
-
-  const _CountText({required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Text(
-      value > 0 ? '$value' : '—',
-      style: TextStyle(
-        color: value > 0 ? color : colors.mutedForeground,
-        fontWeight: value > 0 ? FontWeight.w600 : FontWeight.w400,
-        fontSize: 13,
+  Widget _buildCountCell(int value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      alignment: Alignment.center,
+      child: Text(
+        value > 0 ? '$value' : '—',
+        style: TextStyle(
+          color: value > 0 ? color : colors.mutedForeground,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      textAlign: TextAlign.center,
     );
   }
 }
