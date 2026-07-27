@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
 
@@ -13,16 +13,6 @@ class NoteTypesScreen extends StatefulWidget {
 }
 
 class _NoteTypesScreenState extends State<NoteTypesScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _fieldNamesController = TextEditingController();
-  final _templateNameController = TextEditingController();
-  final _frontPatternController = TextEditingController();
-  final _backPatternController = TextEditingController();
-  final _sortFieldController = TextEditingController();
-  bool _isSubmitting = false;
-  final List<_TemplateEntry> _templates = [];
-
   DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
 
   @override
@@ -30,6 +20,131 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     super.initState();
     _provider.loadNoteTypes();
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final noteTypes = _provider.noteTypes;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('Note Types'),
+          trailing: [
+            IconButton.ghost(
+              icon: const Icon(LucideIcons.plus, size: 20),
+              onPressed: () => _showCreateDialog(context),
+            ),
+            IconButton.ghost(
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
+              onPressed: () => _provider.loadNoteTypes(),
+            ),
+          ],
+        ),
+      ],
+      child: noteTypes.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.fileText,
+                      size: 64, color: colors.mutedForeground),
+                  const SizedBox(height: 16),
+                  const Text('No note types yet'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first note type to get started',
+                    style:
+                        TextStyle(color: colors.mutedForeground, fontSize: 14),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                OutlinedContainer(
+                  child: Column(
+                    children: noteTypes
+                        .map((t) => Container(
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                      color: colors.border, width: 0.5),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Icon(LucideIcons.fileText,
+                                      size: 20, color: colors.mutedForeground),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(t.name).semiBold(),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}',
+                                          style: TextStyle(
+                                              color: colors.mutedForeground,
+                                              fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  void _showCreateDialog(BuildContext context) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _CreateNoteTypeDialog(
+          provider: _provider,
+          onSuccess: () {
+            Navigator.of(ctx).pop();
+            setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateNoteTypeDialog extends StatefulWidget {
+  final DeckProvider provider;
+  final VoidCallback onSuccess;
+
+  const _CreateNoteTypeDialog({
+    required this.provider,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_CreateNoteTypeDialog> createState() => _CreateNoteTypeDialogState();
+}
+
+class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
+  final _nameController = TextEditingController();
+  final _fieldNamesController = TextEditingController();
+  final _templateNameController = TextEditingController();
+  final _frontPatternController = TextEditingController();
+  final _backPatternController = TextEditingController();
+  final _sortFieldController = TextEditingController();
+  bool _isSubmitting = false;
+  String? _error;
+  final List<_TemplateEntry> _templates = [];
 
   @override
   void dispose() {
@@ -64,27 +179,34 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name is required');
+      return;
+    }
+    final fieldNamesText = _fieldNamesController.text.trim();
+    if (fieldNamesText.isEmpty) {
+      setState(() => _error = 'Field names are required');
+      return;
+    }
     if (_templates.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add at least one template'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      setState(() => _error = 'Add at least one template');
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
 
-    final fieldNames = _fieldNamesController.text
+    final fieldNames = fieldNamesText
         .split(',')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
 
     final noteType = CreateNoteType(
-      name: _nameController.text.trim(),
+      name: name,
       fieldNames: fieldNames,
       sortField: _sortFieldController.text.trim().isEmpty
           ? null
@@ -98,201 +220,171 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
           .toList(),
     );
 
-    final ok = await _provider.createNoteType(noteType);
+    final ok = await widget.provider.createNoteType(noteType);
     if (mounted) {
       if (ok) {
-        _nameController.clear();
-        _fieldNamesController.clear();
-        _templateNameController.clear();
-        _frontPatternController.clear();
-        _backPatternController.clear();
-        _sortFieldController.clear();
-        setState(() {
-          _templates.clear();
-          _isSubmitting = false;
-        });
+        widget.onSuccess();
       } else {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_provider.error ?? 'Failed to create note type'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        setState(() {
+          _isSubmitting = false;
+          _error = widget.provider.error ?? 'Failed to create note type';
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final noteTypes = _provider.noteTypes;
+    final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Note Types'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (noteTypes.isNotEmpty) ...[
-            Text('Existing types',
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ...noteTypes.map((t) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
+    return AlertDialog(
+      title: const Text('Create Note Type'),
+      content: SizedBox(
+        width: 500,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Name', style: TextStyle(fontSize: 13)).semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _nameController,
+                placeholder: const Text('e.g. Basic, Cloze'),
+                initialValue: '',
+              ),
+              const SizedBox(height: 12),
+              const Text('Field names', style: TextStyle(fontSize: 13))
+                  .semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _fieldNamesController,
+                placeholder: const Text('e.g. Front, Back'),
+                initialValue: '',
+              ),
+              const SizedBox(height: 12),
+              const Text('Sort field (optional)',
+                      style: TextStyle(fontSize: 13))
+                  .semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _sortFieldController,
+                placeholder: const Text('e.g. Front — empty uses first field'),
+                initialValue: '',
+              ),
+              const SizedBox(height: 16),
+              const Text('Templates').semiBold(),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.description_outlined,
-                            size: 20,
-                            color: theme.colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(t.name, style: theme.textTheme.titleMedium),
-                              const SizedBox(height: 4),
-                              Text(
-                                  'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant)),
-                            ],
-                          ),
+                        const Text('Template name',
+                                style: TextStyle(fontSize: 13))
+                            .semiBold(),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _templateNameController,
+                          placeholder: const Text('e.g. Forward'),
+                          initialValue: '',
                         ),
                       ],
                     ),
                   ),
-                )),
-            const Divider(height: 24),
-          ],
-          Text('Create new type',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'e.g. Basic, Cloze',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _fieldNamesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Field names',
-                    hintText: 'e.g. Front, Back',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _sortFieldController,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort field (optional)',
-                    hintText: 'e.g. Front — empty uses first field',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text('Templates',
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _templateNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Template name',
-                          hintText: 'e.g. Forward',
-                          border: OutlineInputBorder(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Front pattern',
+                                style: TextStyle(fontSize: 13))
+                            .semiBold(),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _frontPatternController,
+                          placeholder: const Text('e.g. {{Front}}'),
+                          initialValue: '',
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _frontPatternController,
-                        decoration: const InputDecoration(
-                          labelText: 'Front pattern',
-                          hintText: 'e.g. {{Front}}',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _backPatternController,
-                  decoration: const InputDecoration(
-                    labelText: 'Back pattern',
-                    hintText: 'e.g. {{Back}}',
-                    border: OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _addTemplate,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add template'),
-                ),
-                if (_templates.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ..._templates.asMap().entries.map((e) => Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${e.value.name}: ${e.value.frontPattern} / ${e.value.backPattern}',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close, size: 16),
-                                onPressed: () => _removeTemplate(e.key),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )),
                 ],
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.check),
-                  label: const Text('Create note type'),
+              ),
+              const SizedBox(height: 8),
+              const Text('Back pattern', style: TextStyle(fontSize: 13))
+                  .semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _backPatternController,
+                placeholder: const Text('e.g. {{Back}}'),
+                initialValue: '',
+              ),
+              const SizedBox(height: 8),
+              Button.secondary(
+                leading: const Icon(LucideIcons.plus, size: 16),
+                onPressed: _addTemplate,
+                child: const Text('Add template'),
+              ),
+              if (_templates.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ..._templates.asMap().entries.map((e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: OutlinedContainer(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${e.value.name}: ${e.value.frontPattern} / ${e.value.backPattern}',
+                                style: TextStyle(
+                                    color: colors.mutedForeground,
+                                    fontSize: 13),
+                              ),
+                            ),
+                            IconButton.ghost(
+                              icon: const Icon(LucideIcons.x, size: 16),
+                              onPressed: () => _removeTemplate(e.key),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: colors.destructive,
+                    fontSize: 13,
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
+      actions: [
+        Button.ghost(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        Button.primary(
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Create'),
+        ),
+      ],
     );
   }
 }
