@@ -108,18 +108,17 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                     children: [
                       const Text('Members').semiBold(),
                       const SizedBox(width: 16),
-                      _InfoChip(
-                        icon: LucideIcons.graduationCap,
-                        label:
-                            '$teacherCount teacher${teacherCount == 1 ? '' : 's'}',
-                        color: const Color(0xFF2563EB),
+                      OutlineBadge(
+                        leading:
+                            const Icon(LucideIcons.graduationCap, size: 14),
+                        child: Text(
+                            '$teacherCount teacher${teacherCount == 1 ? '' : 's'}'),
                       ),
                       const SizedBox(width: 12),
-                      _InfoChip(
-                        icon: LucideIcons.users,
-                        label:
-                            '$studentCount student${studentCount == 1 ? '' : 's'}',
-                        color: const Color(0xFF16A34A),
+                      OutlineBadge(
+                        leading: const Icon(LucideIcons.users, size: 14),
+                        child: Text(
+                            '$studentCount student${studentCount == 1 ? '' : 's'}'),
                       ),
                       const Spacer(),
                       if (isTeacher)
@@ -363,33 +362,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   String _formatJoined(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(color: color, fontSize: 14),
-        ),
-      ],
-    );
   }
 }
 
