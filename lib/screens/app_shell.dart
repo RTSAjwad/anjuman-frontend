@@ -184,6 +184,12 @@ class _MeScreen extends StatelessWidget {
       headers: [
         AppBar(
           title: const Text('Me'),
+          trailing: [
+            IconButton.ghost(
+              icon: const Icon(LucideIcons.logOut, size: 20, color: Colors.red),
+              onPressed: () => auth.logout(),
+            ),
+          ],
         ),
       ],
       child: ListView(
@@ -213,20 +219,6 @@ class _MeScreen extends StatelessWidget {
                   ),
                 ],
               ],
-            ),
-          ),
-          const Divider(),
-          GestureDetector(
-            onTap: () => auth.logout(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.logOut, size: 20, color: Colors.red),
-                  const SizedBox(width: 16),
-                  const Text('Sign out', style: TextStyle(color: Colors.red)),
-                ],
-              ),
             ),
           ),
         ],
