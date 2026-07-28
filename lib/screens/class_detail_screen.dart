@@ -13,9 +13,16 @@ import '../widgets/shadcn_search_dropdown.dart';
 class ClassDetailScreen extends StatefulWidget {
   final ClassResponse classResponse;
   final ClassProvider provider;
+  final bool embedded;
+  final VoidCallback? onClose;
 
-  const ClassDetailScreen(
-      {super.key, required this.classResponse, required this.provider});
+  const ClassDetailScreen({
+    super.key,
+    required this.classResponse,
+    required this.provider,
+    this.embedded = false,
+    this.onClose,
+  });
 
   @override
   State<ClassDetailScreen> createState() => _ClassDetailScreenState();
@@ -43,10 +50,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       headers: [
         AppBar(
           leading: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.arrowLeft, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (!widget.embedded)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
           ],
           title: Text(widget.classResponse.name),
           trailing: [

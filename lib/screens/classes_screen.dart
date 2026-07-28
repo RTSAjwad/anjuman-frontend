@@ -5,7 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
-import '../widgets/shadcn_page_route.dart';
+import '../models/class.dart';
 
 class ClassesScreen extends StatefulWidget {
   const ClassesScreen({super.key});
@@ -15,6 +15,8 @@ class ClassesScreen extends StatefulWidget {
 }
 
 class _ClassesScreenState extends State<ClassesScreen> {
+  ClassResponse? _selectedClass;
+
   @override
   void initState() {
     super.initState();
@@ -30,22 +32,6 @@ class _ClassesScreenState extends State<ClassesScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('Classes'),
-          trailing: [
-            if (isTeacher)
-              IconButton.outline(
-                icon: const Icon(LucideIcons.plus, size: 20),
-                onPressed: () => _showCreateDialog(context),
-              ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.refreshCw, size: 20),
-              onPressed: () => context.read<ClassProvider>().loadClasses(),
-            ),
-          ],
-        ),
-      ],
       child: Consumer<ClassProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.classes.isEmpty) {
@@ -95,80 +81,141 @@ class _ClassesScreenState extends State<ClassesScreen> {
             );
           }
 
-          return ListView(
-            padding: const EdgeInsets.all(8),
+          return ResizablePanel.horizontal(
+            draggerBuilder: (context) {
+              return const HorizontalResizableDragger();
+            },
             children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 700),
-                  child: OutlinedContainer(
-                    child: Table(
-                      rows: [
-                        for (final c in provider.classes)
-                          TableRow(cells: [
-                            TableCell(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    ShadcnPageRoute(
-                                      builder: (_) => ClassDetailScreen(
-                                        classResponse: c,
-                                        provider: provider,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Text(c.name).semiBold(),
-                                                if (c.archived) ...[
-                                                  const SizedBox(width: 8),
-                                                  OutlineBadge(
-                                                    child:
-                                                        const Text('Archived'),
+              ResizablePane(
+                initialSize: 300,
+                minSize: 200,
+                child: Column(
+                  children: [
+                    AppBar(
+                      title: const Text('Classes'),
+                      trailing: [
+                        if (isTeacher)
+                          IconButton.outline(
+                            icon: const Icon(LucideIcons.plus, size: 20),
+                            onPressed: () => _showCreateDialog(context),
+                          ),
+                        IconButton.outline(
+                          icon: const Icon(LucideIcons.refreshCw, size: 20),
+                          onPressed: () =>
+                              context.read<ClassProvider>().loadClasses(),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.all(8),
+                        children: [
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 700),
+                              child: OutlinedContainer(
+                                child: Table(
+                                  rows: [
+                                    for (final c in provider.classes)
+                                      TableRow(cells: [
+                                        TableCell(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () {
+                                              setState(
+                                                  () => _selectedClass = c);
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(12),
+                                              color: _selectedClass?.id == c.id
+                                                  ? colors.primary
+                                                      .scaleAlpha(0.05)
+                                                  : null,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            Text(c.name)
+                                                                .semiBold(),
+                                                            if (c.archived) ...[
+                                                              const SizedBox(
+                                                                  width: 8),
+                                                              OutlineBadge(
+                                                                child: const Text(
+                                                                    'Archived'),
+                                                              ),
+                                                            ],
+                                                          ],
+                                                        ),
+                                                        if (c.description !=
+                                                                null &&
+                                                            c.description!
+                                                                .isNotEmpty) ...[
+                                                          const SizedBox(
+                                                              height: 4),
+                                                          Text(
+                                                            c.description!,
+                                                            style: TextStyle(
+                                                                color: colors
+                                                                    .mutedForeground),
+                                                            maxLines: 2,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
                                                   ),
+                                                  if (_selectedClass?.id ==
+                                                      c.id)
+                                                    const Padding(
+                                                      padding: EdgeInsets.only(
+                                                          left: 8),
+                                                      child: Icon(LucideIcons
+                                                          .chevronRight),
+                                                    ),
                                                 ],
-                                              ],
-                                            ),
-                                            if (c.description != null &&
-                                                c.description!.isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                c.description!,
-                                                style: TextStyle(
-                                                    color:
-                                                        colors.mutedForeground),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                            ],
-                                          ],
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      Icon(LucideIcons.chevronRight,
-                                          size: 20,
-                                          color: colors.mutedForeground),
-                                    ],
-                                  ),
+                                      ]),
+                                  ],
                                 ),
                               ),
                             ),
-                          ]),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+              ),
+              ResizablePane.flex(
+                child: _selectedClass != null
+                    ? KeyedSubtree(
+                        key: ValueKey(_selectedClass!.id),
+                        child: ClassDetailScreen(
+                          classResponse: _selectedClass!,
+                          provider: provider,
+                          embedded: true,
+                          onClose: () {
+                            setState(() => _selectedClass = null);
+                          },
+                        ),
+                      )
+                    : const Center(
+                        child: Text('Select a class to view details'),
+                      ),
               ),
             ],
           );
