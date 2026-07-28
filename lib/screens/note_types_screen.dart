@@ -107,6 +107,16 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
                                     ),
                                   ),
                                   Tooltip(
+                                    tooltip: (context) =>
+                                        const Text('Edit note type'),
+                                    child: IconButton.outline(
+                                      icon: const Icon(LucideIcons.pencil,
+                                          size: 18),
+                                      onPressed: () =>
+                                          _showEditDialog(context, t),
+                                    ),
+                                  ),
+                                  Tooltip(
                                     tooltip: (context) => Text(t.hasNotes
                                         ? 'Cannot delete: ${t.noteCount} note${t.noteCount == 1 ? '' : 's'} use this type'
                                         : 'Delete note type'),
@@ -139,6 +149,22 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       DialogConfiguration(
         builder: (ctx) => _CreateNoteTypeDialog(
           provider: _provider,
+          onSuccess: () {
+            Navigator.of(ctx).pop();
+            setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, NoteType noteType) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _CreateNoteTypeDialog(
+          provider: _provider,
+          existingNoteType: noteType,
           onSuccess: () {
             Navigator.of(ctx).pop();
             setState(() {});
@@ -182,10 +208,12 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
 
 class _CreateNoteTypeDialog extends StatefulWidget {
   final DeckProvider provider;
+  final NoteType? existingNoteType;
   final VoidCallback onSuccess;
 
   const _CreateNoteTypeDialog({
     required this.provider,
+    this.existingNoteType,
     required this.onSuccess,
   });
 
@@ -204,6 +232,24 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
   String? _sortField;
   final List<String> _fieldNames = [];
   final List<_TemplateEntry> _templates = [];
+
+  bool get _isEditing => widget.existingNoteType != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingNoteType;
+    if (existing != null) {
+      _nameController.text = existing.name;
+      _fieldNames.addAll(existing.fieldNames);
+      _sortField = existing.sortField.isNotEmpty ? existing.sortField : null;
+      _templates.addAll(existing.templates.map((t) => _TemplateEntry(
+            name: t.name,
+            frontPattern: t.frontPattern,
+            backPattern: t.backPattern,
+          )));
+    }
+  }
 
   @override
   void dispose() {
@@ -282,14 +328,18 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
           .toList(),
     );
 
-    final ok = await widget.provider.createNoteType(noteType);
+    final ok = _isEditing
+        ? await widget.provider
+            .updateNoteType(widget.existingNoteType!.id, noteType)
+        : await widget.provider.createNoteType(noteType);
     if (mounted) {
       if (ok) {
         widget.onSuccess();
       } else {
         setState(() {
           _isSubmitting = false;
-          _error = widget.provider.error ?? 'Failed to create note type';
+          _error = widget.provider.error ??
+              'Failed to ${_isEditing ? 'update' : 'create'} note type';
         });
       }
     }
@@ -300,7 +350,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
     final colors = Theme.of(context).colorScheme;
 
     return AlertDialog(
-      title: const Text('Create Note Type'),
+      title: Text(_isEditing ? 'Edit Note Type' : 'Create Note Type'),
       content: SizedBox(
         width: 500,
         child: ConstrainedBox(
@@ -315,7 +365,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
                 TextField(
                   controller: _nameController,
                   placeholder: const Text('e.g. Basic, Cloze'),
-                  initialValue: '',
+                  initialValue: _nameController.text,
                 ),
                 const SizedBox(height: 12),
                 const Text('Field names', style: TextStyle(fontSize: 13))
@@ -466,7 +516,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Create'),
+              : Text(_isEditing ? 'Save' : 'Create'),
         ),
       ],
     );
