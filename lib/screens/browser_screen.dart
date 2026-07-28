@@ -596,7 +596,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+      padding: EdgeInsets.zero,
       child: ComponentTheme(
         data: const FocusOutlineTheme(align: 0),
         child: TextField(
