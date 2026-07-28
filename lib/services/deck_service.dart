@@ -1,5 +1,6 @@
 import '../config/api_config.dart';
 import '../models/class_info.dart';
+import '../models/common.dart';
 import '../models/deck.dart';
 import 'api_client.dart';
 
@@ -35,16 +36,27 @@ class DeckService {
   }
 
   Future<DeckResponse> updateDeck(int id,
-      {String? title, String? description}) async {
-    final body = UpdateDeck(title: title, description: description);
+      {String? title, String? description, int? parentId}) async {
+    final body =
+        UpdateDeck(title: title, description: description, parentId: parentId);
     final json =
-        await _client.patch(ApiConfig.deckUpdate(id), body: body.toJson());
+        await _client.patch(ApiConfig.deckRename(id), body: body.toJson());
     return DeckResponse.fromJson(json);
   }
 
   Future<DeckResponse> duplicateDeck(int id) async {
     final json = await _client.post(ApiConfig.deckDuplicate(id));
     return DeckResponse.fromJson(json);
+  }
+
+  Future<DeckResponse> moveDeck(int id, int? parentId) async {
+    final json = await _client
+        .patch(ApiConfig.deckRename(id), body: {'parent_id': parentId});
+    try {
+      return DeckResponse.fromJson(json);
+    } catch (e) {
+      throw ApiException(500, 'Failed to parse deck response: $e');
+    }
   }
 
   Future<dynamic> shareDeck(int deckId, int userId) async {

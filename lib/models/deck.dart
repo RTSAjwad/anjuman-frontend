@@ -4,12 +4,14 @@ import 'common.dart';
 class CreateDeck {
   final String title;
   final String? description;
+  final int? parentId;
 
-  CreateDeck({required this.title, this.description});
+  CreateDeck({required this.title, this.description, this.parentId});
 
   Map<String, dynamic> toJson() => {
         'title': title,
         if (description != null) 'description': description,
+        if (parentId != null) 'parent_id': parentId,
       };
 }
 
@@ -24,12 +26,14 @@ class RenameDeck {
 class UpdateDeck {
   final String? title;
   final String? description;
+  final int? parentId;
 
-  UpdateDeck({this.title, this.description});
+  UpdateDeck({this.title, this.description, this.parentId});
 
   Map<String, dynamic> toJson() => {
         if (title != null) 'title': title,
         if (description != null) 'description': description,
+        if (parentId != null) 'parent_id': parentId,
       };
 }
 
@@ -57,6 +61,7 @@ class DeckResponse {
   final int? relearningCount;
   final int? dueCount;
   final int? totalCount;
+  final int? parentId;
 
   bool get hasCards => totalCount != null && totalCount! > 0;
 
@@ -81,6 +86,7 @@ class DeckResponse {
     this.relearningCount,
     this.dueCount,
     this.totalCount,
+    this.parentId,
   });
 
   factory DeckResponse.fromJson(Map<String, dynamic> json) => DeckResponse(
@@ -99,6 +105,7 @@ class DeckResponse {
         relearningCount: json['relearning_count'],
         dueCount: json['due_count'],
         totalCount: json['total_count'],
+        parentId: json['parent_id'],
       );
 }
 

@@ -37,10 +37,11 @@ class DeckProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> createDeck(String title, String? description) async {
+  Future<bool> createDeck(String title, String? description,
+      {int? parentId}) async {
     try {
-      await _deckService
-          .createDeck(CreateDeck(title: title, description: description));
+      await _deckService.createDeck(CreateDeck(
+          title: title, description: description, parentId: parentId));
       await loadDecks();
       return true;
     } on Exception catch (e) {
@@ -91,6 +92,24 @@ class DeckProvider extends ChangeNotifier {
   Future<bool> duplicateDeck(int id) async {
     try {
       await _deckService.duplicateDeck(id);
+      await loadDecks();
+      return true;
+    } on Exception catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> moveDeck(int deckId, {int? parentId}) async {
+    try {
+      _error = null;
+      final deck = await _deckService.moveDeck(deckId, parentId);
+      // Update the moved deck in-place before full reload
+      final idx = _decks.indexWhere((d) => d.id == deckId);
+      if (idx >= 0) {
+        _decks[idx] = deck;
+      }
       await loadDecks();
       return true;
     } on Exception catch (e) {
