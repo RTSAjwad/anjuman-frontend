@@ -48,8 +48,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _columns = ['Sort Field', 'Deck'];
       _sortFields = ['question', 'deck'];
     } else {
-      _columns = ['Sort Field', 'Deck', 'State', 'Due'];
-      _sortFields = ['question', 'deck', '', 'due_at'];
+      _columns = ['Sort Field', 'State', 'Due', 'Deck'];
+      _sortFields = ['question', '', 'due_at', 'deck'];
     }
   }
 
@@ -231,9 +231,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   } else {
                     rows.add(TableRow(cells: [
                       _buildCell(frontText),
-                      _buildCell(card.deckTitle),
                       _buildStateCell(card),
                       _buildDueCell(card),
+                      _buildCell(card.deckTitle),
                     ]));
                   }
                 }
@@ -242,11 +242,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
                   children: [
-                    OutlinedContainer(
-                      child: ResizableTable(
-                        controller: _tableController,
-                        rows: rows,
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints.maxWidth,
+                            ),
+                            child: OutlinedContainer(
+                              child: ResizableTable(
+                                controller: _tableController,
+                                rows: rows,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     if (provider.isLoading)
                       const Padding(
