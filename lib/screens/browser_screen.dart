@@ -173,9 +173,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final states = <String>[];
     final noteTypeIds = <int>[];
     _walkSelected(nodes, deckIds, states, noteTypeIds);
-    context.read<BrowserProvider>().setDeckIds(deckIds);
-    context.read<BrowserProvider>().setStates(states);
-    context.read<BrowserProvider>().setNoteTypeIds(noteTypeIds);
+    context.read<BrowserProvider>().setFilters(
+          deckIds: deckIds,
+          states: states,
+          noteTypeIds: noteTypeIds,
+        );
   }
 
   void _walkSelected(

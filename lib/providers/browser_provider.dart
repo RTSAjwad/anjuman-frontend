@@ -130,6 +130,18 @@ class BrowserProvider extends ChangeNotifier {
     loadCards();
   }
 
+  void setFilters({
+    List<int>? deckIds,
+    List<String>? states,
+    List<int>? noteTypeIds,
+  }) {
+    if (deckIds != null) _deckIds = List.of(deckIds);
+    if (states != null) _states = List.of(states);
+    if (noteTypeIds != null) _noteTypeIds = List.of(noteTypeIds);
+    _page = 1;
+    loadCards();
+  }
+
   Future<void> nextPage() async {
     if (hasNextPage) {
       _page++;
