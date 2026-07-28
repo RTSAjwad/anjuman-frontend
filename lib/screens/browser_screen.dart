@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
 import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
+import '../models/deck.dart';
 
 class BrowserScreen extends StatefulWidget {
   const BrowserScreen({super.key});
@@ -29,13 +30,42 @@ class _BrowserScreenState extends State<BrowserScreen> {
   String _activeSort = 'created_at';
   bool _sortAsc = false;
 
+  List<TreeNode<DeckResponse>> _treeNodes = [];
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    final deckProvider = context.read<DeckProvider>();
+    deckProvider.addListener(_onDecksChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DeckProvider>().loadDecks();
+      deckProvider.loadDecks();
       context.read<BrowserProvider>().loadCards();
+    });
+  }
+
+  void _onDecksChanged() {
+    final decks = context.read<DeckProvider>().decks;
+    if (decks.isEmpty) return;
+    setState(() {
+      _treeNodes = [
+        TreeItemNode<DeckResponse>(
+          data: DeckResponse(
+            id: -1,
+            schoolId: 0,
+            title: 'Decks',
+            createdBy: 0,
+            createdAt: DateTime.now(),
+          ),
+          expanded: true,
+          children: decks
+              .map((d) => TreeItemNode<DeckResponse>(
+                    data: d,
+                    children: [],
+                  ))
+              .toList(),
+        ),
+      ];
     });
   }
 
@@ -125,159 +155,229 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ],
         ),
       ],
-      child: Column(
+      child: Row(
         children: [
-          _FilterBar(
-            searchController: _searchController,
-            onSearch: _onSearch,
-          ),
-          Expanded(
-            child: Consumer<BrowserProvider>(
-              builder: (context, provider, _) {
-                if (provider.isLoading && provider.cards.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.error != null && provider.cards.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Failed to load cards'),
-                        const SizedBox(height: 8),
-                        Text(provider.error!,
-                            style: TextStyle(
-                                color: colors.mutedForeground, fontSize: 13)),
-                        const SizedBox(height: 16),
-                        Button.secondary(
-                          onPressed: () => provider.loadCards(),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (provider.cards.isEmpty) {
-                  return const Center(child: Text('No cards found'));
-                }
-
-                final headerCells = <TableCell>[];
-                for (var i = 0; i < _columns.length; i++) {
-                  final active = _activeSort == _sortFields[i];
-                  headerCells.add(TableCell(
-                    theme: TableCellTheme(
-                      border: WidgetStatePropertyAll(
-                        Border.all(
-                          color: colors.border,
-                          strokeAlign: BorderSide.strokeAlignCenter,
-                        ),
-                      ),
-                    ),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _onSort(i),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+          SizedBox(
+            width: 220,
+            child: Column(
+              children: [
+                Expanded(
+                  child: _treeNodes.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           children: [
-                            Flexible(
-                              child: Text(
-                                _columns[i],
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: active
-                                      ? colors.primary
-                                      : colors.mutedForeground,
+                            OutlinedContainer(
+                              child: Tree<DeckResponse>(
+                                shrinkWrap: true,
+                                nodes: _treeNodes,
+                                branchLine: BranchLine.line,
+                                onSelectionChanged:
+                                    Tree.defaultSelectionHandler(
+                                  _treeNodes,
+                                  (value) {
+                                    setState(() => _treeNodes = value);
+                                  },
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                                builder: (context, node) {
+                                  final deck = node.data;
+                                  final isRoot = deck.id == -1;
+                                  return TreeItem(
+                                    onExpand: isRoot
+                                        ? Tree.defaultItemExpandHandler(
+                                            _treeNodes,
+                                            node,
+                                            (value) {
+                                              setState(
+                                                  () => _treeNodes = value);
+                                            },
+                                          )
+                                        : null,
+                                    onPressed: isRoot
+                                        ? () {
+                                            context
+                                                .read<BrowserProvider>()
+                                                .setDeckId(null);
+                                          }
+                                        : () {
+                                            context
+                                                .read<BrowserProvider>()
+                                                .setDeckId(deck.id);
+                                          },
+                                    child: Text(
+                                      deck.title,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                            if (active)
-                              Icon(
-                                _sortAsc
-                                    ? LucideIcons.arrowUp
-                                    : LucideIcons.arrowDown,
-                                size: 14,
-                                color: colors.primary,
-                              ),
                           ],
                         ),
-                      ),
-                    ),
-                  ));
-                }
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                _FilterBar(
+                  searchController: _searchController,
+                  onSearch: _onSearch,
+                ),
+                Expanded(
+                  child: Consumer<BrowserProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.isLoading && provider.cards.isEmpty) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                final rows = <TableRow>[
-                  TableHeader(cells: headerCells),
-                ];
+                      if (provider.error != null && provider.cards.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Failed to load cards'),
+                              const SizedBox(height: 8),
+                              Text(provider.error!,
+                                  style: TextStyle(
+                                      color: colors.mutedForeground,
+                                      fontSize: 13)),
+                              const SizedBox(height: 16),
+                              Button.secondary(
+                                onPressed: () => provider.loadCards(),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-                for (final card in provider.cards) {
-                  final frontText = card.front
-                      .replaceAll(RegExp(r'<[^>]*>'), ' ')
-                      .replaceAll(RegExp(r'\s+'), ' ')
-                      .trim();
+                      if (provider.cards.isEmpty) {
+                        return const Center(child: Text('No cards found'));
+                      }
 
-                  final role = context.read<AuthProvider>().role;
-                  final isTeacher = role == 'teacher' || role == 'admin';
-
-                  if (isTeacher) {
-                    rows.add(TableRow(cells: [
-                      _buildCell(frontText),
-                      _buildCell(card.deckTitle),
-                    ]));
-                  } else {
-                    rows.add(TableRow(cells: [
-                      _buildCell(frontText),
-                      _buildStateCell(card),
-                      _buildDueCell(card),
-                      _buildCell(card.deckTitle),
-                    ]));
-                  }
-                }
-
-                return ListView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(8),
-                  children: [
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        return SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: constraints.maxWidth,
-                            ),
-                            child: OutlinedContainer(
-                              child: ResizableTable(
-                                controller: _tableController,
-                                rows: rows,
+                      final headerCells = <TableCell>[];
+                      for (var i = 0; i < _columns.length; i++) {
+                        final active = _activeSort == _sortFields[i];
+                        headerCells.add(TableCell(
+                          theme: TableCellTheme(
+                            border: WidgetStatePropertyAll(
+                              Border.all(
+                                color: colors.border,
+                                strokeAlign: BorderSide.strokeAlignCenter,
                               ),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                    if (provider.isLoading)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                    if (!provider.hasNextPage && provider.cards.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          '${provider.total} cards total',
-                          style: TextStyle(
-                              color: colors.mutedForeground, fontSize: 13),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                  ],
-                );
-              },
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _onSort(i),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _columns[i],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: active
+                                            ? colors.primary
+                                            : colors.mutedForeground,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (active)
+                                    Icon(
+                                      _sortAsc
+                                          ? LucideIcons.arrowUp
+                                          : LucideIcons.arrowDown,
+                                      size: 14,
+                                      color: colors.primary,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ));
+                      }
+
+                      final rows = <TableRow>[
+                        TableHeader(cells: headerCells),
+                      ];
+
+                      for (final card in provider.cards) {
+                        final frontText = card.front
+                            .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                            .replaceAll(RegExp(r'\s+'), ' ')
+                            .trim();
+
+                        final role = context.read<AuthProvider>().role;
+                        final isTeacher = role == 'teacher' || role == 'admin';
+
+                        if (isTeacher) {
+                          rows.add(TableRow(cells: [
+                            _buildCell(frontText),
+                            _buildCell(card.deckTitle),
+                          ]));
+                        } else {
+                          rows.add(TableRow(cells: [
+                            _buildCell(frontText),
+                            _buildStateCell(card),
+                            _buildDueCell(card),
+                            _buildCell(card.deckTitle),
+                          ]));
+                        }
+                      }
+
+                      return ListView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(8),
+                        children: [
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: constraints.maxWidth,
+                                  ),
+                                  child: OutlinedContainer(
+                                    child: ResizableTable(
+                                      controller: _tableController,
+                                      rows: rows,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          if (provider.isLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          if (!provider.hasNextPage &&
+                              provider.cards.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                '${provider.total} cards total',
+                                style: TextStyle(
+                                    color: colors.mutedForeground,
+                                    fontSize: 13),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -377,53 +477,20 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final decks = context.watch<DeckProvider>().decks;
-    final provider = context.read<BrowserProvider>();
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: searchController,
-              placeholder: const Text('Search cards...'),
-              features: [
-                const InputFeature.leading(
-                  Padding(
-                    padding: EdgeInsets.only(right: 6),
-                    child: Icon(LucideIcons.search, size: 18),
-                  ),
-                ),
-              ],
-              onChanged: onSearch,
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 200,
-            child: Select<int?>(
-              value: provider.deckId,
-              placeholder: const Text('All decks'),
-              onChanged: (v) => context.read<BrowserProvider>().setDeckId(v),
-              popup: SelectPopup(
-                items: SelectItemList(children: [
-                  const SelectItemButton(value: null, child: Text('All decks')),
-                  for (final d in decks)
-                    SelectItemButton(
-                      value: d.id,
-                      child: Text(d.title),
-                    ),
-                ]),
-              ),
-              itemBuilder: (context, value) {
-                if (value == null) return const Text('All decks');
-                final d = decks.where((d) => d.id == value).firstOrNull;
-                return Text(d?.title ?? '');
-              },
+      child: TextField(
+        controller: searchController,
+        placeholder: const Text('Search cards...'),
+        features: [
+          const InputFeature.leading(
+            Padding(
+              padding: EdgeInsets.only(right: 6),
+              child: Icon(LucideIcons.search, size: 18),
             ),
           ),
         ],
+        onChanged: onSearch,
       ),
     );
   }
