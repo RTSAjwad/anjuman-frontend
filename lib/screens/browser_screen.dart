@@ -293,57 +293,55 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ],
         ),
       ],
-      child: Row(
+      child: ResizablePanel.horizontal(
+        draggerBuilder: (context) {
+          return const HorizontalResizableDragger();
+        },
         children: [
-          SizedBox(
-            width: 220,
-            child: Column(
-              children: [
-                Expanded(
-                  child: _filterNodes.length <= 1
-                      ? const Center(child: CircularProgressIndicator())
-                      : OutlinedContainer(
-                          child: Tree<FilterNode>(
-                            shrinkWrap: true,
-                            allowMultiSelect: true,
-                            nodes: _filterNodes,
-                            branchLine: BranchLine.line,
-                            onSelectionChanged: Tree.defaultSelectionHandler(
-                              _filterNodes,
-                              (value) {
-                                setState(() {
-                                  _filterNodes = value;
-                                  _syncAllFilters(value);
-                                });
-                              },
-                            ),
-                            builder: (context, node) {
-                              final data = node.data;
-                              final isSection = _isSectionRoot(data);
-                              return TreeItem(
-                                onPressed: isSection ? null : () {},
-                                onExpand: isSection
-                                    ? Tree.defaultItemExpandHandler(
-                                        _filterNodes,
-                                        node,
-                                        (value) {
-                                          setState(() => _filterNodes = value);
-                                        },
-                                      )
-                                    : null,
-                                child: Text(
-                                  _sectionLabel(data),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            },
+          ResizablePane(
+            initialSize: 220,
+            minSize: 160,
+            child: _filterNodes.length <= 1
+                ? const Center(child: CircularProgressIndicator())
+                : OutlinedContainer(
+                    child: Tree<FilterNode>(
+                      shrinkWrap: true,
+                      allowMultiSelect: true,
+                      nodes: _filterNodes,
+                      branchLine: BranchLine.line,
+                      onSelectionChanged: Tree.defaultSelectionHandler(
+                        _filterNodes,
+                        (value) {
+                          setState(() {
+                            _filterNodes = value;
+                            _syncAllFilters(value);
+                          });
+                        },
+                      ),
+                      builder: (context, node) {
+                        final data = node.data;
+                        final isSection = _isSectionRoot(data);
+                        return TreeItem(
+                          onPressed: isSection ? null : () {},
+                          onExpand: isSection
+                              ? Tree.defaultItemExpandHandler(
+                                  _filterNodes,
+                                  node,
+                                  (value) {
+                                    setState(() => _filterNodes = value);
+                                  },
+                                )
+                              : null,
+                          child: Text(
+                            _sectionLabel(data),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                ),
-              ],
-            ),
+                        );
+                      },
+                    ),
+                  ),
           ),
-          Expanded(
+          ResizablePane.flex(
             child: Column(
               children: [
                 _FilterBar(
