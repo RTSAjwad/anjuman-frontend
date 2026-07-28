@@ -50,28 +50,6 @@ class _DecksScreenState extends State<DecksScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('Decks'),
-          trailing: [
-            if (isTeacher) ...[
-              IconButton.outline(
-                icon: const Icon(LucideIcons.plus, size: 20),
-                onPressed: () => _showCreateDialog(context),
-              ),
-              IconButton.outline(
-                icon: const Icon(LucideIcons.move, size: 20),
-                onPressed: () => _showMoveDialog(context),
-              ),
-            ],
-            IconButton.outline(
-              icon: const Icon(LucideIcons.refreshCw, size: 20),
-              onPressed: () => context.read<DeckProvider>().loadDecks(),
-            ),
-          ],
-        ),
-        const Divider(),
-      ],
       child: Consumer<DeckProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.decks.isEmpty) {
@@ -94,37 +72,63 @@ class _DecksScreenState extends State<DecksScreen> {
               ResizablePane(
                 initialSize: 300,
                 minSize: 200,
-                child: _DeckTree(
-                  decks: provider.decks,
-                  isTeacher: isTeacher,
-                  onStudy: (deck) async {
-                    final studyProvider = context.read<StudyProvider>();
-                    await Navigator.of(context).push(
-                      ShadcnPageRoute(
-                        builder: (_) => StudyScreen(
-                          deckId: deck.id,
-                          provider: studyProvider,
+                child: Column(
+                  children: [
+                    AppBar(
+                      title: const Text('Decks'),
+                      trailing: [
+                        if (isTeacher) ...[
+                          IconButton.outline(
+                            icon: const Icon(LucideIcons.plus, size: 20),
+                            onPressed: () => _showCreateDialog(context),
+                          ),
+                          IconButton.outline(
+                            icon: const Icon(LucideIcons.move, size: 20),
+                            onPressed: () => _showMoveDialog(context),
+                          ),
+                        ],
+                        IconButton.outline(
+                          icon: const Icon(LucideIcons.refreshCw, size: 20),
+                          onPressed: () =>
+                              context.read<DeckProvider>().loadDecks(),
                         ),
+                      ],
+                    ),
+                    Expanded(
+                      child: _DeckTree(
+                        decks: provider.decks,
+                        isTeacher: isTeacher,
+                        onStudy: (deck) async {
+                          final studyProvider = context.read<StudyProvider>();
+                          await Navigator.of(context).push(
+                            ShadcnPageRoute(
+                              builder: (_) => StudyScreen(
+                                deckId: deck.id,
+                                provider: studyProvider,
+                              ),
+                            ),
+                          );
+                          provider.loadDecks();
+                        },
+                        onTapDetail: (deck) {
+                          final classProvider = context.read<ClassProvider>();
+                          Navigator.of(context).push(
+                            ShadcnPageRoute(
+                              builder: (_) => DeckDetailScreen(
+                                deck: deck,
+                                provider: provider,
+                                classProvider: classProvider,
+                              ),
+                            ),
+                          );
+                        },
+                        onDelete: isTeacher
+                            ? (deck) => _confirmDelete(context, deck)
+                            : null,
+                        colors: colors,
                       ),
-                    );
-                    provider.loadDecks();
-                  },
-                  onTapDetail: (deck) {
-                    final classProvider = context.read<ClassProvider>();
-                    Navigator.of(context).push(
-                      ShadcnPageRoute(
-                        builder: (_) => DeckDetailScreen(
-                          deck: deck,
-                          provider: provider,
-                          classProvider: classProvider,
-                        ),
-                      ),
-                    );
-                  },
-                  onDelete: isTeacher
-                      ? (deck) => _confirmDelete(context, deck)
-                      : null,
-                  colors: colors,
+                    ),
+                  ],
                 ),
               ),
               ResizablePane.flex(

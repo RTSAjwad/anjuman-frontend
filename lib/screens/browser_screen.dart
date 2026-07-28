@@ -276,35 +276,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      headers: [
-        AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Browser'),
-              const SizedBox(width: 12),
-              Consumer<BrowserProvider>(
-                builder: (context, provider, _) {
-                  if (provider.total == 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return OutlineBadge(
-                    child: Text(
-                        '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
-                  );
-                },
-              ),
-            ],
-          ),
-          trailing: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.refreshCw, size: 20),
-              onPressed: () => context.read<BrowserProvider>().loadCards(),
-            ),
-          ],
-        ),
-        const Divider(),
-      ],
       child: ResizablePanel.horizontal(
         draggerBuilder: (context) {
           return const HorizontalResizableDragger();
@@ -313,48 +284,85 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ResizablePane(
             initialSize: 220,
             minSize: 160,
-            child: _filterNodes.length <= 1
-                ? const Center(child: CircularProgressIndicator())
-                : Theme(
-                    data: Theme.of(context).copyWith(radius: () => 0),
-                    child: Tree<FilterNode>(
-                      shrinkWrap: true,
-                      padding: EdgeInsets.zero,
-                      allowMultiSelect: true,
-                      nodes: _filterNodes,
-                      branchLine: BranchLine.line,
-                      onSelectionChanged: Tree.defaultSelectionHandler(
-                        _filterNodes,
-                        (value) {
-                          setState(() {
-                            _filterNodes = value;
-                            _syncAllFilters(value);
-                          });
+            child: Column(
+              children: [
+                AppBar(
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Browser'),
+                      Consumer<BrowserProvider>(
+                        builder: (context, provider, _) {
+                          if (provider.total == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: OutlineBadge(
+                              child: Text(
+                                  '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
+                            ),
+                          );
                         },
                       ),
-                      builder: (context, node) {
-                        final data = node.data;
-                        final isSection = _isSectionRoot(data);
-                        final hasChildren = node.children.isNotEmpty;
-                        return TreeItem(
-                          onPressed: (isSection || hasChildren) ? null : () {},
-                          onExpand: (isSection || hasChildren)
-                              ? Tree.defaultItemExpandHandler(
-                                  _filterNodes,
-                                  node,
-                                  (value) {
-                                    setState(() => _filterNodes = value);
-                                  },
-                                )
-                              : null,
-                          child: Text(
-                            _sectionLabel(data),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      },
-                    ),
+                    ],
                   ),
+                  trailing: [
+                    IconButton.outline(
+                      icon: const Icon(LucideIcons.refreshCw, size: 20),
+                      onPressed: () =>
+                          context.read<BrowserProvider>().loadCards(),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: _filterNodes.length <= 1
+                      ? const Center(child: CircularProgressIndicator())
+                      : Theme(
+                          data: Theme.of(context).copyWith(radius: () => 0),
+                          child: Tree<FilterNode>(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            allowMultiSelect: true,
+                            nodes: _filterNodes,
+                            branchLine: BranchLine.line,
+                            onSelectionChanged: Tree.defaultSelectionHandler(
+                              _filterNodes,
+                              (value) {
+                                setState(() {
+                                  _filterNodes = value;
+                                  _syncAllFilters(value);
+                                });
+                              },
+                            ),
+                            builder: (context, node) {
+                              final data = node.data;
+                              final isSection = _isSectionRoot(data);
+                              final hasChildren = node.children.isNotEmpty;
+                              return TreeItem(
+                                onPressed:
+                                    (isSection || hasChildren) ? null : () {},
+                                onExpand: (isSection || hasChildren)
+                                    ? Tree.defaultItemExpandHandler(
+                                        _filterNodes,
+                                        node,
+                                        (value) {
+                                          setState(() => _filterNodes = value);
+                                        },
+                                      )
+                                    : null,
+                                child: Text(
+                                  _sectionLabel(data),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
           ResizablePane.flex(
             child: Column(
