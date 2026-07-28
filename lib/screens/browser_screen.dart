@@ -596,19 +596,23 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 4),
-      child: TextField(
-        controller: searchController,
-        placeholder: const Text('Search cards...'),
-        features: [
-          const InputFeature.leading(
-            Padding(
-              padding: EdgeInsets.only(right: 6),
-              child: Icon(LucideIcons.search, size: 18),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+      child: ComponentTheme(
+        data: const FocusOutlineTheme(align: 0),
+        child: TextField(
+          controller: searchController,
+          placeholder: const Text('Search cards...'),
+          borderRadius: BorderRadius.zero,
+          features: [
+            const InputFeature.leading(
+              Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Icon(LucideIcons.search, size: 18),
+              ),
             ),
-          ),
-        ],
-        onChanged: onSearch,
+          ],
+          onChanged: onSearch,
+        ),
       ),
     );
   }
