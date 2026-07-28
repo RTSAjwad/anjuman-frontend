@@ -303,42 +303,40 @@ class _BrowserScreenState extends State<BrowserScreen> {
             minSize: 160,
             child: _filterNodes.length <= 1
                 ? const Center(child: CircularProgressIndicator())
-                : OutlinedContainer(
-                    child: Tree<FilterNode>(
-                      shrinkWrap: true,
-                      allowMultiSelect: true,
-                      nodes: _filterNodes,
-                      branchLine: BranchLine.line,
-                      onSelectionChanged: Tree.defaultSelectionHandler(
-                        _filterNodes,
-                        (value) {
-                          setState(() {
-                            _filterNodes = value;
-                            _syncAllFilters(value);
-                          });
-                        },
-                      ),
-                      builder: (context, node) {
-                        final data = node.data;
-                        final isSection = _isSectionRoot(data);
-                        return TreeItem(
-                          onPressed: isSection ? null : () {},
-                          onExpand: isSection
-                              ? Tree.defaultItemExpandHandler(
-                                  _filterNodes,
-                                  node,
-                                  (value) {
-                                    setState(() => _filterNodes = value);
-                                  },
-                                )
-                              : null,
-                          child: Text(
-                            _sectionLabel(data),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
+                : Tree<FilterNode>(
+                    shrinkWrap: true,
+                    allowMultiSelect: true,
+                    nodes: _filterNodes,
+                    branchLine: BranchLine.line,
+                    onSelectionChanged: Tree.defaultSelectionHandler(
+                      _filterNodes,
+                      (value) {
+                        setState(() {
+                          _filterNodes = value;
+                          _syncAllFilters(value);
+                        });
                       },
                     ),
+                    builder: (context, node) {
+                      final data = node.data;
+                      final isSection = _isSectionRoot(data);
+                      return TreeItem(
+                        onPressed: isSection ? null : () {},
+                        onExpand: isSection
+                            ? Tree.defaultItemExpandHandler(
+                                _filterNodes,
+                                node,
+                                (value) {
+                                  setState(() => _filterNodes = value);
+                                },
+                              )
+                            : null,
+                        child: Text(
+                          _sectionLabel(data),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
                   ),
           ),
           ResizablePane.flex(
@@ -458,7 +456,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
                       return ListView(
                         controller: _scrollController,
-                        padding: const EdgeInsets.all(8),
                         children: [
                           LayoutBuilder(
                             builder: (context, constraints) {
@@ -468,11 +465,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   constraints: BoxConstraints(
                                     minWidth: constraints.maxWidth,
                                   ),
-                                  child: OutlinedContainer(
-                                    child: ResizableTable(
-                                      controller: _tableController,
-                                      rows: rows,
-                                    ),
+                                  child: ResizableTable(
+                                    controller: _tableController,
+                                    rows: rows,
                                   ),
                                 ),
                               );
@@ -601,7 +596,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 4),
       child: TextField(
         controller: searchController,
         placeholder: const Text('Search cards...'),
