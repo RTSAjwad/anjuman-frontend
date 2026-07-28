@@ -294,9 +294,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                       const Text('Browser'),
                       Consumer<BrowserProvider>(
                         builder: (context, provider, _) {
-                          if (provider.total == 0) {
-                            return const SizedBox.shrink();
-                          }
                           return Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: OutlineBadge(
