@@ -18,9 +18,11 @@ class BrowserProvider extends ChangeNotifier {
   int _total = 0;
   final int _perPage = 50;
 
-  int? _deckId;
+  List<int> _deckIds = [];
   String _query = '';
   String _sort = 'created_at';
+  List<String> _states = [];
+  List<int> _noteTypeIds = [];
 
   List<BrowserCard> get cards => _cards;
   bool get isLoading => _isLoading;
@@ -28,9 +30,11 @@ class BrowserProvider extends ChangeNotifier {
   int get page => _page;
   int get total => _total;
   int get perPage => _perPage;
-  int? get deckId => _deckId;
+  List<int> get deckIds => _deckIds;
   String get query => _query;
   String get sort => _sort;
+  List<String> get states => _states;
+  List<int> get noteTypeIds => _noteTypeIds;
 
   bool get hasNextPage => _page * _perPage < _total;
   bool get hasPrevPage => _page > 1;
@@ -44,11 +48,13 @@ class BrowserProvider extends ChangeNotifier {
 
     try {
       final response = await _browserService.browseCards(
-        deckId: _deckId,
+        deckIds: _deckIds.isEmpty ? null : _deckIds,
         query: _query,
         sort: _sort,
         page: _page,
         perPage: _perPage,
+        states: _states.isEmpty ? null : _states,
+        noteTypeIds: _noteTypeIds.isEmpty ? null : _noteTypeIds,
       );
       if (append) {
         _cards = [..._cards, ...response.cards];
@@ -64,8 +70,18 @@ class BrowserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setDeckId(int? deckId) {
-    _deckId = deckId;
+  void toggleDeckId(int deckId) {
+    if (_deckIds.contains(deckId)) {
+      _deckIds.remove(deckId);
+    } else {
+      _deckIds.add(deckId);
+    }
+    _page = 1;
+    loadCards();
+  }
+
+  void setDeckIds(List<int> deckIds) {
+    _deckIds = List.of(deckIds);
     _page = 1;
     loadCards();
   }
@@ -78,6 +94,38 @@ class BrowserProvider extends ChangeNotifier {
 
   void setSort(String sort) {
     _sort = sort;
+    _page = 1;
+    loadCards();
+  }
+
+  void toggleState(String state) {
+    if (_states.contains(state)) {
+      _states.remove(state);
+    } else {
+      _states.add(state);
+    }
+    _page = 1;
+    loadCards();
+  }
+
+  void setStates(List<String> states) {
+    _states = List.of(states);
+    _page = 1;
+    loadCards();
+  }
+
+  void toggleNoteTypeId(int noteTypeId) {
+    if (_noteTypeIds.contains(noteTypeId)) {
+      _noteTypeIds.remove(noteTypeId);
+    } else {
+      _noteTypeIds.add(noteTypeId);
+    }
+    _page = 1;
+    loadCards();
+  }
+
+  void setNoteTypeIds(List<int> noteTypeIds) {
+    _noteTypeIds = List.of(noteTypeIds);
     _page = 1;
     loadCards();
   }

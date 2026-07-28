@@ -8,18 +8,28 @@ class BrowserService {
   BrowserService(this._client);
 
   Future<BrowserCardsResponse> browseCards({
-    int? deckId,
+    List<int>? deckIds,
     String? query,
     String? sort,
     int? page,
     int? perPage,
+    List<String>? states,
+    List<int>? noteTypeIds,
   }) async {
     final params = <String, String>{};
-    if (deckId != null) params['deck_id'] = deckId.toString();
+    if (deckIds != null && deckIds.isNotEmpty) {
+      params['deck_id'] = deckIds.join(',');
+    }
     if (query != null && query.isNotEmpty) params['q'] = query;
     if (sort != null) params['sort'] = sort;
     if (page != null) params['page'] = page.toString();
     if (perPage != null) params['per_page'] = perPage.toString();
+    if (states != null && states.isNotEmpty) {
+      params['state'] = states.join(',');
+    }
+    if (noteTypeIds != null && noteTypeIds.isNotEmpty) {
+      params['note_type_id'] = noteTypeIds.join(',');
+    }
 
     final queryString = params.isNotEmpty
         ? '?${params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}'

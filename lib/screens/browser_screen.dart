@@ -31,15 +31,32 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _sortAsc = false;
 
   List<TreeNode<DeckResponse>> _treeNodes = [];
+  List<TreeNode<String>> _stateNodes = [];
+  List<TreeNode<NoteType>> _noteTypeNodes = [];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _stateNodes = [
+      TreeItemNode<String>(
+        data: 'root',
+        expanded: true,
+        children: [
+          TreeItemNode(data: 'new', children: []),
+          TreeItemNode(data: 'learning', children: []),
+          TreeItemNode(data: 'review', children: []),
+          TreeItemNode(data: 'relearning', children: []),
+          TreeItemNode(data: 'due', children: []),
+        ],
+      ),
+    ];
     final deckProvider = context.read<DeckProvider>();
     deckProvider.addListener(_onDecksChanged);
+    deckProvider.addListener(_onNoteTypesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       deckProvider.loadDecks();
+      deckProvider.loadNoteTypes();
       context.read<BrowserProvider>().loadCards();
     });
   }
@@ -67,6 +84,65 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ),
       ];
     });
+  }
+
+  void _onNoteTypesChanged() {
+    final noteTypes = context.read<DeckProvider>().noteTypes;
+    if (noteTypes.isEmpty) return;
+    setState(() {
+      _noteTypeNodes = [
+        TreeItemNode<NoteType>(
+          data: NoteType(
+            id: -1,
+            name: 'Note Type',
+            fieldNames: [],
+            sortField: '',
+            templates: [],
+            noteCount: 0,
+          ),
+          expanded: true,
+          children: noteTypes
+              .map((nt) => TreeItemNode<NoteType>(
+                    data: nt,
+                    children: [],
+                  ))
+              .toList(),
+        ),
+      ];
+    });
+  }
+
+  void _syncDeckSelection(List<TreeNode<DeckResponse>> nodes) {
+    final ids = _collectSelected<DeckResponse, int>(
+        nodes, (d) => d.id != -1, (d) => d.id);
+    context.read<BrowserProvider>().setDeckIds(ids);
+  }
+
+  void _syncStateSelection(List<TreeNode<String>> nodes) {
+    final states =
+        _collectSelected<String, String>(nodes, (s) => s != 'root', (s) => s);
+    context.read<BrowserProvider>().setStates(states);
+  }
+
+  void _syncNoteTypeSelection(List<TreeNode<NoteType>> nodes) {
+    final ids = _collectSelected<NoteType, int>(
+        nodes, (nt) => nt.id != -1, (nt) => nt.id);
+    context.read<BrowserProvider>().setNoteTypeIds(ids);
+  }
+
+  List<R> _collectSelected<T, R>(
+    List<TreeNode<T>> nodes,
+    bool Function(T) filter,
+    R Function(T) map,
+  ) {
+    final result = <R>[];
+    for (final node in nodes) {
+      if (node is TreeItemNode<T> && node.selected && filter(node.data)) {
+        result.add(map(node.data));
+      }
+      result.addAll(_collectSelected(node.children, filter, map));
+    }
+    return result;
   }
 
   @override
@@ -146,7 +222,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
     return Scaffold(
       headers: [
         AppBar(
-          title: const Text('Browser'),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Browser'),
+              const SizedBox(width: 12),
+              Consumer<BrowserProvider>(
+                builder: (context, provider, _) {
+                  if (provider.total == 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return OutlineBadge(
+                    child: Text(
+                        '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
+                  );
+                },
+              ),
+            ],
+          ),
           trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
@@ -170,19 +263,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
                             OutlinedContainer(
                               child: Tree<DeckResponse>(
                                 shrinkWrap: true,
+                                allowMultiSelect: true,
                                 nodes: _treeNodes,
                                 branchLine: BranchLine.line,
                                 onSelectionChanged:
                                     Tree.defaultSelectionHandler(
                                   _treeNodes,
                                   (value) {
-                                    setState(() => _treeNodes = value);
+                                    setState(() {
+                                      _treeNodes = value;
+                                      _syncDeckSelection(value);
+                                    });
                                   },
                                 ),
                                 builder: (context, node) {
                                   final deck = node.data;
                                   final isRoot = deck.id == -1;
                                   return TreeItem(
+                                    onPressed: () {},
                                     onExpand: isRoot
                                         ? Tree.defaultItemExpandHandler(
                                             _treeNodes,
@@ -193,17 +291,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                             },
                                           )
                                         : null,
-                                    onPressed: isRoot
-                                        ? () {
-                                            context
-                                                .read<BrowserProvider>()
-                                                .setDeckId(null);
-                                          }
-                                        : () {
-                                            context
-                                                .read<BrowserProvider>()
-                                                .setDeckId(deck.id);
-                                          },
                                     child: Text(
                                       deck.title,
                                       overflow: TextOverflow.ellipsis,
@@ -212,6 +299,87 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                 },
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            OutlinedContainer(
+                              child: Tree<String>(
+                                shrinkWrap: true,
+                                allowMultiSelect: true,
+                                nodes: _stateNodes,
+                                branchLine: BranchLine.line,
+                                onSelectionChanged:
+                                    Tree.defaultSelectionHandler(
+                                  _stateNodes,
+                                  (value) {
+                                    setState(() {
+                                      _stateNodes = value;
+                                      _syncStateSelection(value);
+                                    });
+                                  },
+                                ),
+                                builder: (context, node) {
+                                  final state = node.data;
+                                  final isRoot = state == 'root';
+                                  return TreeItem(
+                                    onPressed: () {},
+                                    onExpand: isRoot
+                                        ? Tree.defaultItemExpandHandler(
+                                            _stateNodes,
+                                            node,
+                                            (value) {
+                                              setState(
+                                                  () => _stateNodes = value);
+                                            },
+                                          )
+                                        : null,
+                                    child: Text(
+                                      _stateLabel(state),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            if (_noteTypeNodes.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              OutlinedContainer(
+                                child: Tree<NoteType>(
+                                  shrinkWrap: true,
+                                  allowMultiSelect: true,
+                                  nodes: _noteTypeNodes,
+                                  branchLine: BranchLine.line,
+                                  onSelectionChanged:
+                                      Tree.defaultSelectionHandler(
+                                    _noteTypeNodes,
+                                    (value) {
+                                      setState(() {
+                                        _noteTypeNodes = value;
+                                        _syncNoteTypeSelection(value);
+                                      });
+                                    },
+                                  ),
+                                  builder: (context, node) {
+                                    final noteType = node.data;
+                                    return TreeItem(
+                                      onPressed: () {},
+                                      onExpand: noteType.id == -1
+                                          ? Tree.defaultItemExpandHandler(
+                                              _noteTypeNodes,
+                                              node,
+                                              (value) {
+                                                setState(() =>
+                                                    _noteTypeNodes = value);
+                                              },
+                                            )
+                                          : null,
+                                      child: Text(
+                                        noteType.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                 ),
@@ -360,18 +528,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
                               padding: EdgeInsets.all(16),
                               child: Center(child: CircularProgressIndicator()),
                             ),
-                          if (!provider.hasNextPage &&
-                              provider.cards.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                '${provider.total} cards total',
-                                style: TextStyle(
-                                    color: colors.mutedForeground,
-                                    fontSize: 13),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
                         ],
                       );
                     },
@@ -463,6 +619,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
   String _formatDate(int timestamp) {
     final due = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
     return '${due.year}-${due.month.toString().padLeft(2, '0')}-${due.day.toString().padLeft(2, '0')}';
+  }
+
+  String _stateLabel(String state) {
+    return switch (state) {
+      'root' => 'Card State',
+      'new' => 'New',
+      'learning' => 'Learning',
+      'review' => 'Review',
+      'relearning' => 'Relearning',
+      'due' => 'Due',
+      _ => state,
+    };
   }
 }
 
