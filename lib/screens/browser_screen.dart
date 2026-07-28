@@ -5,6 +5,7 @@ import '../providers/browser_provider.dart';
 import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
+import '../widgets/deck_tree.dart';
 
 sealed class FilterNode {
   const FilterNode();
@@ -82,25 +83,33 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final decks = context.read<DeckProvider>().decks;
     if (decks.isEmpty) return;
     setState(() {
-      final deckChildren = decks
-          .map((d) => TreeItemNode<FilterNode>(
-                data: DeckFilterNode(d),
-                children: [],
-              ))
-          .toList();
-      final root = TreeItemNode<FilterNode>(
-        data: DeckFilterNode(DeckResponse(
-          id: -1,
-          schoolId: 0,
-          title: 'Decks',
-          createdBy: 0,
-          createdAt: DateTime.now(),
-        )),
-        expanded: true,
-        children: deckChildren,
-      );
+      final root = _buildDeckTree(decks);
       _replaceOrAddSection('decks', root);
     });
+  }
+
+  TreeItemNode<FilterNode> _buildDeckTree(List<DeckResponse> decks) {
+    final root = buildDeckTree(decks);
+    List<TreeNode<FilterNode>> convert(List<DeckNode> nodes) {
+      return nodes
+          .map((n) => TreeItemNode<FilterNode>(
+                data: DeckFilterNode(n.deck),
+                children: convert(n.children),
+              ))
+          .toList();
+    }
+
+    return TreeItemNode<FilterNode>(
+      data: DeckFilterNode(DeckResponse(
+        id: -1,
+        schoolId: 0,
+        title: 'Decks',
+        createdBy: 0,
+        createdAt: DateTime.now(),
+      )),
+      expanded: true,
+      children: convert(root),
+    );
   }
 
   void _onNoteTypesChanged() {
@@ -323,9 +332,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
                       builder: (context, node) {
                         final data = node.data;
                         final isSection = _isSectionRoot(data);
+                        final hasChildren = node.children.isNotEmpty;
                         return TreeItem(
-                          onPressed: isSection ? null : () {},
-                          onExpand: isSection
+                          onPressed: (isSection || hasChildren) ? null : () {},
+                          onExpand: (isSection || hasChildren)
                               ? Tree.defaultItemExpandHandler(
                                   _filterNodes,
                                   node,
