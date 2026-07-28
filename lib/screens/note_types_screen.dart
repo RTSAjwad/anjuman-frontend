@@ -19,7 +19,9 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   void initState() {
     super.initState();
     _provider.addListener(_onChanged);
-    _provider.loadNoteTypes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _provider.loadNoteTypes();
+    });
   }
 
   @override
