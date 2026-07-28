@@ -7,8 +7,14 @@ import '../models/study.dart';
 class StudyScreen extends StatefulWidget {
   final int deckId;
   final StudyProvider? provider;
+  final bool embedded;
 
-  const StudyScreen({super.key, required this.deckId, this.provider});
+  const StudyScreen({
+    super.key,
+    required this.deckId,
+    this.provider,
+    this.embedded = false,
+  });
 
   @override
   State<StudyScreen> createState() => _StudyScreenState();
@@ -61,16 +67,20 @@ class _StudyScreenState extends State<StudyScreen> {
     return Scaffold(
       headers: [
         AppBar(
-          leading: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.arrowLeft, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+          leading: widget.embedded
+              ? []
+              : [
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
           title: Text(title),
-          subtitle: _provider.isLoading || _provider.totalCount == 0
-              ? null
-              : _CardCountBar(provider: _provider),
+          subtitle: (!widget.embedded &&
+                  !_provider.isLoading &&
+                  _provider.totalCount > 0)
+              ? _CardCountBar(provider: _provider)
+              : null,
         ),
       ],
       child: body,

@@ -6,7 +6,6 @@ import '../providers/deck_provider.dart';
 import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
-import '../widgets/shadcn_page_route.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
@@ -94,19 +93,7 @@ class _DecksScreenState extends State<DecksScreen> {
                       child: _DeckTree(
                         decks: provider.decks,
                         isTeacher: isTeacher,
-                        onStudy: (deck) async {
-                          final studyProvider = context.read<StudyProvider>();
-                          await Navigator.of(context).push(
-                            ShadcnPageRoute(
-                              builder: (_) => StudyScreen(
-                                deckId: deck.id,
-                                provider: studyProvider,
-                              ),
-                            ),
-                          );
-                          provider.loadDecks();
-                        },
-                        onTapDetail: (deck) {
+                        onSelect: (deck) {
                           setState(() => _selectedDeck = deck);
                         },
                         onDelete: isTeacher
@@ -120,18 +107,27 @@ class _DecksScreenState extends State<DecksScreen> {
               ),
               ResizablePane.flex(
                 child: _selectedDeck != null
-                    ? KeyedSubtree(
-                        key: ValueKey(_selectedDeck!.id),
-                        child: DeckDetailScreen(
-                          deck: _selectedDeck!,
-                          provider: provider,
-                          classProvider: context.read<ClassProvider>(),
-                          showBackButton: false,
-                          onDeleted: () {
-                            setState(() => _selectedDeck = null);
-                          },
-                        ),
-                      )
+                    ? isTeacher
+                        ? KeyedSubtree(
+                            key: ValueKey(_selectedDeck!.id),
+                            child: DeckDetailScreen(
+                              deck: _selectedDeck!,
+                              provider: provider,
+                              classProvider: context.read<ClassProvider>(),
+                              showBackButton: false,
+                              onDeleted: () {
+                                setState(() => _selectedDeck = null);
+                              },
+                            ),
+                          )
+                        : KeyedSubtree(
+                            key: ValueKey(_selectedDeck!.id),
+                            child: StudyScreen(
+                              deckId: _selectedDeck!.id,
+                              provider: context.read<StudyProvider>(),
+                              embedded: true,
+                            ),
+                          )
                     : const Center(
                         child: Text('Select a deck to view details'),
                       ),
@@ -228,16 +224,14 @@ class _DecksScreenState extends State<DecksScreen> {
 class _DeckTree extends StatefulWidget {
   final List<DeckResponse> decks;
   final bool isTeacher;
-  final void Function(DeckResponse) onStudy;
-  final void Function(DeckResponse) onTapDetail;
+  final void Function(DeckResponse) onSelect;
   final void Function(DeckResponse)? onDelete;
   final ColorScheme colors;
 
   const _DeckTree({
     required this.decks,
     required this.isTeacher,
-    required this.onStudy,
-    required this.onTapDetail,
+    required this.onSelect,
     this.onDelete,
     required this.colors,
   });
@@ -328,11 +322,7 @@ class _DeckTreeState extends State<_DeckTree> {
             });
             final deck =
                 (selectedNodes.first as TreeItemNode<DeckResponse>).data;
-            if (widget.isTeacher) {
-              widget.onTapDetail(deck);
-            } else {
-              widget.onStudy(deck);
-            }
+            widget.onSelect(deck);
           }
         },
         builder: (context, node) {
