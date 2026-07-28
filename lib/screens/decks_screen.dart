@@ -7,7 +7,6 @@ import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/shadcn_page_route.dart';
-import '../widgets/sortable_table.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
@@ -19,8 +18,6 @@ class DecksScreen extends StatefulWidget {
 }
 
 class _DecksScreenState extends State<DecksScreen> {
-  final _sort =
-      TableSort<DeckResponse, DeckSortField>(DeckSortField.title, true);
   bool _initialLoadDone = false;
 
   void _reloadDecks() {
@@ -73,6 +70,7 @@ class _DecksScreenState extends State<DecksScreen> {
             ),
           ],
         ),
+        const Divider(),
       ],
       child: Consumer<DeckProvider>(
         builder: (context, provider, _) {
@@ -88,47 +86,53 @@ class _DecksScreenState extends State<DecksScreen> {
             return _emptyView(context, isTeacher, colors);
           }
 
-          final sorted = _sort.sort(provider.decks, (d, f) {
-            return switch (f) {
-              DeckSortField.title => d.title,
-              DeckSortField.newCount => d.newCount ?? 0,
-              DeckSortField.learning =>
-                (d.learningCount ?? 0) + (d.relearningCount ?? 0),
-              DeckSortField.due => d.dueCount ?? 0,
-              DeckSortField.cards => d.totalCount ?? 0,
-            };
-          });
-
-          return _DeckTreeTable(
-            decks: sorted,
-            isTeacher: isTeacher,
-            onStudy: (deck) async {
-              final studyProvider = context.read<StudyProvider>();
-              await Navigator.of(context).push(
-                ShadcnPageRoute(
-                  builder: (_) => StudyScreen(
-                    deckId: deck.id,
-                    provider: studyProvider,
-                  ),
-                ),
-              );
-              provider.loadDecks();
+          return ResizablePanel.horizontal(
+            draggerBuilder: (context) {
+              return const HorizontalResizableDragger();
             },
-            onTapDetail: (deck) {
-              final classProvider = context.read<ClassProvider>();
-              Navigator.of(context).push(
-                ShadcnPageRoute(
-                  builder: (_) => DeckDetailScreen(
-                    deck: deck,
-                    provider: provider,
-                    classProvider: classProvider,
-                  ),
+            children: [
+              ResizablePane(
+                initialSize: 300,
+                minSize: 200,
+                child: _DeckTree(
+                  decks: provider.decks,
+                  isTeacher: isTeacher,
+                  onStudy: (deck) async {
+                    final studyProvider = context.read<StudyProvider>();
+                    await Navigator.of(context).push(
+                      ShadcnPageRoute(
+                        builder: (_) => StudyScreen(
+                          deckId: deck.id,
+                          provider: studyProvider,
+                        ),
+                      ),
+                    );
+                    provider.loadDecks();
+                  },
+                  onTapDetail: (deck) {
+                    final classProvider = context.read<ClassProvider>();
+                    Navigator.of(context).push(
+                      ShadcnPageRoute(
+                        builder: (_) => DeckDetailScreen(
+                          deck: deck,
+                          provider: provider,
+                          classProvider: classProvider,
+                        ),
+                      ),
+                    );
+                  },
+                  onDelete: isTeacher
+                      ? (deck) => _confirmDelete(context, deck)
+                      : null,
+                  colors: colors,
                 ),
-              );
-            },
-            onDelete:
-                isTeacher ? (deck) => _confirmDelete(context, deck) : null,
-            colors: colors,
+              ),
+              ResizablePane.flex(
+                child: const Center(
+                  child: Text('Select a deck to view details'),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -232,7 +236,7 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 }
 
-class _DeckTreeTable extends StatefulWidget {
+class _DeckTree extends StatefulWidget {
   final List<DeckResponse> decks;
   final bool isTeacher;
   final void Function(DeckResponse) onStudy;
@@ -240,7 +244,7 @@ class _DeckTreeTable extends StatefulWidget {
   final void Function(DeckResponse)? onDelete;
   final ColorScheme colors;
 
-  const _DeckTreeTable({
+  const _DeckTree({
     required this.decks,
     required this.isTeacher,
     required this.onStudy,
@@ -250,173 +254,124 @@ class _DeckTreeTable extends StatefulWidget {
   });
 
   @override
-  State<_DeckTreeTable> createState() => _DeckTreeTableState();
+  State<_DeckTree> createState() => _DeckTreeState();
 }
 
-class _DeckTreeTableState extends State<_DeckTreeTable> {
-  final Set<int> _expandedIds = {};
+class _DeckTreeState extends State<_DeckTree> {
+  List<TreeNode<DeckResponse>> _treeNodes = [];
 
-  List<(DeckResponse, int)> _flattened() {
+  void _buildNodes() {
     final root = buildDeckTree(widget.decks);
-    final result = <(DeckResponse, int)>[];
-    void walk(List<DeckNode> nodes, int depth) {
-      for (final node in nodes) {
-        result.add((node.deck, depth));
-        if (_expandedIds.contains(node.deck.id)) {
-          walk(node.children, depth + 1);
-        }
-      }
+    List<TreeNode<DeckResponse>> convert(List<DeckNode> nodes) {
+      return nodes
+          .map((n) => TreeItemNode<DeckResponse>(
+                data: n.deck,
+                expanded: true,
+                children: convert(n.children),
+              ))
+          .toList();
     }
 
-    for (final rootNode in root) {
-      walk([rootNode], 0);
-    }
-    return result;
-  }
-
-  void _toggleExpand(int deckId) {
     setState(() {
-      if (_expandedIds.contains(deckId)) {
-        _expandedIds.remove(deckId);
-      } else {
-        _expandedIds.add(deckId);
-      }
+      _treeNodes = convert(root);
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final flat = _flattened();
+  void initState() {
+    super.initState();
+    _buildNodes();
+  }
 
-    final headerCells = <TableCell>[
-      TableCell(child: _buildHeaderCell('Deck')),
-    ];
-    if (widget.isTeacher) {
-      headerCells
-          .add(TableCell(child: _buildHeaderCell('Cards', alignRight: true)));
-    } else {
-      headerCells
-          .add(TableCell(child: _buildHeaderCell('New', alignRight: true)));
-      headerCells.add(
-          TableCell(child: _buildHeaderCell('Learning', alignRight: true)));
-      headerCells
-          .add(TableCell(child: _buildHeaderCell('Due', alignRight: true)));
+  @override
+  void didUpdateWidget(covariant _DeckTree oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.decks != widget.decks) {
+      _buildNodes();
     }
+  }
 
-    final rows = <TableRow>[
-      TableHeader(cells: headerCells),
-    ];
+  Widget _buildBadges(DeckResponse deck) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.isTeacher) ...[
+          OutlineBadge(
+            child: Text('${deck.totalCount ?? 0} cards',
+                style: const TextStyle(fontSize: 12)),
+          ),
+        ] else ...[
+          if ((deck.newCount ?? 0) > 0)
+            OutlineBadge(
+              child: Text('${deck.newCount}',
+                  style: const TextStyle(fontSize: 12)),
+            ),
+          if ((deck.learningCount ?? 0) + (deck.relearningCount ?? 0) > 0)
+            OutlineBadge(
+              child: Text(
+                  '${(deck.learningCount ?? 0) + (deck.relearningCount ?? 0)}',
+                  style: const TextStyle(fontSize: 12)),
+            ),
+          if ((deck.dueCount ?? 0) > 0)
+            OutlineBadge(
+              child: Text('${deck.dueCount}',
+                  style: const TextStyle(fontSize: 12)),
+            ),
+        ],
+      ],
+    );
+  }
 
-    for (final (deck, _) in flat) {
-      final hasChildren = widget.decks.any((d) => d.parentId == deck.id);
-      final isExpanded = _expandedIds.contains(deck.id);
-
-      final deckCells = <TableCell>[
-        TableCell(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => widget.isTeacher
-                ? widget.onTapDetail(deck)
-                : widget.onStudy(deck),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (hasChildren)
-                    GestureDetector(
-                      onTap: () => _toggleExpand(deck.id),
-                      child: AnimatedRotation(
-                        duration: const Duration(milliseconds: 200),
-                        turns: isExpanded ? 0.25 : 0,
-                        child: Icon(
-                          LucideIcons.chevronRight,
-                          size: 18,
-                          color: widget.colors.mutedForeground,
-                        ),
-                      ),
-                    )
-                  else
-                    const SizedBox(width: 24),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      deck.title,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(radius: () => 0),
+      child: Tree<DeckResponse>(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        nodes: _treeNodes,
+        branchLine: BranchLine.line,
+        onSelectionChanged: (selectedNodes, multiSelect, selected) {
+          if (selected) {
+            setState(() {
+              _treeNodes = _treeNodes.deselectNodes(selectedNodes);
+            });
+          }
+        },
+        builder: (context, node) {
+          final deck = node.data;
+          final hasChildren = node.children.isNotEmpty;
+          return TreeItem(
+            onExpand: hasChildren
+                ? Tree.defaultItemExpandHandler(
+                    _treeNodes,
+                    node,
+                    (value) {
+                      setState(() => _treeNodes = value);
+                    },
+                  )
+                : null,
+            trailing: _buildBadges(deck),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (widget.isTeacher) {
+                  widget.onTapDetail(deck);
+                } else {
+                  widget.onStudy(deck);
+                }
+              },
+              child: Text(
+                deck.title,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-        ),
-      ];
-      if (widget.isTeacher) {
-        deckCells.add(TableCell(
-          child: _buildCountCell(deck.totalCount ?? 0, widget.colors.foreground,
-              alignRight: true),
-        ));
-      } else {
-        deckCells.add(TableCell(
-          child: _buildCountCell(deck.newCount ?? 0, const Color(0xFF3B82F6),
-              alignRight: true),
-        ));
-        deckCells.add(TableCell(
-          child: _buildCountCell(
-            (deck.learningCount ?? 0) + (deck.relearningCount ?? 0),
-            const Color(0xFFF97316),
-            alignRight: true,
-          ),
-        ));
-        deckCells.add(TableCell(
-          child: _buildCountCell(deck.dueCount ?? 0, const Color(0xFF22C55E),
-              alignRight: true),
-        ));
-      }
-      rows.add(TableRow(cells: deckCells));
-    }
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: OutlinedContainer(
-          child: Table(
-            columnWidths: <int, TableSize>{
-              0: const FlexTableSize(),
-              for (var i = 1; i <= (widget.isTeacher ? 1 : 3); i++)
-                i: const IntrinsicTableSize(),
-            },
-            rows: rows,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderCell(String label, {bool alignRight = false}) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      alignment: alignRight ? Alignment.centerRight : null,
-      child: Text(label).muted().semiBold(),
-    );
-  }
-
-  Widget _buildCountCell(int value, Color color, {bool alignRight = false}) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      alignment: alignRight ? Alignment.centerRight : Alignment.center,
-      child: Text(
-        value > 0 ? '$value' : '—',
-        style: TextStyle(
-          color: value > 0 ? color : widget.colors.mutedForeground,
-          fontWeight: FontWeight.w600,
-        ),
+          );
+        },
       ),
     );
   }
 }
-
-enum DeckSortField { title, newCount, learning, due, cards }
 
 class _DeckFormDialog extends StatefulWidget {
   final String title;
