@@ -70,18 +70,35 @@ class _StudyScreenState extends State<StudyScreen> {
       headers: [
         AppBar(
           leading: [
-            if (widget.embedded)
-              IconButton.outline(
-                icon: const Icon(LucideIcons.x, size: 20),
-                onPressed: () => widget.onClose?.call(),
-              )
-            else
+            if (!widget.embedded)
               IconButton.outline(
                 icon: const Icon(LucideIcons.arrowLeft, size: 20),
                 onPressed: () => Navigator.of(context).pop(),
               ),
           ],
           title: Text(title),
+          trailing: [
+            if (widget.embedded) ...[
+              IconButton.outline(
+                icon: const Icon(LucideIcons.externalLink, size: 20),
+                onPressed: () {
+                  widget.onClose?.call();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => StudyScreen(
+                        deckId: widget.deckId,
+                        provider: _provider,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              IconButton.outline(
+                icon: const Icon(LucideIcons.x, size: 20),
+                onPressed: () => widget.onClose?.call(),
+              ),
+            ],
+          ],
           subtitle: (!widget.embedded &&
                   !_provider.isLoading &&
                   _provider.totalCount > 0)

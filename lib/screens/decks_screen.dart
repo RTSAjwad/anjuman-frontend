@@ -322,43 +322,47 @@ class _DeckTreeState extends State<_DeckTree> {
   Widget build(BuildContext context) {
     return Theme(
       data: Theme.of(context).copyWith(radius: () => 0),
-      child: Tree<DeckResponse>(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        recursiveSelection: false,
-        nodes: _treeNodes,
-        branchLine: BranchLine.line,
-        onSelectionChanged: (selectedNodes, multiSelect, selected) {
-          if (selected) {
-            setState(() {
-              _treeNodes = _treeNodes.setSelectedNodes(selectedNodes);
-            });
-            final deck =
-                (selectedNodes.first as TreeItemNode<DeckResponse>).data;
-            widget.onSelect(deck);
-          }
-        },
-        builder: (context, node) {
-          final deck = node.data;
-          final hasChildren = node.children.isNotEmpty;
-          return TreeItem(
-            onPressed: () {},
-            onExpand: hasChildren
-                ? Tree.defaultItemExpandHandler(
-                    _treeNodes,
-                    node,
-                    (value) {
-                      setState(() => _treeNodes = value);
-                    },
-                  )
-                : null,
-            trailing: _buildBadges(deck),
-            child: Text(
-              deck.title,
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        },
+      child: Focus(
+        canRequestFocus: false,
+        descendantsAreFocusable: false,
+        child: Tree<DeckResponse>(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          recursiveSelection: false,
+          nodes: _treeNodes,
+          branchLine: BranchLine.line,
+          onSelectionChanged: (selectedNodes, multiSelect, selected) {
+            if (selected) {
+              setState(() {
+                _treeNodes = _treeNodes.setSelectedNodes(selectedNodes);
+              });
+              final deck =
+                  (selectedNodes.first as TreeItemNode<DeckResponse>).data;
+              widget.onSelect(deck);
+            }
+          },
+          builder: (context, node) {
+            final deck = node.data;
+            final hasChildren = node.children.isNotEmpty;
+            return TreeItem(
+              onPressed: () {},
+              onExpand: hasChildren
+                  ? Tree.defaultItemExpandHandler(
+                      _treeNodes,
+                      node,
+                      (value) {
+                        setState(() => _treeNodes = value);
+                      },
+                    )
+                  : null,
+              trailing: _buildBadges(deck),
+              child: Text(
+                deck.title,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
