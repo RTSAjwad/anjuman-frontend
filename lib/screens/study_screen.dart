@@ -8,12 +8,14 @@ class StudyScreen extends StatefulWidget {
   final int deckId;
   final StudyProvider? provider;
   final bool embedded;
+  final VoidCallback? onClose;
 
   const StudyScreen({
     super.key,
     required this.deckId,
     this.provider,
     this.embedded = false,
+    this.onClose,
   });
 
   @override
@@ -67,14 +69,18 @@ class _StudyScreenState extends State<StudyScreen> {
     return Scaffold(
       headers: [
         AppBar(
-          leading: widget.embedded
-              ? []
-              : [
-                  IconButton.outline(
-                    icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+          leading: [
+            if (widget.embedded)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.x, size: 20),
+                onPressed: () => widget.onClose?.call(),
+              )
+            else
+              IconButton.outline(
+                icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+          ],
           title: Text(title),
           subtitle: (!widget.embedded &&
                   !_provider.isLoading &&

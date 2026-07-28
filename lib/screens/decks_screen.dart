@@ -19,6 +19,7 @@ class DecksScreen extends StatefulWidget {
 class _DecksScreenState extends State<DecksScreen> {
   bool _initialLoadDone = false;
   DeckResponse? _selectedDeck;
+  final _treeKey = GlobalKey<_DeckTreeState>();
 
   void _reloadDecks() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -91,6 +92,7 @@ class _DecksScreenState extends State<DecksScreen> {
                     ),
                     Expanded(
                       child: _DeckTree(
+                        key: _treeKey,
                         decks: provider.decks,
                         isTeacher: isTeacher,
                         onSelect: (deck) {
@@ -126,6 +128,10 @@ class _DecksScreenState extends State<DecksScreen> {
                               deckId: _selectedDeck!.id,
                               provider: context.read<StudyProvider>(),
                               embedded: true,
+                              onClose: () {
+                                _treeKey.currentState?.deselectAll();
+                                setState(() => _selectedDeck = null);
+                              },
                             ),
                           )
                     : const Center(
@@ -229,6 +235,7 @@ class _DeckTree extends StatefulWidget {
   final ColorScheme colors;
 
   const _DeckTree({
+    super.key,
     required this.decks,
     required this.isTeacher,
     required this.onSelect,
@@ -257,6 +264,12 @@ class _DeckTreeState extends State<_DeckTree> {
 
     setState(() {
       _treeNodes = convert(root);
+    });
+  }
+
+  void deselectAll() {
+    setState(() {
+      _treeNodes = _treeNodes.deselectAll();
     });
   }
 
