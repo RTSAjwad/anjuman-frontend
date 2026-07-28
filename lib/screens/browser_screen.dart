@@ -303,40 +303,44 @@ class _BrowserScreenState extends State<BrowserScreen> {
             minSize: 160,
             child: _filterNodes.length <= 1
                 ? const Center(child: CircularProgressIndicator())
-                : Tree<FilterNode>(
-                    shrinkWrap: true,
-                    allowMultiSelect: true,
-                    nodes: _filterNodes,
-                    branchLine: BranchLine.line,
-                    onSelectionChanged: Tree.defaultSelectionHandler(
-                      _filterNodes,
-                      (value) {
-                        setState(() {
-                          _filterNodes = value;
-                          _syncAllFilters(value);
-                        });
+                : Theme(
+                    data: Theme.of(context).copyWith(radius: () => 0),
+                    child: Tree<FilterNode>(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      allowMultiSelect: true,
+                      nodes: _filterNodes,
+                      branchLine: BranchLine.line,
+                      onSelectionChanged: Tree.defaultSelectionHandler(
+                        _filterNodes,
+                        (value) {
+                          setState(() {
+                            _filterNodes = value;
+                            _syncAllFilters(value);
+                          });
+                        },
+                      ),
+                      builder: (context, node) {
+                        final data = node.data;
+                        final isSection = _isSectionRoot(data);
+                        return TreeItem(
+                          onPressed: isSection ? null : () {},
+                          onExpand: isSection
+                              ? Tree.defaultItemExpandHandler(
+                                  _filterNodes,
+                                  node,
+                                  (value) {
+                                    setState(() => _filterNodes = value);
+                                  },
+                                )
+                              : null,
+                          child: Text(
+                            _sectionLabel(data),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
                       },
                     ),
-                    builder: (context, node) {
-                      final data = node.data;
-                      final isSection = _isSectionRoot(data);
-                      return TreeItem(
-                        onPressed: isSection ? null : () {},
-                        onExpand: isSection
-                            ? Tree.defaultItemExpandHandler(
-                                _filterNodes,
-                                node,
-                                (value) {
-                                  setState(() => _filterNodes = value);
-                                },
-                              )
-                            : null,
-                        child: Text(
-                          _sectionLabel(data),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    },
                   ),
           ),
           ResizablePane.flex(
