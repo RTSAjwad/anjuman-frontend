@@ -9,6 +9,7 @@ import '../models/deck.dart';
 import '../models/class_info.dart';
 import '../models/search_result.dart';
 import '../services/user_service.dart';
+import '../widgets/deck_tree.dart';
 import '../widgets/shadcn_search_dropdown.dart';
 
 class DeckDetailScreen extends StatefulWidget {
@@ -91,6 +92,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               : [],
           title: Text(_deckTitle),
           trailing: [
+            if (isTeacher && canManage)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.move, size: 20),
+                onPressed: () => _showMoveDeckDialog(context),
+              ),
             if (isTeacher)
               IconButton.outline(
                 icon: const Icon(LucideIcons.pencil, size: 20),
@@ -687,6 +693,22 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     );
   }
 
+  void _showMoveDeckDialog(BuildContext context) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => _MoveDeckDetailDialog(
+          deck: widget.deck,
+          provider: widget.provider,
+          onSuccess: () {
+            Navigator.of(ctx).pop();
+            _load();
+          },
+        ),
+      ),
+    );
+  }
+
   void _confirmDeleteDeck(BuildContext context) {
     showOverlay(
       context,
@@ -1202,6 +1224,150 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(_isEditing ? 'Save' : 'Create'),
+        ),
+      ],
+    );
+  }
+}
+
+class _MoveDeckDetailDialog extends StatefulWidget {
+  final DeckResponse deck;
+  final DeckProvider provider;
+  final VoidCallback onSuccess;
+
+  const _MoveDeckDetailDialog({
+    required this.deck,
+    required this.provider,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_MoveDeckDetailDialog> createState() => _MoveDeckDetailDialogState();
+}
+
+class _MoveDeckDetailDialogState extends State<_MoveDeckDetailDialog> {
+  int? _targetParentId;
+  bool _isSubmitting = false;
+  String? _error;
+
+  List<(DeckResponse, int)> get _flatDecks {
+    final root = buildDeckTree(widget.provider.decks);
+    final currentId = widget.deck.id;
+    final result = <(DeckResponse, int)>[];
+    void walk(List<DeckNode> nodes, int depth) {
+      for (final node in nodes) {
+        if (node.deck.id != currentId) {
+          result.add((node.deck, depth));
+          walk(node.children, depth + 1);
+        }
+      }
+    }
+
+    for (final rootNode in root) {
+      walk([rootNode], 0);
+    }
+    return result;
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    final ok = await widget.provider.moveDeck(
+      widget.deck.id,
+      parentId: _targetParentId,
+    );
+
+    if (mounted) {
+      if (ok) {
+        widget.onSuccess();
+      } else {
+        setState(() {
+          _isSubmitting = false;
+          _error = widget.provider.error ?? 'Failed to move deck';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final flatDecks = _flatDecks;
+
+    return AlertDialog(
+      title: Text('Move "${widget.deck.title}"'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Move into (none = top-level)',
+                    style: const TextStyle(fontSize: 13))
+                .semiBold(),
+            const SizedBox(height: 6),
+            Select<DeckResponse?>(
+              value: _targetParentId != null
+                  ? flatDecks.firstWhere((d) => d.$1.id == _targetParentId).$1
+                  : null,
+              placeholder: const Text('None (top-level)'),
+              onChanged: (value) {
+                setState(() => _targetParentId = value?.id);
+              },
+              itemBuilder: (context, deck) {
+                if (deck == null) return const Text('None (top-level)');
+                final entry = flatDecks.firstWhere((d) => d.$1.id == deck.id);
+                final indent = '  ' * entry.$2;
+                return Text('$indent${deck.title}',
+                    overflow: TextOverflow.ellipsis);
+              },
+              popup: SelectPopup(
+                items: SelectItemList(children: [
+                  const SelectItemButton<DeckResponse?>(
+                    value: null,
+                    child: Text('None (top-level)'),
+                  ),
+                  for (final (deck, depth) in flatDecks)
+                    SelectItemButton<DeckResponse?>(
+                      value: deck,
+                      child: Text(
+                        '${'  ' * depth}${deck.title}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ]),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: colors.destructive,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        Button.ghost(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        Button.primary(
+          onPressed: _isSubmitting ? null : _submit,
+          child: _isSubmitting
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Move'),
         ),
       ],
     );

@@ -78,16 +78,11 @@ class _DecksScreenState extends State<DecksScreen> {
                     AppBar(
                       title: const Text('Decks'),
                       trailing: [
-                        if (isTeacher) ...[
+                        if (isTeacher)
                           IconButton.outline(
                             icon: const Icon(LucideIcons.plus, size: 20),
                             onPressed: () => _showCreateDialog(context),
                           ),
-                          IconButton.outline(
-                            icon: const Icon(LucideIcons.move, size: 20),
-                            onPressed: () => _showMoveDialog(context),
-                          ),
-                        ],
                         IconButton.outline(
                           icon: const Icon(LucideIcons.refreshCw, size: 20),
                           onPressed: () =>
@@ -225,21 +220,6 @@ class _DecksScreenState extends State<DecksScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showMoveDialog(BuildContext context) {
-    showOverlay(
-      context,
-      DialogConfiguration(
-        builder: (ctx) {
-          final provider = context.read<DeckProvider>();
-          return _MoveDeckDialog(
-            provider: provider,
-            onSuccess: () => Navigator.of(ctx).pop(),
-          );
-        },
       ),
     );
   }
@@ -546,180 +526,6 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Create'),
-        ),
-      ],
-    );
-  }
-}
-
-class _MoveDeckDialog extends StatefulWidget {
-  final DeckProvider provider;
-  final VoidCallback onSuccess;
-
-  const _MoveDeckDialog({
-    required this.provider,
-    required this.onSuccess,
-  });
-
-  @override
-  State<_MoveDeckDialog> createState() => _MoveDeckDialogState();
-}
-
-class _MoveDeckDialogState extends State<_MoveDeckDialog> {
-  DeckResponse? _selectedDeck;
-  int? _targetParentId;
-  bool _isSubmitting = false;
-  String? _error;
-
-  List<(DeckResponse, int)> _flattenedDecks() {
-    final root = buildDeckTree(widget.provider.decks);
-    final result = <(DeckResponse, int)>[];
-    void walk(List<DeckNode> nodes, int depth) {
-      for (final node in nodes) {
-        result.add((node.deck, depth));
-        walk(node.children, depth + 1);
-      }
-    }
-
-    for (final rootNode in root) {
-      walk([rootNode], 0);
-    }
-    return result;
-  }
-
-  Future<void> _submit() async {
-    if (_selectedDeck == null) {
-      setState(() => _error = 'Please select a deck to move');
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-      _error = null;
-    });
-
-    final ok = await widget.provider.moveDeck(
-      _selectedDeck!.id,
-      parentId: _targetParentId,
-    );
-
-    if (mounted) {
-      if (ok) {
-        widget.onSuccess();
-      } else {
-        setState(() {
-          _isSubmitting = false;
-          _error = widget.provider.error ?? 'Failed to move deck';
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final flatDecks = _flattenedDecks();
-
-    return AlertDialog(
-      title: const Text('Move Deck'),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Select deck to move', style: TextStyle(fontSize: 13))
-                .semiBold(),
-            const SizedBox(height: 6),
-            Select<DeckResponse>(
-              value: _selectedDeck,
-              placeholder: const Text('Choose a deck...'),
-              onChanged: (value) {
-                setState(() => _selectedDeck = value);
-              },
-              itemBuilder: (context, deck) {
-                final entry = flatDecks.firstWhere((d) => d.$1.id == deck.id);
-                final indent = '  ' * entry.$2;
-                return Text('$indent${deck.title}',
-                    overflow: TextOverflow.ellipsis);
-              },
-              popup: SelectPopup(
-                items: SelectItemList(children: [
-                  for (final (deck, depth) in flatDecks)
-                    SelectItemButton(
-                      value: deck,
-                      child: Text(
-                        '${'  ' * depth}${deck.title}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Move into (optional, none = top-level)',
-                    style: TextStyle(fontSize: 13))
-                .semiBold(),
-            const SizedBox(height: 6),
-            Select<DeckResponse?>(
-              value: _targetParentId != null
-                  ? flatDecks.firstWhere((d) => d.$1.id == _targetParentId).$1
-                  : null,
-              placeholder: const Text('None (top-level)'),
-              onChanged: (value) {
-                setState(() => _targetParentId = value?.id);
-              },
-              itemBuilder: (context, deck) {
-                if (deck == null) return const Text('None (top-level)');
-                final entry = flatDecks.firstWhere((d) => d.$1.id == deck.id);
-                final indent = '  ' * entry.$2;
-                return Text('$indent${deck.title}',
-                    overflow: TextOverflow.ellipsis);
-              },
-              popup: SelectPopup(
-                items: SelectItemList(children: [
-                  const SelectItemButton<DeckResponse?>(
-                    value: null,
-                    child: Text('None (top-level)'),
-                  ),
-                  for (final (deck, depth) in flatDecks)
-                    SelectItemButton<DeckResponse?>(
-                      value: deck,
-                      child: Text(
-                        '${'  ' * depth}${deck.title}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ]),
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: TextStyle(
-                  color: colors.destructive,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        Button.primary(
-          onPressed: _isSubmitting ? null : _submit,
-          child: _isSubmitting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Move'),
         ),
       ],
     );
