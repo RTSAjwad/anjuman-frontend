@@ -280,7 +280,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   final deck = node.data;
                                   final isRoot = deck.id == -1;
                                   return TreeItem(
-                                    onPressed: () {},
+                                    onPressed: isRoot ? null : () {},
                                     onExpand: isRoot
                                         ? Tree.defaultItemExpandHandler(
                                             _treeNodes,
@@ -320,7 +320,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   final state = node.data;
                                   final isRoot = state == 'root';
                                   return TreeItem(
-                                    onPressed: () {},
+                                    onPressed: isRoot ? null : () {},
                                     onExpand: isRoot
                                         ? Tree.defaultItemExpandHandler(
                                             _stateNodes,
@@ -359,9 +359,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
                                   ),
                                   builder: (context, node) {
                                     final noteType = node.data;
+                                    final isRoot = noteType.id == -1;
                                     return TreeItem(
-                                      onPressed: () {},
-                                      onExpand: noteType.id == -1
+                                      onPressed: isRoot ? null : () {},
+                                      onExpand: isRoot
                                           ? Tree.defaultItemExpandHandler(
                                               _noteTypeNodes,
                                               node,
