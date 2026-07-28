@@ -43,6 +43,7 @@ class ApiConfig {
 
   // Note Types
   static const String noteTypes = '/note-types';
+  static String noteTypeById(int id) => '/note-types/$id';
 
   // Assignments
   static String assignments(int classId) => '/classes/$classId/assignments';

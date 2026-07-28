@@ -257,4 +257,16 @@ class DeckProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> deleteNoteType(int id) async {
+    try {
+      await _deckService.deleteNoteType(id);
+      await loadNoteTypes();
+      return true;
+    } on Exception catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 }

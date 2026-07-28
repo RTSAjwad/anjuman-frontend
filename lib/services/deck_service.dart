@@ -117,4 +117,8 @@ class DeckService {
         await _client.post(ApiConfig.noteTypes, body: noteType.toJson());
     return NoteType.fromJson(json);
   }
+
+  Future<void> deleteNoteType(int id) async {
+    await _client.delete(ApiConfig.noteTypeById(id));
+  }
 }

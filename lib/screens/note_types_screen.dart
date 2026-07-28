@@ -18,7 +18,18 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   @override
   void initState() {
     super.initState();
+    _provider.addListener(_onChanged);
     _provider.loadNoteTypes();
+  }
+
+  @override
+  void dispose() {
+    _provider.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -87,12 +98,28 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
                                         Text(t.name).semiBold(),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}',
+                                          'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}  •  Notes: ${t.noteCount}',
                                           style: TextStyle(
                                               color: colors.mutedForeground,
                                               fontSize: 13),
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    tooltip: (context) => Text(t.hasNotes
+                                        ? 'Cannot delete: ${t.noteCount} note${t.noteCount == 1 ? '' : 's'} use this type'
+                                        : 'Delete note type'),
+                                    child: IconButton.outline(
+                                      icon: Icon(LucideIcons.trash2,
+                                          size: 18,
+                                          color: t.hasNotes
+                                              ? colors.mutedForeground
+                                              : Colors.red),
+                                      onPressed: t.hasNotes
+                                          ? null
+                                          : () => _confirmDeleteNoteType(
+                                              context, t),
                                     ),
                                   ),
                                 ],
@@ -116,6 +143,37 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
             Navigator.of(ctx).pop();
             setState(() {});
           },
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteNoteType(BuildContext context, NoteType noteType) {
+    showOverlay(
+      context,
+      DialogConfiguration(
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Note Type'),
+          content: Text(
+              'Delete "${noteType.name}"? This will also delete all notes using this type.'),
+          actions: [
+            Button.ghost(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            Button.destructive(
+              onPressed: () async {
+                final ok = await _provider.deleteNoteType(noteType.id);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                  if (ok) {
+                    setState(() {});
+                  }
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
         ),
       ),
     );
@@ -211,11 +269,9 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
       _error = null;
     });
 
-    final fieldNames = List<String>.from(_fieldNames);
-
     final noteType = CreateNoteType(
       name: name,
-      fieldNames: fieldNames,
+      fieldNames: List<String>.from(_fieldNames),
       sortField: _sortField,
       templates: _templates
           .map((t) => CreateNoteTemplate(

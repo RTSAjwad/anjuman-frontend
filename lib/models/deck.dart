@@ -157,6 +157,9 @@ class NoteType {
   final List<String> fieldNames;
   final String sortField;
   final List<NoteTemplate> templates;
+  final int noteCount;
+
+  bool get hasNotes => noteCount > 0;
 
   NoteType({
     required this.id,
@@ -164,6 +167,7 @@ class NoteType {
     required this.fieldNames,
     required this.sortField,
     required this.templates,
+    required this.noteCount,
   });
 
   factory NoteType.fromJson(Map<String, dynamic> json) => NoteType(
@@ -175,6 +179,7 @@ class NoteType {
         templates: (json['templates'] as List)
             .map((t) => NoteTemplate.fromJson(t))
             .toList(),
+        noteCount: json['note_count'] is int ? json['note_count'] as int : 0,
       );
 }
 
