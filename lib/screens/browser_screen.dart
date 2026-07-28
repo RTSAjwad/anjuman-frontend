@@ -6,6 +6,25 @@ import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
 
+sealed class FilterNode {
+  const FilterNode();
+}
+
+class DeckFilterNode extends FilterNode {
+  final DeckResponse deck;
+  const DeckFilterNode(this.deck);
+}
+
+class StateFilterNode extends FilterNode {
+  final String state;
+  const StateFilterNode(this.state);
+}
+
+class NoteTypeFilterNode extends FilterNode {
+  final NoteType noteType;
+  const NoteTypeFilterNode(this.noteType);
+}
+
 class BrowserScreen extends StatefulWidget {
   const BrowserScreen({super.key});
 
@@ -30,24 +49,22 @@ class _BrowserScreenState extends State<BrowserScreen> {
   String _activeSort = 'created_at';
   bool _sortAsc = false;
 
-  List<TreeNode<DeckResponse>> _treeNodes = [];
-  List<TreeNode<String>> _stateNodes = [];
-  List<TreeNode<NoteType>> _noteTypeNodes = [];
+  List<TreeNode<FilterNode>> _filterNodes = [];
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _stateNodes = [
-      TreeItemNode<String>(
-        data: 'root',
+    _filterNodes = [
+      TreeItemNode<FilterNode>(
+        data: const StateFilterNode('root'),
         expanded: true,
         children: [
-          TreeItemNode(data: 'new', children: []),
-          TreeItemNode(data: 'learning', children: []),
-          TreeItemNode(data: 'review', children: []),
-          TreeItemNode(data: 'relearning', children: []),
-          TreeItemNode(data: 'due', children: []),
+          TreeItemNode(data: const StateFilterNode('new'), children: []),
+          TreeItemNode(data: const StateFilterNode('learning'), children: []),
+          TreeItemNode(data: const StateFilterNode('review'), children: []),
+          TreeItemNode(data: const StateFilterNode('relearning'), children: []),
+          TreeItemNode(data: const StateFilterNode('due'), children: []),
         ],
       ),
     ];
@@ -65,24 +82,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final decks = context.read<DeckProvider>().decks;
     if (decks.isEmpty) return;
     setState(() {
-      _treeNodes = [
-        TreeItemNode<DeckResponse>(
-          data: DeckResponse(
-            id: -1,
-            schoolId: 0,
-            title: 'Decks',
-            createdBy: 0,
-            createdAt: DateTime.now(),
-          ),
-          expanded: true,
-          children: decks
-              .map((d) => TreeItemNode<DeckResponse>(
-                    data: d,
-                    children: [],
-                  ))
-              .toList(),
-        ),
-      ];
+      final deckChildren = decks
+          .map((d) => TreeItemNode<FilterNode>(
+                data: DeckFilterNode(d),
+                children: [],
+              ))
+          .toList();
+      final root = TreeItemNode<FilterNode>(
+        data: DeckFilterNode(DeckResponse(
+          id: -1,
+          schoolId: 0,
+          title: 'Decks',
+          createdBy: 0,
+          createdAt: DateTime.now(),
+        )),
+        expanded: true,
+        children: deckChildren,
+      );
+      _replaceOrAddSection('decks', root);
     });
   }
 
@@ -90,59 +107,87 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final noteTypes = context.read<DeckProvider>().noteTypes;
     if (noteTypes.isEmpty) return;
     setState(() {
-      _noteTypeNodes = [
-        TreeItemNode<NoteType>(
-          data: NoteType(
-            id: -1,
-            name: 'Note Type',
-            fieldNames: [],
-            sortField: '',
-            templates: [],
-            noteCount: 0,
-          ),
-          expanded: true,
-          children: noteTypes
-              .map((nt) => TreeItemNode<NoteType>(
-                    data: nt,
-                    children: [],
-                  ))
-              .toList(),
-        ),
-      ];
+      final ntChildren = noteTypes
+          .map((nt) => TreeItemNode<FilterNode>(
+                data: NoteTypeFilterNode(nt),
+                children: [],
+              ))
+          .toList();
+      final root = TreeItemNode<FilterNode>(
+        data: NoteTypeFilterNode(NoteType(
+          id: -1,
+          name: 'Note Type',
+          fieldNames: [],
+          sortField: '',
+          templates: [],
+          noteCount: 0,
+        )),
+        expanded: true,
+        children: ntChildren,
+      );
+      _replaceOrAddSection('noteTypes', root);
     });
   }
 
-  void _syncDeckSelection(List<TreeNode<DeckResponse>> nodes) {
-    final ids = _collectSelected<DeckResponse, int>(
-        nodes, (d) => d.id != -1, (d) => d.id);
-    context.read<BrowserProvider>().setDeckIds(ids);
-  }
-
-  void _syncStateSelection(List<TreeNode<String>> nodes) {
-    final states =
-        _collectSelected<String, String>(nodes, (s) => s != 'root', (s) => s);
-    context.read<BrowserProvider>().setStates(states);
-  }
-
-  void _syncNoteTypeSelection(List<TreeNode<NoteType>> nodes) {
-    final ids = _collectSelected<NoteType, int>(
-        nodes, (nt) => nt.id != -1, (nt) => nt.id);
-    context.read<BrowserProvider>().setNoteTypeIds(ids);
-  }
-
-  List<R> _collectSelected<T, R>(
-    List<TreeNode<T>> nodes,
-    bool Function(T) filter,
-    R Function(T) map,
-  ) {
-    final result = <R>[];
-    for (final node in nodes) {
-      if (node is TreeItemNode<T> && node.selected && filter(node.data)) {
-        result.add(map(node.data));
-      }
-      result.addAll(_collectSelected(node.children, filter, map));
+  void _replaceOrAddSection(String key, TreeItemNode<FilterNode> node) {
+    final idx = _filterNodes.indexWhere((n) {
+      if (n is! TreeItemNode<FilterNode>) return false;
+      return _sectionKey(n.data) == key;
+    });
+    if (idx >= 0) {
+      _filterNodes = List.from(_filterNodes)..[idx] = node;
+    } else {
+      _filterNodes = [..._filterNodes, node];
     }
-    return result;
+  }
+
+  String? _sectionKey(FilterNode data) {
+    if (data is DeckFilterNode && data.deck.id == -1) return 'decks';
+    if (data is StateFilterNode && data.state == 'root') return 'states';
+    if (data is NoteTypeFilterNode && data.noteType.id == -1) {
+      return 'noteTypes';
+    }
+    return null;
+  }
+
+  bool _isSectionRoot(FilterNode data) => _sectionKey(data) != null;
+
+  String _sectionLabel(FilterNode data) {
+    if (data is DeckFilterNode) return data.deck.title;
+    if (data is StateFilterNode) return _stateLabel(data.state);
+    if (data is NoteTypeFilterNode) return data.noteType.name;
+    return '';
+  }
+
+  void _syncAllFilters(List<TreeNode<FilterNode>> nodes) {
+    final deckIds = <int>[];
+    final states = <String>[];
+    final noteTypeIds = <int>[];
+    _walkSelected(nodes, deckIds, states, noteTypeIds);
+    context.read<BrowserProvider>().setDeckIds(deckIds);
+    context.read<BrowserProvider>().setStates(states);
+    context.read<BrowserProvider>().setNoteTypeIds(noteTypeIds);
+  }
+
+  void _walkSelected(
+    List<TreeNode<FilterNode>> nodes,
+    List<int> deckIds,
+    List<String> states,
+    List<int> noteTypeIds,
+  ) {
+    for (final node in nodes) {
+      if (node is TreeItemNode<FilterNode> && node.selected) {
+        final data = node.data;
+        if (data is DeckFilterNode && data.deck.id != -1) {
+          deckIds.add(data.deck.id);
+        } else if (data is StateFilterNode && data.state != 'root') {
+          states.add(data.state);
+        } else if (data is NoteTypeFilterNode && data.noteType.id != -1) {
+          noteTypeIds.add(data.noteType.id);
+        }
+      }
+      _walkSelected(node.children, deckIds, states, noteTypeIds);
+    }
   }
 
   @override
@@ -255,133 +300,44 @@ class _BrowserScreenState extends State<BrowserScreen> {
             child: Column(
               children: [
                 Expanded(
-                  child: _treeNodes.isEmpty
+                  child: _filterNodes.length <= 1
                       ? const Center(child: CircularProgressIndicator())
-                      : ListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          children: [
-                            OutlinedContainer(
-                              child: Tree<DeckResponse>(
-                                shrinkWrap: true,
-                                allowMultiSelect: true,
-                                nodes: _treeNodes,
-                                branchLine: BranchLine.line,
-                                onSelectionChanged:
-                                    Tree.defaultSelectionHandler(
-                                  _treeNodes,
-                                  (value) {
-                                    setState(() {
-                                      _treeNodes = value;
-                                      _syncDeckSelection(value);
-                                    });
-                                  },
-                                ),
-                                builder: (context, node) {
-                                  final deck = node.data;
-                                  final isRoot = deck.id == -1;
-                                  return TreeItem(
-                                    onPressed: isRoot ? null : () {},
-                                    onExpand: isRoot
-                                        ? Tree.defaultItemExpandHandler(
-                                            _treeNodes,
-                                            node,
-                                            (value) {
-                                              setState(
-                                                  () => _treeNodes = value);
-                                            },
-                                          )
-                                        : null,
-                                    child: Text(
-                                      deck.title,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  );
-                                },
-                              ),
+                      : OutlinedContainer(
+                          child: Tree<FilterNode>(
+                            shrinkWrap: true,
+                            allowMultiSelect: true,
+                            nodes: _filterNodes,
+                            branchLine: BranchLine.line,
+                            onSelectionChanged: Tree.defaultSelectionHandler(
+                              _filterNodes,
+                              (value) {
+                                setState(() {
+                                  _filterNodes = value;
+                                  _syncAllFilters(value);
+                                });
+                              },
                             ),
-                            const SizedBox(height: 12),
-                            OutlinedContainer(
-                              child: Tree<String>(
-                                shrinkWrap: true,
-                                allowMultiSelect: true,
-                                nodes: _stateNodes,
-                                branchLine: BranchLine.line,
-                                onSelectionChanged:
-                                    Tree.defaultSelectionHandler(
-                                  _stateNodes,
-                                  (value) {
-                                    setState(() {
-                                      _stateNodes = value;
-                                      _syncStateSelection(value);
-                                    });
-                                  },
+                            builder: (context, node) {
+                              final data = node.data;
+                              final isSection = _isSectionRoot(data);
+                              return TreeItem(
+                                onPressed: isSection ? null : () {},
+                                onExpand: isSection
+                                    ? Tree.defaultItemExpandHandler(
+                                        _filterNodes,
+                                        node,
+                                        (value) {
+                                          setState(() => _filterNodes = value);
+                                        },
+                                      )
+                                    : null,
+                                child: Text(
+                                  _sectionLabel(data),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                builder: (context, node) {
-                                  final state = node.data;
-                                  final isRoot = state == 'root';
-                                  return TreeItem(
-                                    onPressed: isRoot ? null : () {},
-                                    onExpand: isRoot
-                                        ? Tree.defaultItemExpandHandler(
-                                            _stateNodes,
-                                            node,
-                                            (value) {
-                                              setState(
-                                                  () => _stateNodes = value);
-                                            },
-                                          )
-                                        : null,
-                                    child: Text(
-                                      _stateLabel(state),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            if (_noteTypeNodes.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              OutlinedContainer(
-                                child: Tree<NoteType>(
-                                  shrinkWrap: true,
-                                  allowMultiSelect: true,
-                                  nodes: _noteTypeNodes,
-                                  branchLine: BranchLine.line,
-                                  onSelectionChanged:
-                                      Tree.defaultSelectionHandler(
-                                    _noteTypeNodes,
-                                    (value) {
-                                      setState(() {
-                                        _noteTypeNodes = value;
-                                        _syncNoteTypeSelection(value);
-                                      });
-                                    },
-                                  ),
-                                  builder: (context, node) {
-                                    final noteType = node.data;
-                                    final isRoot = noteType.id == -1;
-                                    return TreeItem(
-                                      onPressed: isRoot ? null : () {},
-                                      onExpand: isRoot
-                                          ? Tree.defaultItemExpandHandler(
-                                              _noteTypeNodes,
-                                              node,
-                                              (value) {
-                                                setState(() =>
-                                                    _noteTypeNodes = value);
-                                              },
-                                            )
-                                          : null,
-                                      child: Text(
-                                        noteType.name,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
+                              );
+                            },
+                          ),
                         ),
                 ),
               ],
