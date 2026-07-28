@@ -303,6 +303,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             ),
           ],
         ),
+        const Divider(),
       ],
       child: ResizablePanel.horizontal(
         draggerBuilder: (context) {
