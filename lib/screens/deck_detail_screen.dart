@@ -15,12 +15,16 @@ class DeckDetailScreen extends StatefulWidget {
   final DeckResponse deck;
   final DeckProvider provider;
   final ClassProvider classProvider;
+  final bool showBackButton;
+  final VoidCallback? onDeleted;
 
   const DeckDetailScreen({
     super.key,
     required this.deck,
     required this.provider,
     required this.classProvider,
+    this.showBackButton = true,
+    this.onDeleted,
   });
 
   @override
@@ -77,12 +81,14 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
     return Scaffold(
       headers: [
         AppBar(
-          leading: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.arrowLeft, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+          leading: widget.showBackButton
+              ? [
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ]
+              : [],
           title: Text(_deckTitle),
           trailing: [
             if (isTeacher)
@@ -700,7 +706,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                 if (ctx.mounted) {
                   Navigator.of(ctx).pop();
                   if (ok) {
-                    Navigator.of(context).pop();
+                    if (widget.showBackButton) {
+                      Navigator.of(context).pop();
+                    } else {
+                      widget.onDeleted?.call();
+                    }
                   }
                 }
               },

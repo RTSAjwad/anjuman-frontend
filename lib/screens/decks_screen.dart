@@ -19,6 +19,7 @@ class DecksScreen extends StatefulWidget {
 
 class _DecksScreenState extends State<DecksScreen> {
   bool _initialLoadDone = false;
+  DeckResponse? _selectedDeck;
 
   void _reloadDecks() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -111,16 +112,7 @@ class _DecksScreenState extends State<DecksScreen> {
                           provider.loadDecks();
                         },
                         onTapDetail: (deck) {
-                          final classProvider = context.read<ClassProvider>();
-                          Navigator.of(context).push(
-                            ShadcnPageRoute(
-                              builder: (_) => DeckDetailScreen(
-                                deck: deck,
-                                provider: provider,
-                                classProvider: classProvider,
-                              ),
-                            ),
-                          );
+                          setState(() => _selectedDeck = deck);
                         },
                         onDelete: isTeacher
                             ? (deck) => _confirmDelete(context, deck)
@@ -132,9 +124,22 @@ class _DecksScreenState extends State<DecksScreen> {
                 ),
               ),
               ResizablePane.flex(
-                child: const Center(
-                  child: Text('Select a deck to view details'),
-                ),
+                child: _selectedDeck != null
+                    ? KeyedSubtree(
+                        key: ValueKey(_selectedDeck!.id),
+                        child: DeckDetailScreen(
+                          deck: _selectedDeck!,
+                          provider: provider,
+                          classProvider: context.read<ClassProvider>(),
+                          showBackButton: false,
+                          onDeleted: () {
+                            setState(() => _selectedDeck = null);
+                          },
+                        ),
+                      )
+                    : const Center(
+                        child: Text('Select a deck to view details'),
+                      ),
               ),
             ],
           );
@@ -333,19 +338,28 @@ class _DeckTreeState extends State<_DeckTree> {
       child: Tree<DeckResponse>(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
+        recursiveSelection: false,
         nodes: _treeNodes,
         branchLine: BranchLine.line,
         onSelectionChanged: (selectedNodes, multiSelect, selected) {
           if (selected) {
             setState(() {
-              _treeNodes = _treeNodes.deselectNodes(selectedNodes);
+              _treeNodes = _treeNodes.setSelectedNodes(selectedNodes);
             });
+            final deck =
+                (selectedNodes.first as TreeItemNode<DeckResponse>).data;
+            if (widget.isTeacher) {
+              widget.onTapDetail(deck);
+            } else {
+              widget.onStudy(deck);
+            }
           }
         },
         builder: (context, node) {
           final deck = node.data;
           final hasChildren = node.children.isNotEmpty;
           return TreeItem(
+            onPressed: () {},
             onExpand: hasChildren
                 ? Tree.defaultItemExpandHandler(
                     _treeNodes,
@@ -356,19 +370,9 @@ class _DeckTreeState extends State<_DeckTree> {
                   )
                 : null,
             trailing: _buildBadges(deck),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (widget.isTeacher) {
-                  widget.onTapDetail(deck);
-                } else {
-                  widget.onStudy(deck);
-                }
-              },
-              child: Text(
-                deck.title,
-                overflow: TextOverflow.ellipsis,
-              ),
+            child: Text(
+              deck.title,
+              overflow: TextOverflow.ellipsis,
             ),
           );
         },
