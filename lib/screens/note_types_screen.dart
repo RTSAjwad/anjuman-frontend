@@ -1,9 +1,13 @@
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
+import '../config/breakpoints.dart';
 import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
+import 'note_type_detail_screen.dart';
+import 'template_detail_screen.dart';
 
 class NoteTypesScreen extends StatefulWidget {
   final DeckProvider? provider;
@@ -17,6 +21,9 @@ class NoteTypesScreen extends StatefulWidget {
 class _NoteTypesScreenState extends State<NoteTypesScreen> {
   DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
   late final DeckProvider _cachedProvider;
+  final _saveEnabled = ValueNotifier<bool>(false);
+  GlobalKey<NoteTypeDetailScreenState>? _detailKey;
+  int? _lastNoteTypeId;
 
   @override
   void initState() {
@@ -31,6 +38,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   @override
   void dispose() {
     _cachedProvider.removeListener(_onChanged);
+    _saveEnabled.dispose();
     super.dispose();
   }
 
@@ -42,6 +50,224 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final noteTypes = _provider.noteTypes;
+
+    final detailIdStr = GoRouterState.of(context).uri.queryParameters['detail'];
+    final detailId = detailIdStr != null ? int.tryParse(detailIdStr) : null;
+    final templateIndexStr =
+        GoRouterState.of(context).uri.queryParameters['template'];
+    final templateIndex =
+        templateIndexStr != null ? int.tryParse(templateIndexStr) : null;
+    final selectedNoteType = noteTypes
+        .cast<NoteType?>()
+        .firstWhere((t) => t!.id == detailId, orElse: () => null);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = MediaQuery.of(context).size.width;
+        final isCompact = width < Breakpoints.medium;
+        final listPaneSize = width >= Breakpoints.large
+            ? 360.0
+            : (width >= Breakpoints.expanded ? 320.0 : 280.0);
+
+        Widget? fullscreenContent;
+        if (selectedNoteType != null) {
+          fullscreenContent =
+              _buildDetailPane(selectedNoteType, showBack: true);
+        }
+
+        if (isCompact && fullscreenContent != null) {
+          return fullscreenContent;
+        }
+
+        if (isCompact) {
+          return _buildList(context, colors, noteTypes, isTeacher: false);
+        }
+
+        // Build the note type list widget
+        final listWidget = _buildList(context, colors, noteTypes,
+            isTeacher: false, selectedId: detailId);
+
+        Widget detailWidget;
+        if (selectedNoteType != null) {
+          detailWidget = _buildDetailPane(selectedNoteType);
+        } else {
+          detailWidget = const Center(
+            child: Text('Select a note type to view details'),
+          );
+        }
+
+        return ResizablePanel.horizontal(
+          draggerBuilder: (context) {
+            return const HorizontalResizableDragger();
+          },
+          children: [
+            ResizablePane(
+              initialSize: listPaneSize,
+              minSize: 200,
+              child: listWidget,
+            ),
+            ResizablePane.flex(
+              child: detailWidget,
+            ),
+            if (templateIndex != null)
+              ResizablePane.flex(
+                child: _buildTemplateDetailPane(),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailPane(NoteType noteType, {bool showBack = false}) {
+    if (_lastNoteTypeId != noteType.id) {
+      _detailKey = GlobalKey<NoteTypeDetailScreenState>();
+      _lastNoteTypeId = noteType.id;
+      _saveEnabled.value = false;
+    }
+    final key = _detailKey!;
+    return Scaffold(
+      headers: [
+        AppBar(
+          leading: showBack
+              ? [
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                    onPressed: () => context.go('/note-types'),
+                  ),
+                ]
+              : const [],
+          title: Text(noteType.name),
+          trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.trash2, size: 20),
+              onPressed: () => _confirmDeleteNoteType(context, noteType),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _saveEnabled,
+              builder: (context, enabled, _) {
+                return IconButton.outline(
+                  icon: const Icon(LucideIcons.save, size: 20),
+                  onPressed: enabled
+                      ? () {
+                          key.currentState?.submit();
+                        }
+                      : null,
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+      child: KeyedSubtree(
+        key: ValueKey(noteType.id),
+        child: NoteTypeDetailScreen(
+          key: key,
+          provider: _provider,
+          noteType: noteType,
+          onChanged: () =>
+              _saveEnabled.value = key.currentState?.hasChanges ?? false,
+          onSaved: () => _saveEnabled.value = false,
+          onTemplateSelected: (index) {
+            final uri = GoRouterState.of(context).uri;
+            context.go(
+              uri.replace(
+                queryParameters: {
+                  ...uri.queryParameters,
+                  'template': index.toString(),
+                },
+              ).toString(),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTemplateDetailPane() {
+    final templates = _detailKey?.currentState?.templates;
+    final templateIndexStr =
+        GoRouterState.of(context).uri.queryParameters['template'];
+    final templateIndex =
+        templateIndexStr != null ? int.tryParse(templateIndexStr) : null;
+
+    if (templateIndex == null ||
+        templates == null ||
+        templateIndex >= templates.length) {
+      return const Center(
+        child: Text('Select a template to view details'),
+      );
+    }
+
+    final template = templates[templateIndex];
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: Text(template.name),
+          trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.x, size: 20),
+              onPressed: () {
+                final uri = GoRouterState.of(context).uri;
+                final params = Map<String, String>.from(uri.queryParameters);
+                params.remove('template');
+                context.go(uri.replace(queryParameters: params).toString());
+              },
+            ),
+          ],
+        ),
+      ],
+      child: KeyedSubtree(
+        key: ValueKey('template_$templateIndex'),
+        child: TemplateDetailScreen(
+          template: template,
+          onChanged: (updated) {
+            _detailKey?.currentState?.updateTemplate(templateIndex, updated);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(
+      BuildContext context, ColorScheme colors, List<NoteType> noteTypes,
+      {bool isTeacher = false, int? selectedId}) {
+    if (noteTypes.isEmpty) {
+      return Scaffold(
+        headers: [
+          NarrowAppBar(
+            title: const Text('Note Types'),
+            trailing: [
+              IconButton.outline(
+                icon: const Icon(LucideIcons.plus, size: 20),
+                onPressed: () => _showCreateDialog(context),
+              ),
+              IconButton.outline(
+                icon: const Icon(LucideIcons.refreshCw, size: 20),
+                onPressed: () => _provider.loadNoteTypes(),
+              ),
+            ],
+          ),
+        ],
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.fileText,
+                  size: 64, color: colors.mutedForeground),
+              const SizedBox(height: 16),
+              const Text('No note types yet'),
+              const SizedBox(height: 8),
+              Text(
+                'Create your first note type to get started',
+                style: TextStyle(color: colors.mutedForeground, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       headers: [
@@ -59,93 +285,58 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
           ],
         ),
       ],
-      child: noteTypes.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.fileText,
-                      size: 64, color: colors.mutedForeground),
-                  const SizedBox(height: 16),
-                  const Text('No note types yet'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create your first note type to get started',
-                    style:
-                        TextStyle(color: colors.mutedForeground, fontSize: 14),
-                  ),
-                ],
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                OutlinedContainer(
-                  child: Column(
-                    children: noteTypes
-                        .map((t) => Container(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                      color: colors.border, width: 0.5),
-                                ),
-                              ),
+      child: ListView(
+        padding: const EdgeInsets.all(8),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: OutlinedContainer(
+                child: Table(
+                  rows: [
+                    for (final t in noteTypes)
+                      TableRow(cells: [
+                        TableCell(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () =>
+                                context.go('/note-types?detail=${t.id}'),
+                            child: Container(
                               padding: const EdgeInsets.all(12),
+                              color: selectedId == t.id
+                                  ? colors.primary.scaleAlpha(0.05)
+                                  : null,
                               child: Row(
                                 children: [
-                                  Icon(LucideIcons.fileText,
-                                      size: 20, color: colors.mutedForeground),
-                                  const SizedBox(width: 12),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                    child: Row(
                                       children: [
                                         Text(t.name).semiBold(),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Fields: ${t.fieldNames.join(", ")}${t.sortField.isNotEmpty ? "  •  Sort: ${t.sortField}" : ""}  •  Templates: ${t.templates.map((t) => t.name).join(", ")}  •  Notes: ${t.noteCount}',
-                                          style: TextStyle(
-                                              color: colors.mutedForeground,
-                                              fontSize: 13),
+                                        const SizedBox(width: 8),
+                                        OutlineBadge(
+                                          child: Text('${t.noteCount} notes'),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  Tooltip(
-                                    tooltip: (context) =>
-                                        const Text('Edit note type'),
-                                    child: IconButton.outline(
-                                      icon: const Icon(LucideIcons.pencil,
-                                          size: 18),
-                                      onPressed: () =>
-                                          _showEditDialog(context, t),
+                                  if (selectedId == t.id)
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Icon(LucideIcons.chevronRight),
                                     ),
-                                  ),
-                                  Tooltip(
-                                    tooltip: (context) => Text(t.hasNotes
-                                        ? 'Cannot delete: ${t.noteCount} note${t.noteCount == 1 ? '' : 's'} use this type'
-                                        : 'Delete note type'),
-                                    child: IconButton.outline(
-                                      icon: Icon(LucideIcons.trash2,
-                                          size: 18,
-                                          color: t.hasNotes
-                                              ? colors.mutedForeground
-                                              : Colors.red),
-                                      onPressed: t.hasNotes
-                                          ? null
-                                          : () => _confirmDeleteNoteType(
-                                              context, t),
-                                    ),
-                                  ),
                                 ],
                               ),
-                            ))
-                        .toList(),
-                  ),
+                            ),
+                          ),
+                        ),
+                      ]),
+                  ],
                 ),
-              ],
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -154,20 +345,6 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       context,
       builder: (ctx, _) => _CreateNoteTypeDialog(
         provider: _provider,
-        onSuccess: () {
-          safeCloseOverlay(ctx);
-          setState(() {});
-        },
-      ),
-    );
-  }
-
-  void _showEditDialog(BuildContext context, NoteType noteType) {
-    showResponsiveDialog(
-      context,
-      builder: (ctx, _) => _CreateNoteTypeDialog(
-        provider: _provider,
-        existingNoteType: noteType,
         onSuccess: () {
           safeCloseOverlay(ctx);
           setState(() {});
@@ -208,12 +385,10 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
 
 class _CreateNoteTypeDialog extends StatefulWidget {
   final DeckProvider provider;
-  final NoteType? existingNoteType;
   final VoidCallback onSuccess;
 
   const _CreateNoteTypeDialog({
     required this.provider,
-    this.existingNoteType,
     required this.onSuccess,
   });
 
@@ -233,22 +408,9 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
   final List<String> _fieldNames = [];
   final List<_TemplateEntry> _templates = [];
 
-  bool get _isEditing => widget.existingNoteType != null;
-
   @override
   void initState() {
     super.initState();
-    final existing = widget.existingNoteType;
-    if (existing != null) {
-      _nameController.text = existing.name;
-      _fieldNames.addAll(existing.fieldNames);
-      _sortField = existing.sortField.isNotEmpty ? existing.sortField : null;
-      _templates.addAll(existing.templates.map((t) => _TemplateEntry(
-            name: t.name,
-            frontPattern: t.frontPattern,
-            backPattern: t.backPattern,
-          )));
-    }
   }
 
   @override
@@ -328,18 +490,14 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
           .toList(),
     );
 
-    final ok = _isEditing
-        ? await widget.provider
-            .updateNoteType(widget.existingNoteType!.id, noteType)
-        : await widget.provider.createNoteType(noteType);
+    final ok = await widget.provider.createNoteType(noteType);
     if (mounted) {
       if (ok) {
         widget.onSuccess();
       } else {
         setState(() {
           _isSubmitting = false;
-          _error = widget.provider.error ??
-              'Failed to ${_isEditing ? 'update' : 'create'} note type';
+          _error = widget.provider.error ?? 'Failed to create note type';
         });
       }
     }
@@ -350,7 +508,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
     final colors = Theme.of(context).colorScheme;
 
     return AlertDialog(
-      title: Text(_isEditing ? 'Edit Note Type' : 'Create Note Type'),
+      title: const Text('Create Note Type'),
       content: SizedBox(
         width: 500,
         child: ConstrainedBox(
@@ -516,7 +674,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_isEditing ? 'Save' : 'Create'),
+              : const Text('Create'),
         ),
       ],
     );
