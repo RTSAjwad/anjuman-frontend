@@ -358,7 +358,7 @@ class _ShellScaffoldState extends State<_ShellScaffold>
 
         Widget navRail = NavigationRail(
           selectedKey: ValueKey(currentIndex),
-          expanded: true,
+          expanded: width >= Breakpoints.large,
           labelType: NavigationLabelType.all,
           labelPosition: NavigationLabelPosition.bottom,
           onSelected: (key) {
