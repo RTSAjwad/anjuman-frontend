@@ -1,4 +1,5 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import '../widgets/narrow_app_bar.dart';
 
 // Stub screens — placeholders that will be replaced with real implementations
 
@@ -101,7 +102,7 @@ class _StubPage extends StatelessWidget {
 
     return Scaffold(
       headers: [
-        AppBar(
+        NarrowAppBar(
           title: Text(title),
         ),
       ],

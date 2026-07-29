@@ -5,6 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../models/user.dart';
+import '../widgets/narrow_app_bar.dart';
 import '../widgets/sortable_table.dart';
 
 class UsersScreen extends StatefulWidget {
@@ -32,7 +33,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
     return Scaffold(
       headers: [
-        AppBar(
+        NarrowAppBar(
           title: const Text('Users'),
           trailing: [
             IconButton.outline(

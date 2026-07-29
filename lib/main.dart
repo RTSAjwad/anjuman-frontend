@@ -8,6 +8,7 @@ import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/study_provider.dart';
 import 'providers/user_provider.dart';
+import 'widgets/narrow_app_bar.dart';
 import 'screens/login_screen.dart';
 import 'screens/classes_screen.dart';
 import 'screens/decks_screen.dart';
@@ -23,48 +24,6 @@ void main() {
 final _interTypography = Typography.geist().copyWith(
   sans: () => GoogleFonts.interTextTheme().bodyMedium!,
 );
-
-// Fixed branch indices (must match StatefulShellBranch order below).
-class _NavItem {
-  final int branchIndex;
-  final String path;
-  final IconData icon;
-  final String label;
-  const _NavItem(this.branchIndex, this.path, this.icon, this.label);
-}
-
-List<_NavItem> _navForRole(String role) {
-  return switch (role) {
-    'admin' => const [
-        _NavItem(0, '/dashboard', LucideIcons.layoutDashboard, 'Dashboard'),
-        _NavItem(1, '/classes', LucideIcons.users, 'Classes'),
-        _NavItem(2, '/decks', LucideIcons.layers, 'Decks'),
-        _NavItem(3, '/users', LucideIcons.users, 'Users'),
-        _NavItem(4, '/note-types', LucideIcons.shapes, 'Note Types'),
-        _NavItem(5, '/browser', LucideIcons.search, 'Browser'),
-        _NavItem(6, '/me', LucideIcons.user, 'Me'),
-      ],
-    'teacher' => const [
-        _NavItem(0, '/dashboard', LucideIcons.layoutDashboard, 'Dashboard'),
-        _NavItem(1, '/classes', LucideIcons.users, 'Classes'),
-        _NavItem(2, '/decks', LucideIcons.layers, 'Decks'),
-        _NavItem(4, '/note-types', LucideIcons.shapes, 'Note Types'),
-        _NavItem(5, '/browser', LucideIcons.search, 'Browser'),
-        _NavItem(6, '/me', LucideIcons.user, 'Me'),
-      ],
-    'student' => const [
-        _NavItem(0, '/dashboard', LucideIcons.layoutDashboard, 'Dashboard'),
-        _NavItem(2, '/decks', LucideIcons.layers, 'Decks'),
-        _NavItem(1, '/classes', LucideIcons.users, 'Classes'),
-        _NavItem(5, '/browser', LucideIcons.search, 'Browser'),
-        _NavItem(6, '/me', LucideIcons.user, 'Me'),
-      ],
-    _ => const [
-        _NavItem(0, '/dashboard', LucideIcons.house, 'Home'),
-        _NavItem(6, '/me', LucideIcons.user, 'Me'),
-      ],
-  };
-}
 
 class AnkiClassroomApp extends StatelessWidget {
   const AnkiClassroomApp({super.key});
@@ -222,7 +181,7 @@ class _MeScreen extends StatelessWidget {
 
     return Scaffold(
       headers: [
-        AppBar(
+        NarrowAppBar(
           title: const Text('Me'),
           trailing: [
             IconButton.outline(
@@ -267,79 +226,162 @@ class _MeScreen extends StatelessWidget {
   }
 }
 
-class _ShellScaffold extends StatelessWidget {
+class _ShellScaffold extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const _ShellScaffold({required this.navigationShell});
 
   @override
+  State<_ShellScaffold> createState() => _ShellScaffoldState();
+}
+
+class _ShellScaffoldState extends State<_ShellScaffold> {
+  List<Widget> _buildNavChildren(String role, int selectedIndex) {
+    final items = <Widget>[];
+
+    // Dashboard (standalone)
+    items.add(NavigationItem(
+      key: const ValueKey(0),
+      label: const Text('Dashboard'),
+      child: const Icon(LucideIcons.layoutDashboard),
+    ));
+    items.add(const NavigationDivider());
+
+    // Content group
+    final contentChildren = <Widget>[];
+    if (role == 'admin' || role == 'teacher' || role == 'student') {
+      contentChildren.add(NavigationItem(
+        key: const ValueKey(5),
+        label: const Text('Browser'),
+        child: const Icon(LucideIcons.search),
+      ));
+      contentChildren.add(NavigationItem(
+        key: const ValueKey(2),
+        label: const Text('Decks'),
+        child: const Icon(LucideIcons.layers),
+      ));
+    }
+    if (role == 'admin' || role == 'teacher') {
+      contentChildren.add(NavigationItem(
+        key: const ValueKey(4),
+        label: const Text('Note Types'),
+        child: const Icon(LucideIcons.shapes),
+      ));
+    }
+    items.add(NavigationGroup(
+      label: const Text('Content'),
+      children: contentChildren,
+    ));
+    items.add(const NavigationDivider());
+
+    // Organisation group
+    final orgChildren = <Widget>[];
+    if (role == 'admin' || role == 'teacher' || role == 'student') {
+      orgChildren.add(NavigationItem(
+        key: const ValueKey(1),
+        label: const Text('Classes'),
+        child: const Icon(LucideIcons.users),
+      ));
+    }
+    if (role == 'admin') {
+      orgChildren.add(NavigationItem(
+        key: const ValueKey(3),
+        label: const Text('Users'),
+        child: const Icon(LucideIcons.users),
+      ));
+    }
+    orgChildren.add(NavigationItem(
+      key: const ValueKey(6),
+      label: const Text('Me'),
+      child: const Icon(LucideIcons.user),
+    ));
+    items.add(NavigationGroup(
+      label: const Text('Organisation'),
+      children: orgChildren,
+    ));
+
+    return items;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final role = auth.role;
-    final navItems = _navForRole(role);
-
-    final currentBranchIndex = navigationShell.currentIndex;
-    final selectedNavPos =
-        navItems.indexWhere((n) => n.branchIndex == currentBranchIndex);
-    final clampedPos = selectedNavPos.clamp(0, navItems.length - 1);
+    final currentIndex = widget.navigationShell.currentIndex;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = MediaQuery.of(context).size.width >= 600;
+        final navChildren = _buildNavChildren(role, currentIndex);
         if (isWide) {
           return Row(
             children: [
               NavigationRail(
-                selectedKey: ValueKey(navItems[clampedPos].branchIndex),
-                expanded: false,
+                selectedKey: ValueKey(currentIndex),
+                expanded: true,
                 labelType: NavigationLabelType.all,
                 labelPosition: NavigationLabelPosition.bottom,
                 onSelected: (key) {
                   if (key is ValueKey<int>) {
-                    navigationShell.goBranch(key.value);
+                    widget.navigationShell.goBranch(key.value);
                   }
                 },
-                children: navItems
-                    .map((item) => NavigationItem(
-                          key: ValueKey(item.branchIndex),
-                          label: Text(item.label),
-                          child: Icon(item.icon),
-                        ))
-                    .toList(),
+                children: navChildren,
               ),
               const VerticalDivider(width: 0),
-              Expanded(child: navigationShell),
+              Expanded(child: widget.navigationShell),
             ],
           );
         } else {
-          return Column(
-            children: [
-              Expanded(child: navigationShell),
-              SizedBox(
-                width: double.infinity,
-                child: NavigationBar(
-                  direction: Axis.horizontal,
-                  alignment: NavigationBarAlignment.spaceAround,
-                  keepMainAxisSize: false,
-                  selectedKey: ValueKey(navItems[clampedPos].branchIndex),
-                  onSelected: (key) {
-                    if (key is ValueKey<int>) {
-                      navigationShell.goBranch(key.value);
-                    }
+          return DrawerContext(
+            onOpenDrawer: () {
+              showOverlay(
+                context,
+                DrawerConfiguration(
+                  position: OverlayPosition.start,
+                  expands: true,
+                  builder: (ctx) {
+                    return NavigationRail(
+                      selectedKey: ValueKey(currentIndex),
+                      expanded: true,
+                      labelType: NavigationLabelType.all,
+                      labelPosition: NavigationLabelPosition.bottom,
+                      onSelected: (key) {
+                        if (key is ValueKey<int>) {
+                          widget.navigationShell.goBranch(key.value);
+                          closeOverlay(ctx);
+                        }
+                      },
+                      children: navChildren,
+                    );
                   },
-                  children: navItems
-                      .map((item) => NavigationItem(
-                            key: ValueKey(item.branchIndex),
-                            label: Text(item.label),
-                            child: Icon(item.icon),
-                          ))
-                      .toList(),
                 ),
-              ),
-            ],
+              );
+            },
+            child: widget.navigationShell,
           );
         }
       },
     );
   }
+}
+
+class DrawerContext extends InheritedWidget {
+  final VoidCallback onOpenDrawer;
+
+  const DrawerContext({
+    super.key,
+    required this.onOpenDrawer,
+    required super.child,
+  });
+
+  static VoidCallback? of(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<DrawerContext>()
+        ?.onOpenDrawer;
+  }
+
+  @override
+  bool updateShouldNotify(DrawerContext old) =>
+      onOpenDrawer != old.onOpenDrawer;
 }

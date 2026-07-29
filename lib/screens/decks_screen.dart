@@ -7,6 +7,7 @@ import '../providers/deck_provider.dart';
 import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
+import '../widgets/narrow_app_bar.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
@@ -173,7 +174,7 @@ class _DecksScreenState extends State<DecksScreen> {
               if (!isWide) {
                 return Column(
                   children: [
-                    AppBar(
+                    NarrowAppBar(
                       title: const Text('Decks'),
                       trailing: [
                         if (isTeacher)
@@ -222,7 +223,7 @@ class _DecksScreenState extends State<DecksScreen> {
                       minSize: 200,
                       child: Column(
                         children: [
-                          AppBar(
+                          NarrowAppBar(
                             title: const Text('Decks'),
                             trailing: [
                               if (isTeacher)

@@ -2,6 +2,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
+import '../widgets/narrow_app_bar.dart';
 
 class NoteTypesScreen extends StatefulWidget {
   final DeckProvider? provider;
@@ -43,7 +44,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
 
     return Scaffold(
       headers: [
-        AppBar(
+        NarrowAppBar(
           title: const Text('Note Types'),
           trailing: [
             IconButton.outline(

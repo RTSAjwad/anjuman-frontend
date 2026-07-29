@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
 import '../models/class.dart';
+import '../widgets/narrow_app_bar.dart';
 
 class ClassesScreen extends StatefulWidget {
   const ClassesScreen({super.key});
@@ -133,7 +134,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
               if (!isWide) {
                 return Column(
                   children: [
-                    AppBar(
+                    NarrowAppBar(
                       title: const Text('Classes'),
                       trailing: [
                         if (isTeacher)
@@ -165,7 +166,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                     minSize: 200,
                     child: Column(
                       children: [
-                        AppBar(
+                        NarrowAppBar(
                           title: const Text('Classes'),
                           trailing: [
                             if (isTeacher)
