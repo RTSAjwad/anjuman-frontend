@@ -4,8 +4,9 @@ import '../models/common.dart';
 import '../models/study.dart';
 import '../services/api_client.dart';
 import '../services/study_service.dart';
+import '../widgets/safe_notify.dart';
 
-class StudyProvider extends ChangeNotifier {
+class StudyProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late final StudyService _studyService;
 
@@ -73,7 +74,7 @@ class StudyProvider extends ChangeNotifier {
         } on Exception catch (e) {
           _error = e.toString();
           _isLoading = false;
-          notifyListeners();
+          safeNotify();
           return;
         }
 
@@ -101,26 +102,25 @@ class StudyProvider extends ChangeNotifier {
         // Terminal: queue is empty, study session complete
         if (session.totalCards == 0) {
           _isComplete = true;
-          notifyListeners();
+          safeNotify();
           return;
         }
 
-        // No due cards available — even though totalCards > 0, none are
-        // due right now. Show the all-caught-up state.
+        // No due cards available
         if (_cards.isEmpty) {
           _isComplete = true;
-          notifyListeners();
+          safeNotify();
           return;
         }
 
-        notifyListeners();
+        safeNotify();
 
         // Review each card in this batch
         for (var i = 0; i < _cards.length; i++) {
           if (gen != _loopGeneration) return;
           _currentIndex = i;
           _showBack = false;
-          notifyListeners();
+          safeNotify();
 
           final rated = await _waitForRating();
           _ratingCompleter = null;
@@ -158,16 +158,15 @@ class StudyProvider extends ChangeNotifier {
         cardId: currentCard!.cardId,
         rating: rating,
       ));
-      // Update the session-wide card state from the review response
       _cardStates[currentCard!.cardId] = response.state;
 
       _isSubmitting = false;
-      notifyListeners();
+      safeNotify();
       _ratingCompleter?.complete(true);
     } on Exception catch (e) {
       _error = e.toString();
       _isSubmitting = false;
-      notifyListeners();
+      safeNotify();
       _ratingCompleter?.complete(false);
     }
   }

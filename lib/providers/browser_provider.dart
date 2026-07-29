@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import '../models/browser_card.dart';
 import '../services/api_client.dart';
 import '../services/browser_service.dart';
+import '../widgets/safe_notify.dart';
 
-class BrowserProvider extends ChangeNotifier {
+class BrowserProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late final BrowserService _browserService;
 
@@ -67,7 +68,7 @@ class BrowserProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    safeNotify();
   }
 
   void toggleDeckId(int deckId) {

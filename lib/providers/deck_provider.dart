@@ -3,8 +3,9 @@ import '../models/common.dart';
 import '../models/deck.dart';
 import '../services/api_client.dart';
 import '../services/deck_service.dart';
+import '../widgets/safe_notify.dart';
 
-class DeckProvider extends ChangeNotifier {
+class DeckProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late final DeckService _deckService;
 
@@ -262,7 +263,7 @@ class DeckProvider extends ChangeNotifier {
     }
 
     _noteTypesLoading = false;
-    notifyListeners();
+    safeNotify();
   }
 
   Future<bool> createNoteType(CreateNoteType noteType) async {

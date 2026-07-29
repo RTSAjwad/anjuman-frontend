@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import '../models/class.dart';
 import '../services/api_client.dart';
 import '../services/class_service.dart';
+import '../widgets/safe_notify.dart';
 
-class ClassProvider extends ChangeNotifier {
+class ClassProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late final ClassService _classService;
 
@@ -36,7 +37,7 @@ class ClassProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    safeNotify();
   }
 
   Future<ClassResponse?> createClass(String name, String? description) async {

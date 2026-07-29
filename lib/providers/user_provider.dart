@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
 import '../services/user_service.dart';
+import '../widgets/safe_notify.dart';
 
-class UserProvider extends ChangeNotifier {
+class UserProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late final UserService _userService;
 
@@ -32,7 +33,7 @@ class UserProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    safeNotify();
   }
 
   Future<bool> createUser(int schoolId, String email, String password,
