@@ -88,7 +88,7 @@ class _DecksScreenState extends State<DecksScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 600;
+              final isWide = MediaQuery.of(context).size.width >= 600;
 
               // Build the embedded content widget
               Widget? embeddedContent;

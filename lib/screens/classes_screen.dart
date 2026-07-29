@@ -87,7 +87,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 600;
+              final isWide = MediaQuery.of(context).size.width >= 600;
               final detailId = _selectedDetailId();
               final selectedClass = detailId != null
                   ? provider.classes
