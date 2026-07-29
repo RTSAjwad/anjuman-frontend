@@ -8,6 +8,7 @@ import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
 import '../models/class.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../widgets/responsive_dialog.dart';
 import '../config/breakpoints.dart';
 
 class ClassesScreen extends StatefulWidget {
@@ -286,11 +287,9 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   void _showCreateDialog(BuildContext context) {
     final provider = context.read<ClassProvider>();
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _CreateClassDialog(provider: provider),
-      ),
+      builder: (ctx, _) => _CreateClassDialog(provider: provider),
     );
   }
 }
@@ -338,7 +337,7 @@ class _CreateClassDialogState extends State<_CreateClassDialog> {
 
     if (mounted) {
       if (result != null) {
-        Navigator.of(context).pop();
+        closeOverlay(context);
       } else {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -394,7 +393,7 @@ class _CreateClassDialogState extends State<_CreateClassDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(

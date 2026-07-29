@@ -8,6 +8,7 @@ import '../models/class.dart';
 import '../models/search_result.dart';
 import '../services/api_client.dart';
 import '../services/user_service.dart';
+import '../widgets/responsive_dialog.dart';
 import '../widgets/shadcn_search_dropdown.dart';
 
 class ClassDetailScreen extends StatefulWidget {
@@ -263,104 +264,97 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   void _confirmDelete(BuildContext context) {
     final provider = widget.provider;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Class'),
-          content: Text(
-              'Are you sure you want to delete "${widget.classResponse.name}"? '
-              'This action cannot be undone.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final success =
-                    await provider.deleteClass(widget.classResponse.id);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  if (success) {
-                    Navigator.of(context).pop();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text(provider.error ?? 'Failed to delete class'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete Class'),
+        content: Text(
+            'Are you sure you want to delete "${widget.classResponse.name}"? '
+            'This action cannot be undone.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final success =
+                  await provider.deleteClass(widget.classResponse.id);
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                if (success) {
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(provider.error ?? 'Failed to delete class'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
 
   void _confirmRemoveMember(BuildContext context, MemberResponse member) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Remove Member'),
-          content: Text('Remove ${member.email} from this class?'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final success = await _provider.removeMember(
-                  widget.classResponse.id,
-                  member.userId,
-                );
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  if (success) {
-                    setState(() {
-                      _rosterFuture =
-                          _provider.loadRoster(widget.classResponse.id);
-                    });
-                  } else if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text(_provider.error ?? 'Failed to remove member'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: Text('Remove ${member.email} from this class?'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final success = await _provider.removeMember(
+                widget.classResponse.id,
+                member.userId,
+              );
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                if (success) {
+                  setState(() {
+                    _rosterFuture =
+                        _provider.loadRoster(widget.classResponse.id);
+                  });
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text(_provider.error ?? 'Failed to remove member'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
-              },
-              child: const Text('Remove'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('Remove'),
+          ),
+        ],
       ),
     );
   }
 
   void _showAddMemberDialog(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _AddMemberDialog(
-          classId: widget.classResponse.id,
-          provider: _provider,
-          apiClient: _provider.apiClient,
-          onMemberAdded: () {
-            setState(() {
-              _rosterFuture = _provider.loadRoster(widget.classResponse.id);
-            });
-          },
-        ),
+      builder: (ctx, _) => _AddMemberDialog(
+        classId: widget.classResponse.id,
+        provider: _provider,
+        apiClient: _provider.apiClient,
+        onMemberAdded: () {
+          setState(() {
+            _rosterFuture = _provider.loadRoster(widget.classResponse.id);
+          });
+        },
       ),
     );
   }
@@ -426,7 +420,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
     if (mounted) {
       if (success) {
         widget.onMemberAdded();
-        Navigator.of(context).pop();
+        closeOverlay(context);
       } else {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -455,7 +449,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(

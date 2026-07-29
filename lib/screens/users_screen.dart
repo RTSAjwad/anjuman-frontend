@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../models/user.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../widgets/responsive_dialog.dart';
 import '../widgets/sortable_table.dart';
 
 class UsersScreen extends StatefulWidget {
@@ -274,67 +275,60 @@ class _UsersScreenState extends State<UsersScreen> {
   void _showCreateDialog(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final schoolId = auth.user?.schoolId ?? 0;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _UserFormDialog(
-          title: 'Create User',
-          provider: context.read<UserProvider>(),
-          schoolId: schoolId,
-          onSuccess: () => Navigator.of(ctx).pop(),
-        ),
+      builder: (ctx, _) => _UserFormDialog(
+        title: 'Create User',
+        provider: context.read<UserProvider>(),
+        schoolId: schoolId,
+        onSuccess: () => closeOverlay(ctx),
       ),
     );
   }
 
   void _showEditDialog(BuildContext context, UserDetail user) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _UserFormDialog(
-          title: 'Edit User',
-          provider: context.read<UserProvider>(),
-          existingUser: user,
-          onSuccess: () => Navigator.of(ctx).pop(),
-        ),
+      builder: (ctx, _) => _UserFormDialog(
+        title: 'Edit User',
+        provider: context.read<UserProvider>(),
+        existingUser: user,
+        onSuccess: () => closeOverlay(ctx),
       ),
     );
   }
 
   void _confirmDelete(BuildContext context, UserDetail user) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete User'),
-          content: Text(
-              'Delete ${user.displayName.isEmpty ? user.email : user.displayName}? This cannot be undone.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final provider = context.read<UserProvider>();
-                final success = await provider.deleteUser(user.id);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  if (!success && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text(provider.error ?? 'Failed to delete user'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Text(
+            'Delete ${user.displayName.isEmpty ? user.email : user.displayName}? This cannot be undone.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final provider = context.read<UserProvider>();
+              final success = await provider.deleteUser(user.id);
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(provider.error ?? 'Failed to delete user'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -573,7 +567,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(

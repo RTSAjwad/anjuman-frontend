@@ -8,6 +8,7 @@ import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../widgets/responsive_dialog.dart';
 import '../config/breakpoints.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
@@ -319,43 +320,38 @@ class _DecksScreenState extends State<DecksScreen> {
   }
 
   void _showCreateDialog(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) {
-          final provider = context.read<DeckProvider>();
-          return _DeckFormDialog(
-            title: 'Create Deck',
-            provider: provider,
-            onSuccess: () => Navigator.of(ctx).pop(),
-          );
-        },
-      ),
+      builder: (ctx, _) {
+        final provider = context.read<DeckProvider>();
+        return _DeckFormDialog(
+          title: 'Create Deck',
+          provider: provider,
+          onSuccess: () => closeOverlay(ctx),
+        );
+      },
     );
   }
 
   void _confirmDelete(BuildContext context, DeckResponse deck) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Deck'),
-          content: Text('Delete "${deck.title}"? This cannot be undone.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok =
-                    await context.read<DeckProvider>().deleteDeck(deck.id);
-                if (ok && ctx.mounted) Navigator.of(ctx).pop();
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete Deck'),
+        content: Text('Delete "${deck.title}"? This cannot be undone.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok = await context.read<DeckProvider>().deleteDeck(deck.id);
+              if (ok && ctx.mounted) closeOverlay(ctx);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -660,7 +656,7 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(

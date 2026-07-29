@@ -1,11 +1,24 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../config/breakpoints.dart';
 
+typedef ResponsiveDialogBuilder = Widget Function(
+  BuildContext context,
+  Object? state,
+);
+
 /// Shows a dialog as a centered overlay on medium+ screens, or a bottom
 /// drawer on compact screens.
+///
+/// The configuration is chosen at the time the dialog is opened and does not
+/// change if the window is resized while open.
+///
+/// If [state] is provided, it is passed to [builder] so the caller can
+/// preserve mutable state across future breakpoint-aware reopen cycles
+/// (not yet implemented).
 void showResponsiveDialog(
   BuildContext context, {
-  required WidgetBuilder builder,
+  required ResponsiveDialogBuilder builder,
+  Object? state,
 }) {
   final width = MediaQuery.of(context).size.width;
   if (width < Breakpoints.medium) {
@@ -14,14 +27,14 @@ void showResponsiveDialog(
       DrawerConfiguration(
         position: OverlayPosition.bottom,
         expands: false,
-        builder: (ctx) => builder(ctx),
+        builder: (ctx) => builder(ctx, state),
       ),
     );
   } else {
     showOverlay(
       context,
       DialogConfiguration(
-        builder: (ctx) => builder(ctx),
+        builder: (ctx) => builder(ctx, state),
       ),
     );
   }

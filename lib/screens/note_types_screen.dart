@@ -3,6 +3,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../widgets/responsive_dialog.dart';
 
 class NoteTypesScreen extends StatefulWidget {
   final DeckProvider? provider;
@@ -149,63 +150,57 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   }
 
   void _showCreateDialog(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _CreateNoteTypeDialog(
-          provider: _provider,
-          onSuccess: () {
-            Navigator.of(ctx).pop();
-            setState(() {});
-          },
-        ),
+      builder: (ctx, _) => _CreateNoteTypeDialog(
+        provider: _provider,
+        onSuccess: () {
+          closeOverlay(ctx);
+          setState(() {});
+        },
       ),
     );
   }
 
   void _showEditDialog(BuildContext context, NoteType noteType) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _CreateNoteTypeDialog(
-          provider: _provider,
-          existingNoteType: noteType,
-          onSuccess: () {
-            Navigator.of(ctx).pop();
-            setState(() {});
-          },
-        ),
+      builder: (ctx, _) => _CreateNoteTypeDialog(
+        provider: _provider,
+        existingNoteType: noteType,
+        onSuccess: () {
+          closeOverlay(ctx);
+          setState(() {});
+        },
       ),
     );
   }
 
   void _confirmDeleteNoteType(BuildContext context, NoteType noteType) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Note Type'),
-          content: Text(
-              'Delete "${noteType.name}"? This will also delete all notes using this type.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok = await _provider.deleteNoteType(noteType.id);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  if (ok) {
-                    setState(() {});
-                  }
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete Note Type'),
+        content: Text(
+            'Delete "${noteType.name}"? This will also delete all notes using this type.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok = await _provider.deleteNoteType(noteType.id);
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                if (ok) {
+                  setState(() {});
                 }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -510,7 +505,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(

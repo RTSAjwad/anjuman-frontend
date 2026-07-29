@@ -306,11 +306,11 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showCreateNoteDialog(BuildContext context) {
     showResponsiveDialog(
       context,
-      builder: (ctx) => _NoteFormDialog(
+      builder: (ctx, _) => _NoteFormDialog(
         deckId: widget.deck.id,
         provider: widget.provider,
         onSuccess: () {
-          Navigator.of(ctx).pop();
+          closeOverlay(ctx);
           _load();
         },
       ),
@@ -318,78 +318,72 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   }
 
   void _showEditNoteDialog(BuildContext context, NoteResponse note) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _NoteFormDialog(
-          deckId: widget.deck.id,
-          provider: widget.provider,
-          existingNote: note,
-          onSuccess: () {
-            Navigator.of(ctx).pop();
-            _load();
-          },
-        ),
+      builder: (ctx, _) => _NoteFormDialog(
+        deckId: widget.deck.id,
+        provider: widget.provider,
+        existingNote: note,
+        onSuccess: () {
+          closeOverlay(ctx);
+          _load();
+        },
       ),
     );
   }
 
   void _confirmDeleteNote(BuildContext context, NoteResponse note) {
     final front = (note.fields['Front'] ?? '').toString();
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Note'),
-          content:
-              Text('Delete "$front"? All cards for this note will be removed.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok =
-                    await widget.provider.deleteNote(widget.deck.id, note.id);
-                if (ok && ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete Note'),
+        content:
+            Text('Delete "$front"? All cards for this note will be removed.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok =
+                  await widget.provider.deleteNote(widget.deck.id, note.id);
+              if (ok && ctx.mounted) {
+                closeOverlay(ctx);
+                _load();
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
 
   void _confirmDuplicate(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Duplicate Deck'),
-          content: Text('Duplicate "${widget.deck.title}"? '
-              'This will create a copy with "(copy)" in the title.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.primary(
-              onPressed: () async {
-                await widget.provider.duplicateDeck(widget.deck.id);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                }
-              },
-              child: const Text('Duplicate'),
-            ),
-          ],
-        ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Duplicate Deck'),
+        content: Text('Duplicate "${widget.deck.title}"? '
+            'This will create a copy with "(copy)" in the title.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.primary(
+            onPressed: () async {
+              await widget.provider.duplicateDeck(widget.deck.id);
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                _load();
+              }
+            },
+            child: const Text('Duplicate'),
+          ),
+        ],
       ),
     );
   }
@@ -397,60 +391,58 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showTransferOwnerDialog(BuildContext context) {
     final service = UserService(widget.provider.apiClient);
     int? selectedUserId;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: const Text('Transfer Ownership'),
-            content: SizedBox(
-              width: 400,
-              child: ShadcnSearchDropdown<SearchResult>(
-                hintText: 'Select new owner',
-                loader: (query) async => service.searchUsers(query),
-                itemBuilder: (ctx, user) =>
-                    Text('${user.displayName} (${user.email})'),
-                onChanged: (user) {
-                  setDialogState(() => selectedUserId = user?.id);
-                },
-              ),
+      builder: (ctx, _) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Transfer Ownership'),
+          content: SizedBox(
+            width: 400,
+            child: ShadcnSearchDropdown<SearchResult>(
+              hintText: 'Select new owner',
+              loader: (query) async => service.searchUsers(query),
+              itemBuilder: (ctx, user) =>
+                  Text('${user.displayName} (${user.email})'),
+              onChanged: (user) {
+                setDialogState(() => selectedUserId = user?.id);
+              },
             ),
-            actions: [
-              Button.ghost(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-              Button.primary(
-                onPressed: () async {
-                  if (selectedUserId == null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a teacher'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-                  final ok = await widget.provider
-                      .transferOwner(widget.deck.id, selectedUserId!);
-                  if (!ctx.mounted) return;
-                  if (ok) {
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text(widget.provider.error ??
-                            'Failed to transfer ownership'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Transfer'),
-              ),
-            ],
           ),
+          actions: [
+            Button.ghost(
+              onPressed: () => closeOverlay(ctx),
+              child: const Text('Cancel'),
+            ),
+            Button.primary(
+              onPressed: () async {
+                if (selectedUserId == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a teacher'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                final ok = await widget.provider
+                    .transferOwner(widget.deck.id, selectedUserId!);
+                if (!ctx.mounted) return;
+                if (ok) {
+                  closeOverlay(ctx);
+                  _load();
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(widget.provider.error ??
+                          'Failed to transfer ownership'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Transfer'),
+            ),
+          ],
         ),
       ),
     );
@@ -459,91 +451,86 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showShareDialog(BuildContext context) {
     final service = UserService(widget.provider.apiClient);
     int? selectedUserId;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: const Text('Share Deck'),
-            content: SizedBox(
-              width: 400,
-              child: ShadcnSearchDropdown<SearchResult>(
-                hintText: 'Select a collaborator',
-                loader: (query) async => service.searchUsers(query),
-                itemBuilder: (ctx, user) =>
-                    Text('${user.displayName} (${user.email})'),
-                onChanged: (user) {
-                  setDialogState(() => selectedUserId = user?.id);
-                },
-              ),
+      builder: (ctx, _) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Share Deck'),
+          content: SizedBox(
+            width: 400,
+            child: ShadcnSearchDropdown<SearchResult>(
+              hintText: 'Select a collaborator',
+              loader: (query) async => service.searchUsers(query),
+              itemBuilder: (ctx, user) =>
+                  Text('${user.displayName} (${user.email})'),
+              onChanged: (user) {
+                setDialogState(() => selectedUserId = user?.id);
+              },
             ),
-            actions: [
-              Button.ghost(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-              Button.primary(
-                onPressed: () async {
-                  if (selectedUserId == null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a user'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-                  final ok = await widget.provider
-                      .shareDeck(widget.deck.id, selectedUserId!);
-                  if (!ctx.mounted) return;
-                  if (ok) {
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            widget.provider.error ?? 'Failed to share deck'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Share'),
-              ),
-            ],
           ),
+          actions: [
+            Button.ghost(
+              onPressed: () => closeOverlay(ctx),
+              child: const Text('Cancel'),
+            ),
+            Button.primary(
+              onPressed: () async {
+                if (selectedUserId == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a user'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                final ok = await widget.provider
+                    .shareDeck(widget.deck.id, selectedUserId!);
+                if (!ctx.mounted) return;
+                if (ok) {
+                  closeOverlay(ctx);
+                  _load();
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text(widget.provider.error ?? 'Failed to share deck'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Share'),
+            ),
+          ],
         ),
       ),
     );
   }
 
   void _confirmUnshare(BuildContext context, int userId) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Remove Collaborator'),
-          content:
-              const Text('Remove this teacher from the deck collaborators?'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok =
-                    await widget.provider.unshareDeck(widget.deck.id, userId);
-                if (ok && ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                }
-              },
-              child: const Text('Remove'),
-            ),
-          ],
-        ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Remove Collaborator'),
+        content: const Text('Remove this teacher from the deck collaborators?'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok =
+                  await widget.provider.unshareDeck(widget.deck.id, userId);
+              if (ok && ctx.mounted) {
+                closeOverlay(ctx);
+                _load();
+              }
+            },
+            child: const Text('Remove'),
+          ),
+        ],
       ),
     );
   }
@@ -551,192 +538,182 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showAddToClassDialog(BuildContext context) {
     final classes = widget.classProvider.classes;
     int? selectedClassId;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: const Text('Add to Class'),
-            content: SizedBox(
-              width: 300,
-              child: Select<int>(
-                value: selectedClassId,
-                placeholder: const Text('Select class'),
-                onChanged: (v) => setDialogState(() => selectedClassId = v),
-                popup: SelectPopup(
-                  items: SelectItemList(children: [
-                    for (final c in classes)
-                      SelectItemButton(
-                        value: c.id,
-                        child: Text(c.name),
-                      ),
-                  ]),
-                ),
-                itemBuilder: (context, value) {
-                  final c = classes.where((c) => c.id == value).firstOrNull;
-                  return Text(c?.name ?? '');
-                },
+      builder: (ctx, _) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Add to Class'),
+          content: SizedBox(
+            width: 300,
+            child: Select<int>(
+              value: selectedClassId,
+              placeholder: const Text('Select class'),
+              onChanged: (v) => setDialogState(() => selectedClassId = v),
+              popup: SelectPopup(
+                items: SelectItemList(children: [
+                  for (final c in classes)
+                    SelectItemButton(
+                      value: c.id,
+                      child: Text(c.name),
+                    ),
+                ]),
               ),
+              itemBuilder: (context, value) {
+                final c = classes.where((c) => c.id == value).firstOrNull;
+                return Text(c?.name ?? '');
+              },
             ),
-            actions: [
-              Button.ghost(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-              Button.primary(
-                onPressed: () async {
-                  if (selectedClassId == null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a class'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-                  final ok = await widget.provider
-                      .addDeckToClass(widget.deck.id, selectedClassId!);
-                  if (!ctx.mounted) return;
-                  if (ok) {
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } else {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text(widget.provider.error ??
-                            'Failed to add deck to class'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Add'),
-              ),
-            ],
           ),
+          actions: [
+            Button.ghost(
+              onPressed: () => closeOverlay(ctx),
+              child: const Text('Cancel'),
+            ),
+            Button.primary(
+              onPressed: () async {
+                if (selectedClassId == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a class'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+                final ok = await widget.provider
+                    .addDeckToClass(widget.deck.id, selectedClassId!);
+                if (!ctx.mounted) return;
+                if (ok) {
+                  closeOverlay(ctx);
+                  _load();
+                } else {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(widget.provider.error ??
+                          'Failed to add deck to class'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
         ),
       ),
     );
   }
 
   void _confirmRemoveFromClass(BuildContext context, int classId) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Remove from Class'),
-          content: const Text('Remove this deck from the class?'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok = await widget.provider
-                    .removeDeckFromClass(widget.deck.id, classId);
-                if (ok && ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  _load();
-                }
-              },
-              child: const Text('Remove'),
-            ),
-          ],
-        ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Remove from Class'),
+        content: const Text('Remove this deck from the class?'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok = await widget.provider
+                  .removeDeckFromClass(widget.deck.id, classId);
+              if (ok && ctx.mounted) {
+                closeOverlay(ctx);
+                _load();
+              }
+            },
+            child: const Text('Remove'),
+          ),
+        ],
       ),
     );
   }
 
   void _showRenameDialog(BuildContext context) {
     final controller = TextEditingController(text: _deckTitle);
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Rename Deck'),
-          content: SizedBox(
-            width: 400,
-            child: TextField(
-              controller: controller,
-              placeholder: const Text('New name'),
-              initialValue: _deckTitle,
-              autofocus: true,
-            ),
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Rename Deck'),
+        content: SizedBox(
+          width: 400,
+          child: TextField(
+            controller: controller,
+            placeholder: const Text('New name'),
+            initialValue: _deckTitle,
+            autofocus: true,
           ),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.primary(
-              onPressed: () async {
-                if (controller.text.trim().isEmpty) return;
-                final ok = await widget.provider
-                    .renameDeck(widget.deck.id, controller.text.trim());
-                if (ok && ctx.mounted) {
-                  if (mounted) {
-                    setState(() => _deckTitle = controller.text.trim());
-                  }
-                  Navigator.of(ctx).pop();
-                  _load();
-                }
-              },
-              child: const Text('Rename'),
-            ),
-          ],
         ),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.primary(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              final ok = await widget.provider
+                  .renameDeck(widget.deck.id, controller.text.trim());
+              if (ok && ctx.mounted) {
+                if (mounted) {
+                  setState(() => _deckTitle = controller.text.trim());
+                }
+                closeOverlay(ctx);
+                _load();
+              }
+            },
+            child: const Text('Rename'),
+          ),
+        ],
       ),
     );
   }
 
   void _showMoveDeckDialog(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _MoveDeckDetailDialog(
-          deck: widget.deck,
-          provider: widget.provider,
-          onSuccess: () {
-            Navigator.of(ctx).pop();
-            _load();
-          },
-        ),
+      builder: (ctx, _) => _MoveDeckDetailDialog(
+        deck: widget.deck,
+        provider: widget.provider,
+        onSuccess: () {
+          closeOverlay(ctx);
+          _load();
+        },
       ),
     );
   }
 
   void _confirmDeleteDeck(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => AlertDialog(
-          title: const Text('Delete Deck'),
-          content: Text('Delete "${widget.deck.title}"? '
-              'This cannot be undone.'),
-          actions: [
-            Button.ghost(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            Button.destructive(
-              onPressed: () async {
-                final ok = await widget.provider.deleteDeck(widget.deck.id);
-                if (ctx.mounted) {
-                  Navigator.of(ctx).pop();
-                  if (ok) {
-                    if (widget.onDeleted != null) {
-                      widget.onDeleted?.call();
-                    } else {
-                      Navigator.of(context).pop();
-                    }
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Delete Deck'),
+        content: Text('Delete "${widget.deck.title}"? '
+            'This cannot be undone.'),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.destructive(
+            onPressed: () async {
+              final ok = await widget.provider.deleteDeck(widget.deck.id);
+              if (ctx.mounted) {
+                closeOverlay(ctx);
+                if (ok) {
+                  if (widget.onDeleted != null) {
+                    widget.onDeleted?.call();
+                  } else {
+                    Navigator.of(context).pop();
                   }
                 }
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -1355,7 +1332,7 @@ class _MoveDeckDetailDialogState extends State<_MoveDeckDetailDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(
