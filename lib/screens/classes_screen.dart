@@ -8,6 +8,7 @@ import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
 import '../models/class.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../config/breakpoints.dart';
 
 class ClassesScreen extends StatefulWidget {
   const ClassesScreen({super.key});
@@ -88,7 +89,11 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = MediaQuery.of(context).size.width >= 600;
+              final width = MediaQuery.of(context).size.width;
+              final isCompact = width < Breakpoints.medium;
+              final listPaneSize = width >= Breakpoints.large
+                  ? 360.0
+                  : (width >= Breakpoints.expanded ? 320.0 : 280.0);
               final detailId = _selectedDetailId();
               final selectedClass = detailId != null
                   ? provider.classes
@@ -108,8 +113,8 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 );
               }
 
-              // Narrow: show selected class with back button
-              if (!isWide && selectedClass != null) {
+              // Compact: show selected class with back button
+              if (isCompact && selectedClass != null) {
                 return Scaffold(
                   headers: [
                     AppBar(
@@ -130,8 +135,8 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 );
               }
 
-              // Narrow: show class list only
-              if (!isWide) {
+              // Compact: show class list only
+              if (isCompact) {
                 return Column(
                   children: [
                     NarrowAppBar(
@@ -155,14 +160,14 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 );
               }
 
-              // Wide: resizable
+              // Medium or Expanded: resizable dual pane
               return ResizablePanel.horizontal(
                 draggerBuilder: (context) {
                   return const HorizontalResizableDragger();
                 },
                 children: [
                   ResizablePane(
-                    initialSize: 300,
+                    initialSize: listPaneSize,
                     minSize: 200,
                     child: Column(
                       children: [

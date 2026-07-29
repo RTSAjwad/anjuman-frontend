@@ -8,6 +8,7 @@ import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/narrow_app_bar.dart';
+import '../config/breakpoints.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
@@ -89,11 +90,15 @@ class _DecksScreenState extends State<DecksScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = MediaQuery.of(context).size.width >= 600;
+              final width = MediaQuery.of(context).size.width;
+              final isCompact = width < Breakpoints.medium;
+              final listPaneSize = width >= Breakpoints.large
+                  ? 360.0
+                  : (width >= Breakpoints.expanded ? 320.0 : 280.0);
 
               // Build the embedded content widget
               Widget? embeddedContent;
-              Widget? narrowContent;
+              Widget? fullscreenContent;
               Widget? fullscreenStudyContent;
               if (selectedDeck != null) {
                 if (isTeacher) {
@@ -106,7 +111,7 @@ class _DecksScreenState extends State<DecksScreen> {
                       onDeleted: () => context.go('/decks'),
                     ),
                   );
-                  narrowContent = Scaffold(
+                  fullscreenContent = Scaffold(
                     headers: [
                       AppBar(
                         leading: [
@@ -132,12 +137,12 @@ class _DecksScreenState extends State<DecksScreen> {
                       deckId: selectedDeck.id,
                       provider: context.read<StudyProvider>(),
                       onClose: () => context.go('/decks'),
-                      onFullscreen: isWide
+                      onFullscreen: width >= Breakpoints.medium
                           ? () => setState(() => _studyFullscreen = true)
                           : null,
                     ),
                   );
-                  narrowContent = KeyedSubtree(
+                  fullscreenContent = KeyedSubtree(
                     key: ValueKey(selectedDeck.id),
                     child: StudyScreen(
                       deckId: selectedDeck.id,
@@ -158,20 +163,21 @@ class _DecksScreenState extends State<DecksScreen> {
                 }
               }
 
-              // Study fullscreen on wide screens
+              // Study fullscreen toggle (only on dual-pane)
               if (_studyFullscreen &&
                   fullscreenStudyContent != null &&
-                  !isTeacher) {
+                  !isTeacher &&
+                  width >= Breakpoints.medium) {
                 return fullscreenStudyContent;
               }
 
-              // Narrow screen: show selected content with back button
-              if (!isWide && narrowContent != null) {
-                return narrowContent;
+              // Compact: show selected content with back button
+              if (isCompact && fullscreenContent != null) {
+                return fullscreenContent;
               }
 
-              // Narrow screen with nothing selected: show deck list only
-              if (!isWide) {
+              // Compact with nothing selected: show deck list only
+              if (isCompact) {
                 return Column(
                   children: [
                     NarrowAppBar(
@@ -211,67 +217,61 @@ class _DecksScreenState extends State<DecksScreen> {
                 );
               }
 
-              // Wide screen: show resizable
-              if (isWide) {
-                return ResizablePanel.horizontal(
-                  draggerBuilder: (context) {
-                    return const HorizontalResizableDragger();
-                  },
-                  children: [
-                    ResizablePane(
-                      initialSize: 300,
-                      minSize: 200,
-                      child: Column(
-                        children: [
-                          NarrowAppBar(
-                            title: const Text('Decks'),
-                            trailing: [
-                              if (isTeacher)
-                                IconButton.outline(
-                                  icon: const Icon(LucideIcons.plus, size: 20),
-                                  onPressed: () => _showCreateDialog(context),
-                                ),
+              // Medium or Expanded: show resizable dual pane
+              return ResizablePanel.horizontal(
+                draggerBuilder: (context) {
+                  return const HorizontalResizableDragger();
+                },
+                children: [
+                  ResizablePane(
+                    initialSize: listPaneSize,
+                    minSize: 200,
+                    child: Column(
+                      children: [
+                        NarrowAppBar(
+                          title: const Text('Decks'),
+                          trailing: [
+                            if (isTeacher)
                               IconButton.outline(
-                                icon:
-                                    const Icon(LucideIcons.refreshCw, size: 20),
-                                onPressed: () =>
-                                    context.read<DeckProvider>().loadDecks(),
+                                icon: const Icon(LucideIcons.plus, size: 20),
+                                onPressed: () => _showCreateDialog(context),
                               ),
-                            ],
-                          ),
-                          Expanded(
-                            child: _DeckTree(
-                              decks: provider.decks,
-                              isTeacher: isTeacher,
-                              selectedId: detailId ?? studyId,
-                              onSelect: (deck) {
-                                if (isTeacher) {
-                                  context.go('/decks?detail=${deck.id}');
-                                } else {
-                                  context.go('/decks?study=${deck.id}');
-                                }
-                              },
-                              onDelete: isTeacher
-                                  ? (deck) => _confirmDelete(context, deck)
-                                  : null,
-                              colors: colors,
+                            IconButton.outline(
+                              icon: const Icon(LucideIcons.refreshCw, size: 20),
+                              onPressed: () =>
+                                  context.read<DeckProvider>().loadDecks(),
                             ),
+                          ],
+                        ),
+                        Expanded(
+                          child: _DeckTree(
+                            decks: provider.decks,
+                            isTeacher: isTeacher,
+                            selectedId: detailId ?? studyId,
+                            onSelect: (deck) {
+                              if (isTeacher) {
+                                context.go('/decks?detail=${deck.id}');
+                              } else {
+                                context.go('/decks?study=${deck.id}');
+                              }
+                            },
+                            onDelete: isTeacher
+                                ? (deck) => _confirmDelete(context, deck)
+                                : null,
+                            colors: colors,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    ResizablePane.flex(
-                      child: embeddedContent ??
-                          const Center(
-                            child: Text('Select a deck to view details'),
-                          ),
-                    ),
-                  ],
-                );
-              }
-
-              // Fallback (shouldn't happen)
-              return const Center(child: Text('Select a deck to view details'));
+                  ),
+                  ResizablePane.flex(
+                    child: embeddedContent ??
+                        const Center(
+                          child: Text('Select a deck to view details'),
+                        ),
+                  ),
+                ],
+              );
             },
           );
         },

@@ -1,5 +1,5 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../main.dart';
+import 'drawer_context.dart';
 
 /// An [AppBar] that shows a menu button on narrow screens to open the
 /// navigation drawer. Uses [DrawerContext] to get the drawer callback.

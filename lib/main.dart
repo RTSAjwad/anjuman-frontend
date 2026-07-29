@@ -9,6 +9,8 @@ import 'providers/deck_provider.dart';
 import 'providers/study_provider.dart';
 import 'providers/user_provider.dart';
 import 'widgets/narrow_app_bar.dart';
+import 'widgets/drawer_context.dart';
+import 'config/breakpoints.dart';
 import 'screens/login_screen.dart';
 import 'screens/classes_screen.dart';
 import 'screens/decks_screen.dart';
@@ -235,7 +237,46 @@ class _ShellScaffold extends StatefulWidget {
   State<_ShellScaffold> createState() => _ShellScaffoldState();
 }
 
-class _ShellScaffoldState extends State<_ShellScaffold> {
+class _ShellScaffoldState extends State<_ShellScaffold>
+    with SingleTickerProviderStateMixin {
+  bool _drawerOpen = false;
+  late final AnimationController _drawerController;
+  late final Animation<Offset> _drawerSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _drawerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _drawerSlide = Tween<Offset>(
+      begin: const Offset(-1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _drawerController,
+      curve: Curves.easeOut,
+      reverseCurve: Curves.easeIn,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _drawerController.dispose();
+    super.dispose();
+  }
+
+  void _openDrawer() {
+    setState(() => _drawerOpen = true);
+    _drawerController.forward();
+  }
+
+  void _closeDrawer() {
+    _drawerController.reverse().then((_) {
+      if (mounted) setState(() => _drawerOpen = false);
+    });
+  }
+
   List<Widget> _buildNavChildren(String role, int selectedIndex) {
     final items = <Widget>[];
 
@@ -311,77 +352,80 @@ class _ShellScaffoldState extends State<_ShellScaffold> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = MediaQuery.of(context).size.width >= 600;
+        final width = MediaQuery.of(context).size.width;
+        final showNavRail = width >= Breakpoints.expanded;
         final navChildren = _buildNavChildren(role, currentIndex);
-        if (isWide) {
+
+        Widget navRail = NavigationRail(
+          selectedKey: ValueKey(currentIndex),
+          expanded: true,
+          labelType: NavigationLabelType.all,
+          labelPosition: NavigationLabelPosition.bottom,
+          onSelected: (key) {
+            if (key is ValueKey<int>) {
+              widget.navigationShell.goBranch(key.value);
+            }
+          },
+          children: navChildren,
+        );
+
+        if (showNavRail) {
+          _drawerOpen = false;
           return Row(
             children: [
-              NavigationRail(
-                selectedKey: ValueKey(currentIndex),
-                expanded: true,
-                labelType: NavigationLabelType.all,
-                labelPosition: NavigationLabelPosition.bottom,
-                onSelected: (key) {
-                  if (key is ValueKey<int>) {
-                    widget.navigationShell.goBranch(key.value);
-                  }
-                },
-                children: navChildren,
-              ),
+              navRail,
               const VerticalDivider(width: 0),
               Expanded(child: widget.navigationShell),
             ],
           );
         } else {
+          // Compact or Medium: hamburger drawer with stack
           return DrawerContext(
-            onOpenDrawer: () {
-              showOverlay(
-                context,
-                DrawerConfiguration(
-                  position: OverlayPosition.start,
-                  expands: true,
-                  builder: (ctx) {
-                    return NavigationRail(
-                      selectedKey: ValueKey(currentIndex),
-                      expanded: true,
-                      labelType: NavigationLabelType.all,
-                      labelPosition: NavigationLabelPosition.bottom,
-                      onSelected: (key) {
-                        if (key is ValueKey<int>) {
-                          widget.navigationShell.goBranch(key.value);
-                          closeOverlay(ctx);
-                        }
-                      },
-                      children: navChildren,
-                    );
-                  },
-                ),
-              );
-            },
-            child: widget.navigationShell,
+            onOpenDrawer: _openDrawer,
+            child: Stack(
+              children: [
+                // Main content
+                widget.navigationShell,
+                // Backdrop
+                if (_drawerOpen)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _closeDrawer,
+                      child: Container(color: Colors.black.withAlpha(128)),
+                    ),
+                  ),
+                // Drawer
+                if (_drawerOpen)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: SlideTransition(
+                      position: _drawerSlide,
+                      child: Container(
+                        color: Theme.of(context).colorScheme.background,
+                        child: NavigationRail(
+                          selectedKey: ValueKey(currentIndex),
+                          expanded: true,
+                          labelType: NavigationLabelType.all,
+                          labelPosition: NavigationLabelPosition.bottom,
+                          onSelected: (key) {
+                            if (key is ValueKey<int>) {
+                              widget.navigationShell.goBranch(key.value);
+                              _closeDrawer();
+                            }
+                          },
+                          children: navChildren,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           );
         }
       },
     );
   }
-}
-
-class DrawerContext extends InheritedWidget {
-  final VoidCallback onOpenDrawer;
-
-  const DrawerContext({
-    super.key,
-    required this.onOpenDrawer,
-    required super.child,
-  });
-
-  static VoidCallback? of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<DrawerContext>()
-        ?.onOpenDrawer;
-  }
-
-  @override
-  bool updateShouldNotify(DrawerContext old) =>
-      onOpenDrawer != old.onOpenDrawer;
 }
