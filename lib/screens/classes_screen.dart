@@ -85,15 +85,53 @@ class _ClassesScreenState extends State<ClassesScreen> {
             );
           }
 
-          return ResizablePanel.horizontal(
-            draggerBuilder: (context) {
-              return const HorizontalResizableDragger();
-            },
-            children: [
-              ResizablePane(
-                initialSize: 300,
-                minSize: 200,
-                child: Column(
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 600;
+              final detailId = _selectedDetailId();
+              final selectedClass = detailId != null
+                  ? provider.classes
+                      .cast<ClassResponse?>()
+                      .firstWhere((c) => c?.id == detailId, orElse: () => null)
+                  : null;
+
+              Widget? embeddedContent;
+              if (selectedClass != null) {
+                embeddedContent = KeyedSubtree(
+                  key: ValueKey(selectedClass.id),
+                  child: ClassDetailScreen(
+                    classResponse: selectedClass,
+                    provider: provider,
+                    onClose: () => context.go('/classes'),
+                  ),
+                );
+              }
+
+              // Narrow: show selected class with back button
+              if (!isWide && selectedClass != null) {
+                return Scaffold(
+                  headers: [
+                    AppBar(
+                      leading: [
+                        IconButton.outline(
+                          icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                          onPressed: () => context.go('/classes'),
+                        ),
+                      ],
+                      title: Text(selectedClass.name),
+                    ),
+                  ],
+                  child: ClassDetailScreen(
+                    classResponse: selectedClass,
+                    provider: provider,
+                    onClose: () => context.go('/classes'),
+                  ),
+                );
+              }
+
+              // Narrow: show class list only
+              if (!isWide) {
+                return Column(
                   children: [
                     AppBar(
                       title: const Text('Classes'),
@@ -111,126 +149,132 @@ class _ClassesScreenState extends State<ClassesScreen> {
                       ],
                     ),
                     Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.all(8),
-                        children: [
-                          Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 700),
-                              child: OutlinedContainer(
-                                child: Table(
-                                  rows: [
-                                    for (final c in provider.classes)
-                                      TableRow(cells: [
-                                        TableCell(
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () {
-                                              context.go(
-                                                  '/classes?detail=${c.id}');
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(12),
-                                              color: _selectedDetailId() == c.id
-                                                  ? colors.primary
-                                                      .scaleAlpha(0.05)
-                                                  : null,
-                                              child: Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Row(
-                                                          children: [
-                                                            Text(c.name)
-                                                                .semiBold(),
-                                                            if (c.archived) ...[
-                                                              const SizedBox(
-                                                                  width: 8),
-                                                              OutlineBadge(
-                                                                child: const Text(
-                                                                    'Archived'),
-                                                              ),
-                                                            ],
-                                                          ],
-                                                        ),
-                                                        if (c.description !=
-                                                                null &&
-                                                            c.description!
-                                                                .isNotEmpty) ...[
-                                                          const SizedBox(
-                                                              height: 4),
-                                                          Text(
-                                                            c.description!,
-                                                            style: TextStyle(
-                                                                color: colors
-                                                                    .mutedForeground),
-                                                            maxLines: 2,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                          ),
-                                                        ],
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  if (_selectedDetailId() ==
-                                                      c.id)
-                                                    const Padding(
-                                                      padding: EdgeInsets.only(
-                                                          left: 8),
-                                                      child: Icon(LucideIcons
-                                                          .chevronRight),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ]),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        child: _buildClassList(isTeacher, colors, provider)),
                   ],
-                ),
-              ),
-              ResizablePane.flex(
-                child: () {
-                  final detailId = _selectedDetailId();
-                  final selectedClass = detailId != null
-                      ? provider.classes.cast<ClassResponse?>().firstWhere(
-                          (c) => c?.id == detailId,
-                          orElse: () => null)
-                      : null;
-                  if (selectedClass != null) {
-                    return KeyedSubtree(
-                      key: ValueKey(selectedClass.id),
-                      child: ClassDetailScreen(
-                        classResponse: selectedClass,
-                        provider: provider,
-                        onClose: () => context.go('/classes'),
-                      ),
-                    );
-                  }
-                  return const Center(
-                    child: Text('Select a class to view details'),
-                  );
-                }(),
-              ),
-            ],
+                );
+              }
+
+              // Wide: resizable
+              return ResizablePanel.horizontal(
+                draggerBuilder: (context) {
+                  return const HorizontalResizableDragger();
+                },
+                children: [
+                  ResizablePane(
+                    initialSize: 300,
+                    minSize: 200,
+                    child: Column(
+                      children: [
+                        AppBar(
+                          title: const Text('Classes'),
+                          trailing: [
+                            if (isTeacher)
+                              IconButton.outline(
+                                icon: const Icon(LucideIcons.plus, size: 20),
+                                onPressed: () => _showCreateDialog(context),
+                              ),
+                            IconButton.outline(
+                              icon: const Icon(LucideIcons.refreshCw, size: 20),
+                              onPressed: () =>
+                                  context.read<ClassProvider>().loadClasses(),
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                            child:
+                                _buildClassList(isTeacher, colors, provider)),
+                      ],
+                    ),
+                  ),
+                  ResizablePane.flex(
+                    child: embeddedContent ??
+                        const Center(
+                          child: Text('Select a class to view details'),
+                        ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
+    );
+  }
+
+  Widget _buildClassList(
+      bool isTeacher, ColorScheme colors, ClassProvider provider) {
+    return ListView(
+      padding: const EdgeInsets.all(8),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: OutlinedContainer(
+              child: Table(
+                rows: [
+                  for (final c in provider.classes)
+                    TableRow(cells: [
+                      TableCell(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            context.go('/classes?detail=${c.id}');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            color: _selectedDetailId() == c.id
+                                ? colors.primary.scaleAlpha(0.05)
+                                : null,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(c.name).semiBold(),
+                                          if (c.archived) ...[
+                                            const SizedBox(width: 8),
+                                            OutlineBadge(
+                                              child: const Text('Archived'),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      if (c.description != null &&
+                                          c.description!.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          c.description!,
+                                          style: TextStyle(
+                                              color: colors.mutedForeground),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                if (_selectedDetailId() == c.id)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 8),
+                                    child: Icon(LucideIcons.chevronRight),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
