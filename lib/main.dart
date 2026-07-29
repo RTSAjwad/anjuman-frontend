@@ -315,21 +315,26 @@ class _ShellScaffold extends StatelessWidget {
           return Column(
             children: [
               Expanded(child: navigationShell),
-              NavigationBar(
-                direction: Axis.horizontal,
-                selectedKey: ValueKey(navItems[clampedPos].branchIndex),
-                onSelected: (key) {
-                  if (key is ValueKey<int>) {
-                    navigationShell.goBranch(key.value);
-                  }
-                },
-                children: navItems
-                    .map((item) => NavigationItem(
-                          key: ValueKey(item.branchIndex),
-                          label: Text(item.label),
-                          child: Icon(item.icon),
-                        ))
-                    .toList(),
+              SizedBox(
+                width: double.infinity,
+                child: NavigationBar(
+                  direction: Axis.horizontal,
+                  alignment: NavigationBarAlignment.spaceAround,
+                  keepMainAxisSize: false,
+                  selectedKey: ValueKey(navItems[clampedPos].branchIndex),
+                  onSelected: (key) {
+                    if (key is ValueKey<int>) {
+                      navigationShell.goBranch(key.value);
+                    }
+                  },
+                  children: navItems
+                      .map((item) => NavigationItem(
+                            key: ValueKey(item.branchIndex),
+                            label: Text(item.label),
+                            child: Icon(item.icon),
+                          ))
+                      .toList(),
+                ),
               ),
             ],
           );
