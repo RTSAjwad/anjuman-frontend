@@ -142,18 +142,6 @@ class AnkiClassroomApp extends StatelessWidget {
                     routes: [
                       GoRoute(
                         path: '/decks',
-                        redirect: (context, state) {
-                          final study = state.uri.queryParameters['study'];
-                          final fullscreen =
-                              state.uri.queryParameters['fullscreen'];
-                          final size = MediaQuery.of(context).size;
-                          if (study != null &&
-                              size.width < 600 &&
-                              fullscreen != '1') {
-                            return '/decks?study=$study&fullscreen=1';
-                          }
-                          return null;
-                        },
                         builder: (context, state) => const DecksScreen(),
                       ),
                     ],

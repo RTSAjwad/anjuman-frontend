@@ -19,6 +19,7 @@ class DecksScreen extends StatefulWidget {
 
 class _DecksScreenState extends State<DecksScreen> {
   bool _initialLoadDone = false;
+  bool _studyFullscreen = false;
 
   void _reloadDecks() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -50,10 +51,6 @@ class _DecksScreenState extends State<DecksScreen> {
 
   int? _selectedStudyId() {
     final study = GoRouterState.of(context).uri.queryParameters['study'];
-    final fullscreen =
-        GoRouterState.of(context).uri.queryParameters['fullscreen'];
-    if (fullscreen == '1')
-      return null; // fullscreen study takes full screen, not embedded
     return study != null ? int.tryParse(study) : null;
   }
 
@@ -68,22 +65,7 @@ class _DecksScreenState extends State<DecksScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
-    final fullscreen =
-        GoRouterState.of(context).uri.queryParameters['fullscreen'] == '1';
     final colors = Theme.of(context).colorScheme;
-
-    // Fullscreen study takes over the entire screen
-    if (fullscreen) {
-      final studyId = _selectedStudyId() ??
-          int.tryParse(
-              GoRouterState.of(context).uri.queryParameters['study'] ?? '') ??
-          0;
-      return StudyScreen(
-        deckId: studyId,
-        provider: context.read<StudyProvider>(),
-        showBack: true,
-      );
-    }
 
     return Scaffold(
       child: Consumer<DeckProvider>(
@@ -104,15 +86,92 @@ class _DecksScreenState extends State<DecksScreen> {
           final studyId = _selectedStudyId();
           final selectedDeck = _findDeck(detailId ?? studyId, provider.decks);
 
-          return ResizablePanel.horizontal(
-            draggerBuilder: (context) {
-              return const HorizontalResizableDragger();
-            },
-            children: [
-              ResizablePane(
-                initialSize: 300,
-                minSize: 200,
-                child: Column(
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 600;
+
+              // Build the embedded content widget
+              Widget? embeddedContent;
+              Widget? narrowContent;
+              Widget? fullscreenStudyContent;
+              if (selectedDeck != null) {
+                if (isTeacher) {
+                  embeddedContent = KeyedSubtree(
+                    key: ValueKey(selectedDeck.id),
+                    child: DeckDetailScreen(
+                      deck: selectedDeck,
+                      provider: provider,
+                      classProvider: context.read<ClassProvider>(),
+                      onDeleted: () => context.go('/decks'),
+                    ),
+                  );
+                  narrowContent = Scaffold(
+                    headers: [
+                      AppBar(
+                        leading: [
+                          IconButton.outline(
+                            icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                            onPressed: () => context.go('/decks'),
+                          ),
+                        ],
+                        title: Text(selectedDeck.title),
+                      ),
+                    ],
+                    child: DeckDetailScreen(
+                      deck: selectedDeck,
+                      provider: provider,
+                      classProvider: context.read<ClassProvider>(),
+                      onDeleted: () => context.go('/decks'),
+                    ),
+                  );
+                } else {
+                  embeddedContent = KeyedSubtree(
+                    key: ValueKey(selectedDeck.id),
+                    child: StudyScreen(
+                      deckId: selectedDeck.id,
+                      provider: context.read<StudyProvider>(),
+                      onClose: () => context.go('/decks'),
+                      onFullscreen: isWide
+                          ? () => setState(() => _studyFullscreen = true)
+                          : null,
+                    ),
+                  );
+                  narrowContent = KeyedSubtree(
+                    key: ValueKey(selectedDeck.id),
+                    child: StudyScreen(
+                      deckId: selectedDeck.id,
+                      provider: context.read<StudyProvider>(),
+                      isFullscreen: true,
+                      onClose: () => context.go('/decks'),
+                    ),
+                  );
+                  fullscreenStudyContent = KeyedSubtree(
+                    key: ValueKey(selectedDeck.id),
+                    child: StudyScreen(
+                      deckId: selectedDeck.id,
+                      provider: context.read<StudyProvider>(),
+                      isFullscreen: true,
+                      onClose: () => setState(() => _studyFullscreen = false),
+                    ),
+                  );
+                }
+              }
+
+              // Study fullscreen on wide screens
+              if (_studyFullscreen &&
+                  fullscreenStudyContent != null &&
+                  !isTeacher) {
+                return fullscreenStudyContent;
+              }
+
+              // Narrow screen: show selected content with back button
+              if (!isWide && narrowContent != null) {
+                return narrowContent;
+              }
+
+              // Narrow screen with nothing selected: show deck list only
+              if (!isWide) {
+                return Column(
                   children: [
                     AppBar(
                       title: const Text('Decks'),
@@ -148,35 +207,71 @@ class _DecksScreenState extends State<DecksScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-              ResizablePane.flex(
-                child: selectedDeck != null
-                    ? isTeacher
-                        ? KeyedSubtree(
-                            key: ValueKey(selectedDeck.id),
-                            child: DeckDetailScreen(
-                              deck: selectedDeck,
-                              provider: provider,
-                              classProvider: context.read<ClassProvider>(),
-                              onDeleted: () => context.go('/decks'),
+                );
+              }
+
+              // Wide screen: show resizable
+              if (isWide) {
+                return ResizablePanel.horizontal(
+                  draggerBuilder: (context) {
+                    return const HorizontalResizableDragger();
+                  },
+                  children: [
+                    ResizablePane(
+                      initialSize: 300,
+                      minSize: 200,
+                      child: Column(
+                        children: [
+                          AppBar(
+                            title: const Text('Decks'),
+                            trailing: [
+                              if (isTeacher)
+                                IconButton.outline(
+                                  icon: const Icon(LucideIcons.plus, size: 20),
+                                  onPressed: () => _showCreateDialog(context),
+                                ),
+                              IconButton.outline(
+                                icon:
+                                    const Icon(LucideIcons.refreshCw, size: 20),
+                                onPressed: () =>
+                                    context.read<DeckProvider>().loadDecks(),
+                              ),
+                            ],
+                          ),
+                          Expanded(
+                            child: _DeckTree(
+                              decks: provider.decks,
+                              isTeacher: isTeacher,
+                              selectedId: detailId ?? studyId,
+                              onSelect: (deck) {
+                                if (isTeacher) {
+                                  context.go('/decks?detail=${deck.id}');
+                                } else {
+                                  context.go('/decks?study=${deck.id}');
+                                }
+                              },
+                              onDelete: isTeacher
+                                  ? (deck) => _confirmDelete(context, deck)
+                                  : null,
+                              colors: colors,
                             ),
-                          )
-                        : KeyedSubtree(
-                            key: ValueKey(selectedDeck.id),
-                            child: StudyScreen(
-                              deckId: selectedDeck.id,
-                              provider: context.read<StudyProvider>(),
-                              onClose: () => context.go('/decks'),
-                              onFullscreen: () => context.go(
-                                  '/decks?study=${selectedDeck.id}&fullscreen=1'),
-                            ),
-                          )
-                    : const Center(
-                        child: Text('Select a deck to view details'),
+                          ),
+                        ],
                       ),
-              ),
-            ],
+                    ),
+                    ResizablePane.flex(
+                      child: embeddedContent ??
+                          const Center(
+                            child: Text('Select a deck to view details'),
+                          ),
+                    ),
+                  ],
+                );
+              }
+
+              // Fallback (shouldn't happen)
+              return const Center(child: Text('Select a deck to view details'));
+            },
           );
         },
       ),

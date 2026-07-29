@@ -9,7 +9,7 @@ class StudyScreen extends StatefulWidget {
   final StudyProvider? provider;
   final VoidCallback? onClose;
   final VoidCallback? onFullscreen;
-  final bool showBack;
+  final bool isFullscreen;
 
   const StudyScreen({
     super.key,
@@ -17,7 +17,7 @@ class StudyScreen extends StatefulWidget {
     this.provider,
     this.onClose,
     this.onFullscreen,
-    this.showBack = false,
+    this.isFullscreen = false,
   });
 
   @override
@@ -72,30 +72,26 @@ class _StudyScreenState extends State<StudyScreen> {
       headers: [
         AppBar(
           leading: [
-            if (widget.showBack)
+            if (widget.isFullscreen)
               IconButton.outline(
                 icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => widget.onClose?.call(),
               ),
           ],
           title: Text(title),
           trailing: [
-            if (widget.onClose != null || widget.onFullscreen != null) ...[
-              if (widget.onFullscreen != null)
-                IconButton.outline(
-                  icon: const Icon(LucideIcons.externalLink, size: 20),
-                  onPressed: () => widget.onFullscreen?.call(),
-                ),
-              if (widget.onClose != null)
-                IconButton.outline(
-                  icon: const Icon(LucideIcons.x, size: 20),
-                  onPressed: () => widget.onClose?.call(),
-                ),
-            ],
+            if (!widget.isFullscreen && widget.onFullscreen != null)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.externalLink, size: 20),
+                onPressed: () => widget.onFullscreen?.call(),
+              ),
+            if (!widget.isFullscreen && widget.onClose != null)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.x, size: 20),
+                onPressed: () => widget.onClose?.call(),
+              ),
           ],
-          subtitle: (widget.showBack &&
-                  !_provider.isLoading &&
-                  _provider.totalCount > 0)
+          subtitle: (!_provider.isLoading && _provider.totalCount > 0)
               ? _CardCountBar(provider: _provider)
               : null,
         ),
