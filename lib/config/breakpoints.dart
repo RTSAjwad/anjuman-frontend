@@ -1,19 +1,20 @@
 /// Material Design 3 responsive breakpoints.
+///
+/// Each constant represents the minimum width at which a layout range begins.
+/// Ranges: Compact (0–599), Medium (600–839), Expanded (840–1199),
+/// Large (1200–1599), Extra-large (1600+).
 class Breakpoints {
   Breakpoints._();
 
-  /// Compact: phone portrait (< 600px)
-  static const double compact = 600;
-
-  /// Medium: phone landscape / small tablet (600-839px)
+  /// Enter Medium range: dual-pane layouts (600px+)
   static const double medium = 600;
 
-  /// Expanded: tablet (840-1199px)
+  /// Enter Expanded range: side navigation rail (840px+)
   static const double expanded = 840;
 
-  /// Large: desktop (1200-1599px)
+  /// Enter Large range: wider content, larger list panes (1200px+)
   static const double large = 1200;
 
-  /// Extra-large: large desktop (1600px+)
+  /// Enter Extra-large range (1600px+)
   static const double extraLarge = 1600;
 }
