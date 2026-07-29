@@ -1,3 +1,4 @@
+import 'package:anki_classroom_frontend/widgets/responsive_dialog.dart';
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:provider/provider.dart';
@@ -303,17 +304,15 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   }
 
   void _showCreateNoteDialog(BuildContext context) {
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DialogConfiguration(
-        builder: (ctx) => _NoteFormDialog(
-          deckId: widget.deck.id,
-          provider: widget.provider,
-          onSuccess: () {
-            Navigator.of(ctx).pop();
-            _load();
-          },
-        ),
+      builder: (ctx) => _NoteFormDialog(
+        deckId: widget.deck.id,
+        provider: widget.provider,
+        onSuccess: () {
+          Navigator.of(ctx).pop();
+          _load();
+        },
       ),
     );
   }
@@ -1036,7 +1035,9 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
   @override
   void initState() {
     super.initState();
-    _loadNoteTypes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadNoteTypes();
+    });
   }
 
   Future<void> _loadNoteTypes() async {
@@ -1210,7 +1211,7 @@ class _NoteFormDialogState extends State<_NoteFormDialog> {
       ),
       actions: [
         Button.ghost(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => closeOverlay(context),
           child: const Text('Cancel'),
         ),
         Button.primary(
