@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
@@ -283,7 +284,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
               if (ctx.mounted) {
                 closeOverlay(ctx);
                 if (success) {
-                  Navigator.of(context).pop();
+                  if (context.mounted) {
+                    context.go('/classes');
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -319,7 +322,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 member.userId,
               );
               if (ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 if (success) {
                   setState(() {
                     _rosterFuture =
@@ -420,7 +423,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
     if (mounted) {
       if (success) {
         widget.onMemberAdded();
-        closeOverlay(context);
+        safeCloseOverlay(context);
       } else {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(

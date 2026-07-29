@@ -337,7 +337,7 @@ class _CreateClassDialogState extends State<_CreateClassDialog> {
 
     if (mounted) {
       if (result != null) {
-        closeOverlay(context);
+        safeCloseOverlay(context);
       } else {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(

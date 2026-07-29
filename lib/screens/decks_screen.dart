@@ -327,7 +327,7 @@ class _DecksScreenState extends State<DecksScreen> {
         return _DeckFormDialog(
           title: 'Create Deck',
           provider: provider,
-          onSuccess: () => closeOverlay(ctx),
+          onSuccess: () => safeCloseOverlay(ctx),
         );
       },
     );
@@ -347,7 +347,7 @@ class _DecksScreenState extends State<DecksScreen> {
           Button.destructive(
             onPressed: () async {
               final ok = await context.read<DeckProvider>().deleteDeck(deck.id);
-              if (ok && ctx.mounted) closeOverlay(ctx);
+              if (ok && ctx.mounted) safeCloseOverlay(ctx);
             },
             child: const Text('Delete'),
           ),

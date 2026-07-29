@@ -1,6 +1,7 @@
 import 'package:anki_classroom_frontend/widgets/responsive_dialog.dart';
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
@@ -310,7 +311,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         deckId: widget.deck.id,
         provider: widget.provider,
         onSuccess: () {
-          closeOverlay(ctx);
+          safeCloseOverlay(ctx);
           _load();
         },
       ),
@@ -325,7 +326,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         provider: widget.provider,
         existingNote: note,
         onSuccess: () {
-          closeOverlay(ctx);
+          safeCloseOverlay(ctx);
           _load();
         },
       ),
@@ -350,7 +351,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               final ok =
                   await widget.provider.deleteNote(widget.deck.id, note.id);
               if (ok && ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 _load();
               }
             },
@@ -377,7 +378,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             onPressed: () async {
               await widget.provider.duplicateDeck(widget.deck.id);
               if (ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 _load();
               }
             },
@@ -428,7 +429,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                     .transferOwner(widget.deck.id, selectedUserId!);
                 if (!ctx.mounted) return;
                 if (ok) {
-                  closeOverlay(ctx);
+                  safeCloseOverlay(ctx);
                   _load();
                 } else {
                   ScaffoldMessenger.of(ctx).showSnackBar(
@@ -488,7 +489,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                     .shareDeck(widget.deck.id, selectedUserId!);
                 if (!ctx.mounted) return;
                 if (ok) {
-                  closeOverlay(ctx);
+                  safeCloseOverlay(ctx);
                   _load();
                 } else {
                   ScaffoldMessenger.of(ctx).showSnackBar(
@@ -524,7 +525,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               final ok =
                   await widget.provider.unshareDeck(widget.deck.id, userId);
               if (ok && ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 _load();
               }
             },
@@ -584,7 +585,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                     .addDeckToClass(widget.deck.id, selectedClassId!);
                 if (!ctx.mounted) return;
                 if (ok) {
-                  closeOverlay(ctx);
+                  safeCloseOverlay(ctx);
                   _load();
                 } else {
                   ScaffoldMessenger.of(ctx).showSnackBar(
@@ -620,7 +621,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               final ok = await widget.provider
                   .removeDeckFromClass(widget.deck.id, classId);
               if (ok && ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 _load();
               }
             },
@@ -660,7 +661,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                 if (mounted) {
                   setState(() => _deckTitle = controller.text.trim());
                 }
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 _load();
               }
             },
@@ -678,7 +679,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
         deck: widget.deck,
         provider: widget.provider,
         onSuccess: () {
-          closeOverlay(ctx);
+          safeCloseOverlay(ctx);
           _load();
         },
       ),
@@ -706,7 +707,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
                   if (widget.onDeleted != null) {
                     widget.onDeleted?.call();
                   } else {
-                    Navigator.of(context).pop();
+                    context.go('/decks');
                   }
                 }
               }

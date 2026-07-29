@@ -155,7 +155,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       builder: (ctx, _) => _CreateNoteTypeDialog(
         provider: _provider,
         onSuccess: () {
-          closeOverlay(ctx);
+          safeCloseOverlay(ctx);
           setState(() {});
         },
       ),
@@ -169,7 +169,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
         provider: _provider,
         existingNoteType: noteType,
         onSuccess: () {
-          closeOverlay(ctx);
+          safeCloseOverlay(ctx);
           setState(() {});
         },
       ),
@@ -192,7 +192,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
             onPressed: () async {
               final ok = await _provider.deleteNoteType(noteType.id);
               if (ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 if (ok) {
                   setState(() {});
                 }

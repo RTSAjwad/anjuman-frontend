@@ -39,3 +39,13 @@ void showResponsiveDialog(
     );
   }
 }
+
+/// Safely closes the overlay, deferring to a post-frame callback to avoid
+/// disposing the overlay Navigator while it's locked during the frame cycle.
+/// Always call this instead of [closeOverlay] directly when closing from an
+/// async handler (after an await).
+void safeCloseOverlay(BuildContext context) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    closeOverlay(context);
+  });
+}

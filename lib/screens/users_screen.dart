@@ -281,7 +281,7 @@ class _UsersScreenState extends State<UsersScreen> {
         title: 'Create User',
         provider: context.read<UserProvider>(),
         schoolId: schoolId,
-        onSuccess: () => closeOverlay(ctx),
+        onSuccess: () => safeCloseOverlay(ctx),
       ),
     );
   }
@@ -293,7 +293,7 @@ class _UsersScreenState extends State<UsersScreen> {
         title: 'Edit User',
         provider: context.read<UserProvider>(),
         existingUser: user,
-        onSuccess: () => closeOverlay(ctx),
+        onSuccess: () => safeCloseOverlay(ctx),
       ),
     );
   }
@@ -315,7 +315,7 @@ class _UsersScreenState extends State<UsersScreen> {
               final provider = context.read<UserProvider>();
               final success = await provider.deleteUser(user.id);
               if (ctx.mounted) {
-                closeOverlay(ctx);
+                safeCloseOverlay(ctx);
                 if (!success && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
