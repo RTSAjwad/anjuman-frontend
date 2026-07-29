@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
@@ -18,8 +19,6 @@ class DecksScreen extends StatefulWidget {
 
 class _DecksScreenState extends State<DecksScreen> {
   bool _initialLoadDone = false;
-  DeckResponse? _selectedDeck;
-  final _treeKey = GlobalKey<_DeckTreeState>();
 
   void _reloadDecks() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,11 +43,47 @@ class _DecksScreenState extends State<DecksScreen> {
     _initialLoadDone = true;
   }
 
+  int? _selectedDetailId() {
+    final detail = GoRouterState.of(context).uri.queryParameters['detail'];
+    return detail != null ? int.tryParse(detail) : null;
+  }
+
+  int? _selectedStudyId() {
+    final study = GoRouterState.of(context).uri.queryParameters['study'];
+    final fullscreen =
+        GoRouterState.of(context).uri.queryParameters['fullscreen'];
+    if (fullscreen == '1')
+      return null; // fullscreen study takes full screen, not embedded
+    return study != null ? int.tryParse(study) : null;
+  }
+
+  DeckResponse? _findDeck(int? id, List<DeckResponse> decks) {
+    if (id == null) return null;
+    return decks
+        .cast<DeckResponse?>()
+        .firstWhere((d) => d?.id == id, orElse: () => null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
+    final fullscreen =
+        GoRouterState.of(context).uri.queryParameters['fullscreen'] == '1';
     final colors = Theme.of(context).colorScheme;
+
+    // Fullscreen study takes over the entire screen
+    if (fullscreen) {
+      final studyId = _selectedStudyId() ??
+          int.tryParse(
+              GoRouterState.of(context).uri.queryParameters['study'] ?? '') ??
+          0;
+      return StudyScreen(
+        deckId: studyId,
+        provider: context.read<StudyProvider>(),
+        showBack: true,
+      );
+    }
 
     return Scaffold(
       child: Consumer<DeckProvider>(
@@ -64,6 +99,10 @@ class _DecksScreenState extends State<DecksScreen> {
           if (provider.decks.isEmpty) {
             return _emptyView(context, isTeacher, colors);
           }
+
+          final detailId = _selectedDetailId();
+          final studyId = _selectedStudyId();
+          final selectedDeck = _findDeck(detailId ?? studyId, provider.decks);
 
           return ResizablePanel.horizontal(
             draggerBuilder: (context) {
@@ -92,11 +131,15 @@ class _DecksScreenState extends State<DecksScreen> {
                     ),
                     Expanded(
                       child: _DeckTree(
-                        key: _treeKey,
                         decks: provider.decks,
                         isTeacher: isTeacher,
+                        selectedId: detailId ?? studyId,
                         onSelect: (deck) {
-                          setState(() => _selectedDeck = deck);
+                          if (isTeacher) {
+                            context.go('/decks?detail=${deck.id}');
+                          } else {
+                            context.go('/decks?study=${deck.id}');
+                          }
                         },
                         onDelete: isTeacher
                             ? (deck) => _confirmDelete(context, deck)
@@ -108,30 +151,25 @@ class _DecksScreenState extends State<DecksScreen> {
                 ),
               ),
               ResizablePane.flex(
-                child: _selectedDeck != null
+                child: selectedDeck != null
                     ? isTeacher
                         ? KeyedSubtree(
-                            key: ValueKey(_selectedDeck!.id),
+                            key: ValueKey(selectedDeck.id),
                             child: DeckDetailScreen(
-                              deck: _selectedDeck!,
+                              deck: selectedDeck,
                               provider: provider,
                               classProvider: context.read<ClassProvider>(),
-                              showBackButton: false,
-                              onDeleted: () {
-                                setState(() => _selectedDeck = null);
-                              },
+                              onDeleted: () => context.go('/decks'),
                             ),
                           )
                         : KeyedSubtree(
-                            key: ValueKey(_selectedDeck!.id),
+                            key: ValueKey(selectedDeck.id),
                             child: StudyScreen(
-                              deckId: _selectedDeck!.id,
+                              deckId: selectedDeck.id,
                               provider: context.read<StudyProvider>(),
-                              embedded: true,
-                              onClose: () {
-                                _treeKey.currentState?.deselectAll();
-                                setState(() => _selectedDeck = null);
-                              },
+                              onClose: () => context.go('/decks'),
+                              onFullscreen: () => context.go(
+                                  '/decks?study=${selectedDeck.id}&fullscreen=1'),
                             ),
                           )
                     : const Center(
@@ -231,6 +269,7 @@ class _DeckTree extends StatefulWidget {
   final List<DeckResponse> decks;
   final bool isTeacher;
   final void Function(DeckResponse) onSelect;
+  final int? selectedId;
   final void Function(DeckResponse)? onDelete;
   final ColorScheme colors;
 
@@ -239,6 +278,7 @@ class _DeckTree extends StatefulWidget {
     required this.decks,
     required this.isTeacher,
     required this.onSelect,
+    this.selectedId,
     this.onDelete,
     required this.colors,
   });
@@ -252,10 +292,12 @@ class _DeckTreeState extends State<_DeckTree> {
 
   void _buildNodes() {
     final root = buildDeckTree(widget.decks);
+    final selectedId = widget.selectedId;
     List<TreeNode<DeckResponse>> convert(List<DeckNode> nodes) {
       return nodes
           .map((n) => TreeItemNode<DeckResponse>(
                 data: n.deck,
+                selected: n.deck.id == selectedId,
                 expanded: true,
                 children: convert(n.children),
               ))
@@ -282,7 +324,8 @@ class _DeckTreeState extends State<_DeckTree> {
   @override
   void didUpdateWidget(covariant _DeckTree oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.decks != widget.decks) {
+    if (oldWidget.decks != widget.decks ||
+        oldWidget.selectedId != widget.selectedId) {
       _buildNodes();
     }
   }

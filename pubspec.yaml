@@ -28,6 +28,9 @@ dependencies:
   # shadcn-style UI components
   shadcn_flutter: ^0.0.53
 
+  # Routing
+  go_router: ^14.0.0
+
   # Google Fonts
   google_fonts: ^6.2.1
 

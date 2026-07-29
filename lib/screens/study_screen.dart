@@ -7,15 +7,17 @@ import '../models/study.dart';
 class StudyScreen extends StatefulWidget {
   final int deckId;
   final StudyProvider? provider;
-  final bool embedded;
   final VoidCallback? onClose;
+  final VoidCallback? onFullscreen;
+  final bool showBack;
 
   const StudyScreen({
     super.key,
     required this.deckId,
     this.provider,
-    this.embedded = false,
     this.onClose,
+    this.onFullscreen,
+    this.showBack = false,
   });
 
   @override
@@ -70,7 +72,7 @@ class _StudyScreenState extends State<StudyScreen> {
       headers: [
         AppBar(
           leading: [
-            if (!widget.embedded)
+            if (widget.showBack)
               IconButton.outline(
                 icon: const Icon(LucideIcons.arrowLeft, size: 20),
                 onPressed: () => Navigator.of(context).pop(),
@@ -78,28 +80,20 @@ class _StudyScreenState extends State<StudyScreen> {
           ],
           title: Text(title),
           trailing: [
-            if (widget.embedded) ...[
-              IconButton.outline(
-                icon: const Icon(LucideIcons.externalLink, size: 20),
-                onPressed: () {
-                  widget.onClose?.call();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudyScreen(
-                        deckId: widget.deckId,
-                        provider: _provider,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              IconButton.outline(
-                icon: const Icon(LucideIcons.x, size: 20),
-                onPressed: () => widget.onClose?.call(),
-              ),
+            if (widget.onClose != null || widget.onFullscreen != null) ...[
+              if (widget.onFullscreen != null)
+                IconButton.outline(
+                  icon: const Icon(LucideIcons.externalLink, size: 20),
+                  onPressed: () => widget.onFullscreen?.call(),
+                ),
+              if (widget.onClose != null)
+                IconButton.outline(
+                  icon: const Icon(LucideIcons.x, size: 20),
+                  onPressed: () => widget.onClose?.call(),
+                ),
             ],
           ],
-          subtitle: (!widget.embedded &&
+          subtitle: (widget.showBack &&
                   !_provider.isLoading &&
                   _provider.totalCount > 0)
               ? _CardCountBar(provider: _provider)

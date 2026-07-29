@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart'
     show ScaffoldMessenger, SnackBar, SnackBarBehavior;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
@@ -15,14 +16,17 @@ class ClassesScreen extends StatefulWidget {
 }
 
 class _ClassesScreenState extends State<ClassesScreen> {
-  ClassResponse? _selectedClass;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClassProvider>().loadClasses();
     });
+  }
+
+  int? _selectedDetailId() {
+    final detail = GoRouterState.of(context).uri.queryParameters['detail'];
+    return detail != null ? int.tryParse(detail) : null;
   }
 
   @override
@@ -122,12 +126,12 @@ class _ClassesScreenState extends State<ClassesScreen> {
                                           child: GestureDetector(
                                             behavior: HitTestBehavior.opaque,
                                             onTap: () {
-                                              setState(
-                                                  () => _selectedClass = c);
+                                              context.go(
+                                                  '/classes?detail=${c.id}');
                                             },
                                             child: Container(
                                               padding: const EdgeInsets.all(12),
-                                              color: _selectedClass?.id == c.id
+                                              color: _selectedDetailId() == c.id
                                                   ? colors.primary
                                                       .scaleAlpha(0.05)
                                                   : null,
@@ -175,7 +179,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
                                                       ],
                                                     ),
                                                   ),
-                                                  if (_selectedClass?.id ==
+                                                  if (_selectedDetailId() ==
                                                       c.id)
                                                     const Padding(
                                                       padding: EdgeInsets.only(
@@ -201,21 +205,27 @@ class _ClassesScreenState extends State<ClassesScreen> {
                 ),
               ),
               ResizablePane.flex(
-                child: _selectedClass != null
-                    ? KeyedSubtree(
-                        key: ValueKey(_selectedClass!.id),
-                        child: ClassDetailScreen(
-                          classResponse: _selectedClass!,
-                          provider: provider,
-                          embedded: true,
-                          onClose: () {
-                            setState(() => _selectedClass = null);
-                          },
-                        ),
-                      )
-                    : const Center(
-                        child: Text('Select a class to view details'),
+                child: () {
+                  final detailId = _selectedDetailId();
+                  final selectedClass = detailId != null
+                      ? provider.classes.cast<ClassResponse?>().firstWhere(
+                          (c) => c?.id == detailId,
+                          orElse: () => null)
+                      : null;
+                  if (selectedClass != null) {
+                    return KeyedSubtree(
+                      key: ValueKey(selectedClass.id),
+                      child: ClassDetailScreen(
+                        classResponse: selectedClass,
+                        provider: provider,
+                        onClose: () => context.go('/classes'),
                       ),
+                    );
+                  }
+                  return const Center(
+                    child: Text('Select a class to view details'),
+                  );
+                }(),
               ),
             ],
           );
