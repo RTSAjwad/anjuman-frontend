@@ -14,19 +14,21 @@ class NoteTypesScreen extends StatefulWidget {
 
 class _NoteTypesScreenState extends State<NoteTypesScreen> {
   DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
+  late final DeckProvider _cachedProvider;
 
   @override
   void initState() {
     super.initState();
-    _provider.addListener(_onChanged);
+    _cachedProvider = _provider;
+    _cachedProvider.addListener(_onChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _provider.loadNoteTypes();
+      if (mounted) _cachedProvider.loadNoteTypes();
     });
   }
 
   @override
   void dispose() {
-    _provider.removeListener(_onChanged);
+    _cachedProvider.removeListener(_onChanged);
     super.dispose();
   }
 
