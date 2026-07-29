@@ -37,6 +37,10 @@ dependencies:
   # Material Design icons (extended set)
   cupertino_icons: ^1.0.8
 
+  # Code editor for HTML template editing
+  re_editor: ^0.10.0
+  re_highlight: ^0.0.3
+
   # Lucide icons
   lucide_icons: ^0.257.0
 

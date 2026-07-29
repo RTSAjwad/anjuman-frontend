@@ -1,3 +1,10 @@
+import 'package:flutter/material.dart' show Brightness;
+import 'package:flutter/painting.dart' show Colors;
+import 'package:re_editor/re_editor.dart';
+import 'package:re_highlight/languages/xml.dart';
+import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/atom-one-dark.dart' as dark;
+import 'package:re_highlight/styles/vs.dart' as light;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class NoteTemplateEntry {
@@ -28,17 +35,26 @@ class TemplateDetailScreen extends StatefulWidget {
 
 class TemplateDetailScreenState extends State<TemplateDetailScreen> {
   late final TextEditingController _nameController;
-  late final TextEditingController _frontController;
-  late final TextEditingController _backController;
+  late final CodeLineEditingController _frontController;
+  late final CodeLineEditingController _backController;
+  final Highlight _highlighter = Highlight()..registerLanguage('xml', langXml);
+  late final Map<String, TextStyle> _theme;
+  bool _themeInitialized = false;
   bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
+
     _nameController = TextEditingController(text: widget.template.name);
-    _frontController =
-        TextEditingController(text: widget.template.frontPattern);
-    _backController = TextEditingController(text: widget.template.backPattern);
+    _frontController = CodeLineEditingController(
+      codeLines: CodeLines.fromText(widget.template.frontPattern),
+      spanBuilder: _buildSpans,
+    );
+    _backController = CodeLineEditingController(
+      codeLines: CodeLines.fromText(widget.template.backPattern),
+      spanBuilder: _buildSpans,
+    );
     _nameController.addListener(_notifyChange);
     _frontController.addListener(_notifyChange);
     _backController.addListener(_notifyChange);
@@ -46,6 +62,38 @@ class TemplateDetailScreenState extends State<TemplateDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initialized = true;
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_themeInitialized) {
+      final colors = Theme.of(context).colorScheme;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final baseTheme = isDark ? dark.atomOneDarkTheme : light.vsTheme;
+      _theme = Map<String, TextStyle>.from(baseTheme);
+      _theme['root'] = TextStyle(
+        color: colors.foreground,
+        backgroundColor: Colors.transparent,
+      );
+      _themeInitialized = true;
+    }
+  }
+
+  TextSpan _buildSpans({
+    required BuildContext context,
+    required int index,
+    required CodeLine codeLine,
+    required TextSpan textSpan,
+    required TextStyle style,
+  }) {
+    final result = _highlighter.highlight(
+      code: codeLine.text,
+      language: 'xml',
+    );
+    final renderer = TextSpanRenderer(style, _theme);
+    result?.render(renderer);
+    return renderer.span ?? textSpan;
   }
 
   void _notifyChange() {
@@ -72,6 +120,8 @@ class TemplateDetailScreenState extends State<TemplateDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -90,23 +140,103 @@ class TemplateDetailScreenState extends State<TemplateDetailScreen> {
           const Text('Front pattern', style: TextStyle(fontSize: 13))
               .semiBold(),
           const SizedBox(height: 6),
-          TextArea(
-            controller: _frontController,
-            placeholder: const Text('e.g. {{Front}}'),
-            initialValue: '',
-            maxLines: 4,
-          ),
+          _buildCodeEditor(colors, _frontController),
           const SizedBox(height: 16),
           const Text('Back pattern', style: TextStyle(fontSize: 13)).semiBold(),
           const SizedBox(height: 6),
-          TextArea(
-            controller: _backController,
-            placeholder: const Text('e.g. {{Back}}'),
-            initialValue: '',
-            maxLines: 4,
-          ),
+          _buildCodeEditor(colors, _backController),
         ],
       ),
     );
   }
+
+  Widget _buildCodeEditor(
+      ColorScheme colors, CodeLineEditingController controller) {
+    return OutlinedContainer(
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 200,
+        child: CodeEditor(
+          controller: controller,
+          style: CodeEditorStyle(
+            fontSize: 14,
+            fontFamily: 'monospace',
+            textColor: colors.foreground,
+            backgroundColor: colors.background,
+            cursorColor: colors.foreground,
+            selectionColor: colors.primary.withAlpha(40),
+            highlightColor: colors.primary.withAlpha(20),
+          ),
+          indicatorBuilder:
+              (context, editingController, chunkController, notifier) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DefaultCodeLineNumber(
+                  controller: editingController,
+                  notifier: notifier,
+                  textStyle: TextStyle(
+                    color: colors.mutedForeground,
+                    fontSize: 14,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                DefaultCodeChunkIndicator(
+                  width: 16,
+                  controller: chunkController,
+                  notifier: notifier,
+                ),
+              ],
+            );
+          },
+          chunkAnalyzer: const _HtmlChunkAnalyzer(),
+        ),
+      ),
+    );
+  }
+}
+
+/// Detects foldable regions for HTML/XML tags.
+class _HtmlChunkAnalyzer implements CodeChunkAnalyzer {
+  const _HtmlChunkAnalyzer();
+
+  static final _tagRegex = RegExp(r'<(\w+)[^>]*>|</(\w+)>');
+
+  @override
+  List<CodeChunk> run(CodeLines codeLines) {
+    final List<CodeChunk> chunks = [];
+    final List<_TagEntry> stack = [];
+
+    for (int i = 0; i < codeLines.length; i++) {
+      final text = codeLines[i].text;
+      final matches = _tagRegex.allMatches(text);
+      for (final match in matches) {
+        final openTag = match.group(1);
+        final closeTag = match.group(2);
+        if (openTag != null) {
+          stack.add(_TagEntry(tag: openTag, line: i));
+        } else if (closeTag != null) {
+          for (int j = stack.length - 1; j >= 0; j--) {
+            if (stack[j].tag == closeTag) {
+              if (stack[j].line < i) {
+                chunks.add(CodeChunk(stack[j].line, i));
+              }
+              stack.removeRange(j, stack.length);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    chunks.sort((a, b) => a.index - b.index);
+    return chunks;
+  }
+}
+
+class _TagEntry {
+  final String tag;
+  final int line;
+
+  const _TagEntry({required this.tag, required this.line});
 }
