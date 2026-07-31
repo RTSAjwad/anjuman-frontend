@@ -653,52 +653,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _showFilterDrawer() {
-    showResponsiveDialog(
+    showOverlay(
       context,
-      builder: (ctx, _) {
-        final width = MediaQuery.of(context).size.width;
-        final isNarrow = width < Breakpoints.medium;
-        if (isNarrow) {
-          return SizedBox(
-            height: MediaQuery.of(context).size.height * 0.7,
-            child: Column(
-              children: [
-                AppBar(
-                  title: const Text('Filters'),
-                  trailing: [
-                    Tabs(
-                      index: _activeTab,
-                      onChanged: (index) => setState(() => _activeTab = index),
-                      children: const [
-                        TabItem(child: Text('Cards')),
-                        TabItem(child: Text('Notes')),
-                      ],
-                    ),
-                    IconButton.outline(
-                      icon: const Icon(LucideIcons.x, size: 20),
-                      onPressed: () => closeOverlay(ctx),
-                    ),
-                  ],
-                ),
-                Expanded(child: _buildFilterTree()),
-              ],
-            ),
-          );
-        }
-        return AlertDialog(
-          title: const Text('Filters'),
-          content: SizedBox(
-            width: 400,
-            child: _buildFilterTree(),
+      DrawerConfiguration(
+        position: OverlayPosition.bottom,
+        expands: false,
+        builder: (ctx) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              AppBar(
+                title: const Text('Filters'),
+                trailing: [
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.x, size: 20),
+                    onPressed: () => closeOverlay(ctx),
+                  ),
+                ],
+              ),
+              Expanded(child: _buildFilterTree()),
+            ],
           ),
-          actions: [
-            Button.ghost(
-              onPressed: () => closeOverlay(ctx),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+        ),
+      ),
     );
   }
 
