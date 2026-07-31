@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart' show Brightness;
-import 'package:flutter/painting.dart' show Colors;
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/xml.dart';
 import 'package:re_highlight/re_highlight.dart';
@@ -92,7 +90,7 @@ class TemplateDetailScreenState extends State<TemplateDetailScreen> {
       language: 'xml',
     );
     final renderer = TextSpanRenderer(style, _theme);
-    result?.render(renderer);
+    result.render(renderer);
     return renderer.span ?? textSpan;
   }
 

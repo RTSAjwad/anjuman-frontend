@@ -52,6 +52,15 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   List<TreeNode<FilterNode>> _filterNodes = [];
 
+  int? _selectedCardIndex;
+  int _activeTab = 0; // 0 = Cards, 1 = Notes
+  BrowserCard? get _selectedCard {
+    if (_selectedCardIndex == null) return null;
+    final cards = context.read<BrowserProvider>().cards;
+    if (_selectedCardIndex! >= cards.length) return null;
+    return cards[_selectedCardIndex!];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -252,7 +261,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     context.read<BrowserProvider>().setSort('$order$field');
   }
 
-  TableCell _buildCell(String text, [bool alignRight = false]) {
+  TableCell _buildCell(String text,
+      {bool alignRight = false, VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
     return TableCell(
       theme: TableCellTheme(
@@ -263,12 +273,138 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        alignment: alignRight ? Alignment.centerRight : Alignment.centerLeft,
-        child: Text(text, overflow: TextOverflow.ellipsis),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          alignment: alignRight ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(text, overflow: TextOverflow.ellipsis),
+        ),
       ),
     );
+  }
+
+  TableCell _buildHeader(
+      ColorScheme colors, int index, bool active, String label) {
+    return TableCell(
+      theme: TableCellTheme(
+        border: WidgetStatePropertyAll(
+          Border.all(
+            color: colors.border,
+            strokeAlign: BorderSide.strokeAlignCenter,
+          ),
+        ),
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onSort(index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: active ? colors.primary : colors.mutedForeground,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (active)
+                Icon(
+                  _sortAsc ? LucideIcons.arrowUp : LucideIcons.arrowDown,
+                  size: 14,
+                  color: colors.primary,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _buildCardRows(BrowserProvider provider, ColorScheme colors,
+      bool isTeacher, List<TableRow> rows) {
+    for (var i = 0; i < provider.cards.length; i++) {
+      final card = provider.cards[i];
+      final frontText = card.front
+          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+
+      final onTap = () {
+        setState(() {
+          if (_selectedCardIndex == i) {
+            _selectedCardIndex = null;
+          } else {
+            _selectedCardIndex = i;
+          }
+        });
+      };
+
+      if (isTeacher) {
+        rows.add(TableRow(cells: [
+          _buildCell(frontText, onTap: onTap),
+          _buildCell(card.deckTitle, onTap: onTap),
+        ]));
+      } else {
+        rows.add(TableRow(cells: [
+          _buildCell(frontText, onTap: onTap),
+          _buildStateCell(card, onTap: onTap),
+          _buildDueCell(card, onTap: onTap),
+          _buildCell(card.deckTitle, onTap: onTap),
+        ]));
+      }
+    }
+  }
+
+  void _buildNoteRows(BrowserProvider provider, ColorScheme colors,
+      bool isTeacher, List<TableRow> rows) {
+    final grouped = <int, List<BrowserCard>>{};
+    for (final card in provider.cards) {
+      grouped.putIfAbsent(card.noteId, () => []).add(card);
+    }
+
+    final entries = grouped.entries.toList();
+    for (var i = 0; i < entries.length; i++) {
+      final cards = entries[i].value;
+      final firstCard = cards.first;
+      final sortField =
+          firstCard.front.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+
+      final onTap = () {
+        final cardIndex =
+            provider.cards.indexWhere((c) => c.noteId == firstCard.noteId);
+        setState(() {
+          if (_selectedCardIndex == cardIndex) {
+            _selectedCardIndex = null;
+          } else {
+            _selectedCardIndex = cardIndex;
+          }
+        });
+      };
+
+      final cardsLabel = '${cards.length} card${cards.length == 1 ? '' : 's'}';
+
+      if (isTeacher) {
+        rows.add(TableRow(cells: [
+          _buildCell(sortField, onTap: onTap),
+          _buildCell(cardsLabel, onTap: onTap),
+          _buildCell(firstCard.noteTypeName, onTap: onTap),
+        ]));
+      } else {
+        rows.add(TableRow(cells: [
+          _buildCell(sortField, onTap: onTap),
+          _buildCell(cardsLabel, onTap: onTap),
+          _buildCell(firstCard.noteTypeName, onTap: onTap),
+          _buildCell(firstCard.deckTitle, onTap: onTap),
+        ]));
+      }
+    }
   }
 
   @override
@@ -298,6 +434,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
               ],
             ),
             trailing: [
+              Button.ghost(
+                onPressed: () => setState(() => _activeTab = 0),
+                child: Text(
+                  'Cards',
+                  style: TextStyle(
+                    fontWeight:
+                        _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              Button.ghost(
+                onPressed: () => setState(() => _activeTab = 1),
+                child: Text(
+                  'Notes',
+                  style: TextStyle(
+                    fontWeight:
+                        _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
               IconButton.outline(
                 icon: const Icon(LucideIcons.refreshCw, size: 20),
                 onPressed: () => context.read<BrowserProvider>().loadCards(),
@@ -395,85 +551,37 @@ class _BrowserScreenState extends State<BrowserScreen> {
                             }
 
                             if (provider.cards.isEmpty) {
-                              return const Center(
-                                  child: Text('No cards found'));
+                              return const Center(child: Text('Nothing found'));
                             }
 
                             final headerCells = <TableCell>[];
-                            for (var i = 0; i < _columns.length; i++) {
-                              final active = _activeSort == _sortFields[i];
-                              headerCells.add(TableCell(
-                                theme: TableCellTheme(
-                                  border: WidgetStatePropertyAll(
-                                    Border.all(
-                                      color: colors.border,
-                                      strokeAlign: BorderSide.strokeAlignCenter,
-                                    ),
-                                  ),
-                                ),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => _onSort(i),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 6),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            _columns[i],
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: active
-                                                  ? colors.primary
-                                                  : colors.mutedForeground,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (active)
-                                          Icon(
-                                            _sortAsc
-                                                ? LucideIcons.arrowUp
-                                                : LucideIcons.arrowDown,
-                                            size: 14,
-                                            color: colors.primary,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ));
+                            if (_activeTab == 0) {
+                              for (var i = 0; i < _columns.length; i++) {
+                                final active = _activeSort == _sortFields[i];
+                                headerCells.add(_buildHeader(
+                                    colors, i, active, _columns[i]));
+                              }
+                            } else {
+                              headerCells.add(
+                                  _buildHeader(colors, 0, false, 'Sort Field'));
+                              headerCells
+                                  .add(_buildHeader(colors, 1, false, 'Cards'));
+                              headerCells.add(
+                                  _buildHeader(colors, 2, false, 'Note Type'));
                             }
 
                             final rows = <TableRow>[
                               TableHeader(cells: headerCells),
                             ];
 
-                            for (final card in provider.cards) {
-                              final frontText = card.front
-                                  .replaceAll(RegExp(r'<[^>]*>'), ' ')
-                                  .replaceAll(RegExp(r'\s+'), ' ')
-                                  .trim();
+                            final role = context.read<AuthProvider>().role;
+                            final isTeacher =
+                                role == 'teacher' || role == 'admin';
 
-                              final role = context.read<AuthProvider>().role;
-                              final isTeacher =
-                                  role == 'teacher' || role == 'admin';
-
-                              if (isTeacher) {
-                                rows.add(TableRow(cells: [
-                                  _buildCell(frontText),
-                                  _buildCell(card.deckTitle),
-                                ]));
-                              } else {
-                                rows.add(TableRow(cells: [
-                                  _buildCell(frontText),
-                                  _buildStateCell(card),
-                                  _buildDueCell(card),
-                                  _buildCell(card.deckTitle),
-                                ]));
-                              }
+                            if (_activeTab == 0) {
+                              _buildCardRows(provider, colors, isTeacher, rows);
+                            } else {
+                              _buildNoteRows(provider, colors, isTeacher, rows);
                             }
 
                             return ListView(
@@ -509,6 +617,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     ],
                   ),
                 ),
+                if (_selectedCard != null &&
+                    !context.watch<BrowserProvider>().isLoading)
+                  ResizablePane.flex(
+                    child: _buildCardDetailPane(),
+                  ),
               ],
             ),
           ),
@@ -517,7 +630,147 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  TableCell _buildStateCell(BrowserCard card) {
+  Widget _buildCardDetailPane() {
+    final card = _selectedCard;
+    if (card == null) {
+      return const Center(child: Text('Select a card to view details'));
+    }
+    final colors = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('Card Details'),
+          trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.x, size: 20),
+              onPressed: () => setState(() => _selectedCardIndex = null),
+            ),
+          ],
+        ),
+      ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Front', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.muted.withAlpha(50),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(card.front),
+            ),
+            const SizedBox(height: 16),
+            const Text('Back', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.muted.withAlpha(50),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(card.back),
+            ),
+            const SizedBox(height: 16),
+            const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 8),
+            OutlinedContainer(
+              child: Column(
+                children: card.fields.entries.map((e) {
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: colors.border, width: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: Text(
+                            e.key,
+                            style: TextStyle(
+                              color: colors.mutedForeground,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            e.value.toString(),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Card Info', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 8),
+            OutlinedContainer(
+              child: Column(
+                children: [
+                  _infoRow('Deck', card.deckTitle, colors),
+                  _infoRow('Note Type', card.noteTypeName, colors),
+                  _infoRow('State', card.state ?? 'new', colors),
+                  _infoRow('Reps', card.reps.toString(), colors),
+                  _infoRow('Lapses', card.lapses.toString(), colors),
+                  _infoRow(
+                      'Stability', card.stability.toStringAsFixed(2), colors),
+                  _infoRow(
+                      'Difficulty', card.difficulty.toStringAsFixed(2), colors),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, ColorScheme colors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: colors.border, width: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: colors.mutedForeground,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  TableCell _buildStateCell(BrowserCard card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
     final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
     if (displayState == null) {
@@ -530,10 +783,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
             ),
           ),
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          alignment: Alignment.centerLeft,
-          child: Text('—', style: TextStyle(color: colors.mutedForeground)),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            alignment: Alignment.centerLeft,
+            child: Text('—', style: TextStyle(color: colors.mutedForeground)),
+          ),
         ),
       );
     }
@@ -547,17 +804,21 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        alignment: Alignment.centerLeft,
-        child: OutlineBadge(
-          child: Text(displayState),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          alignment: Alignment.centerLeft,
+          child: OutlineBadge(
+            child: Text(displayState),
+          ),
         ),
       ),
     );
   }
 
-  TableCell _buildDueCell(BrowserCard card) {
+  TableCell _buildDueCell(BrowserCard card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
     final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
     final isNew = displayState == 'new';
@@ -577,16 +838,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
           ),
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: TextStyle(
-              color: isNew && card.newCardPosition != null
-                  ? const Color(0xFF3B82F6)
-                  : colors.mutedForeground),
-          overflow: TextOverflow.ellipsis,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: TextStyle(
+                color: isNew && card.newCardPosition != null
+                    ? const Color(0xFF3B82F6)
+                    : colors.mutedForeground),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ),
     );
