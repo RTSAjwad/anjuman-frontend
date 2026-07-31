@@ -1,6 +1,6 @@
 import 'package:anki_classroom_frontend/widgets/responsive_dialog.dart';
 import 'package:flutter/material.dart'
-    show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
+    show ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
@@ -166,138 +166,23 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
             provider: widget.provider,
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              const Text('Notes').semiBold(),
-              const Spacer(),
-              Text('${notes.length} total',
-                  style:
-                      TextStyle(color: colors.mutedForeground, fontSize: 13)),
-              if (isTeacher) ...[
-                const SizedBox(width: 8),
+          if (isTeacher)
+            Row(
+              children: [
                 Button.secondary(
                   leading: const Icon(LucideIcons.plus, size: 18),
                   onPressed: () => _showCreateNoteDialog(context),
                   child: const Text('Add Note'),
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (notes.isEmpty)
-            OutlinedContainer(
-              padding: const EdgeInsets.all(24),
-              child: Center(
-                child: Text(
-                  canManage ? 'Add your first note' : 'No notes yet',
-                  style: TextStyle(color: colors.mutedForeground),
+                const SizedBox(width: 8),
+                Button.secondary(
+                  leading: const Icon(LucideIcons.eye, size: 18),
+                  onPressed: () {
+                    context.go('/browser?deck=${widget.deck.id}');
+                  },
+                  child: const Text('View Notes'),
                 ),
-              ),
-            )
-          else
-            OutlinedContainer(
-              child: Table(
-                columnWidths: {
-                  0: const FlexTableSize(),
-                  1: const FlexTableSize(),
-                  2: const IntrinsicTableSize(),
-                  3: const IntrinsicTableSize(),
-                  if (isTeacher) 4: const IntrinsicTableSize(),
-                },
-                rows: [
-                  TableHeader(cells: [
-                    TableCell(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Text('Front',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    TableCell(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Text('Back',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    TableCell(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Text('Type',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    TableCell(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        child: const Text('Cards',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    if (isTeacher)
-                      const TableCell(
-                        child: SizedBox(width: 80),
-                      ),
-                  ]),
-                  for (final note in notes)
-                    TableRow(cells: [
-                      TableCell(
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                            note.cards.isNotEmpty ? note.cards.first.front : '',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      TableCell(
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                            (note.cards.isNotEmpty ? note.cards.first.back : '')
-                                .replaceAll(RegExp(r'<[^>]*>'), ' ')
-                                .trim(),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      TableCell(
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(note.noteTypeName,
-                              style: TextStyle(color: colors.mutedForeground),
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                      TableCell(
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Text('${note.cards.length}',
-                              style: TextStyle(color: colors.mutedForeground)),
-                        ),
-                      ),
-                      if (isTeacher)
-                        TableCell(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton.ghost(
-                                icon: const Icon(LucideIcons.pencil, size: 18),
-                                onPressed: () =>
-                                    _showEditNoteDialog(context, note),
-                              ),
-                              IconButton.ghost(
-                                icon: const Icon(LucideIcons.trash2,
-                                    size: 18, color: Colors.red),
-                                onPressed: () =>
-                                    _confirmDeleteNote(context, note),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ]),
-                ],
-              ),
+              ],
             ),
         ],
       ),
@@ -314,50 +199,6 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
           safeCloseOverlay(ctx);
           _load();
         },
-      ),
-    );
-  }
-
-  void _showEditNoteDialog(BuildContext context, NoteResponse note) {
-    showResponsiveDialog(
-      context,
-      builder: (ctx, _) => NoteFormDialog(
-        deckId: widget.deck.id,
-        provider: widget.provider,
-        existingNote: note,
-        onSuccess: () {
-          safeCloseOverlay(ctx);
-          _load();
-        },
-      ),
-    );
-  }
-
-  void _confirmDeleteNote(BuildContext context, NoteResponse note) {
-    final front = (note.fields['Front'] ?? '').toString();
-    showResponsiveDialog(
-      context,
-      builder: (ctx, _) => AlertDialog(
-        title: const Text('Delete Note'),
-        content:
-            Text('Delete "$front"? All cards for this note will be removed.'),
-        actions: [
-          Button.ghost(
-            onPressed: () => closeOverlay(ctx),
-            child: const Text('Cancel'),
-          ),
-          Button.destructive(
-            onPressed: () async {
-              final ok =
-                  await widget.provider.deleteNote(widget.deck.id, note.id);
-              if (ok && ctx.mounted) {
-                safeCloseOverlay(ctx);
-                _load();
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
       ),
     );
   }

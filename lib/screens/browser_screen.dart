@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
@@ -56,6 +57,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   int? _selectedCardIndex;
   int _activeTab = 0; // 0 = Cards, 1 = Notes
+  int? _lastTargetDeckId;
   BrowserCard? get _selectedCard {
     if (_selectedCardIndex == null) return null;
     final cards = context.read<BrowserProvider>().cards;
@@ -91,19 +93,67 @@ class _BrowserScreenState extends State<BrowserScreen> {
     deckProvider.addListener(_onDecksChanged);
     deckProvider.addListener(_onNoteTypesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final deckParam = GoRouterState.of(context).uri.queryParameters['deck'];
+      if (deckParam != null) {
+        final deckId = int.tryParse(deckParam);
+        if (deckId != null) {
+          context.read<BrowserProvider>().setDeckIds([deckId]);
+        }
+      } else {
+        context.read<BrowserProvider>().loadCards();
+      }
       deckProvider.loadDecks();
       deckProvider.loadNoteTypes();
-      context.read<BrowserProvider>().loadCards();
+      deckProvider.loadDecks();
     });
   }
 
   void _onDecksChanged() {
     final decks = context.read<DeckProvider>().decks;
     if (decks.isEmpty) return;
+    final selectedIds = context.read<BrowserProvider>().deckIds.toSet();
     setState(() {
-      final root = _buildDeckTree(decks);
+      var root = _buildDeckTree(decks);
+      for (final id in selectedIds) {
+        root = _selectDeckInTree(root, id);
+      }
       _replaceOrAddSection('decks', root);
     });
+  }
+
+  TreeItemNode<FilterNode> _selectDeckInTree(
+      TreeItemNode<FilterNode> node, int deckId) {
+    final newChildren = <TreeNode<FilterNode>>[];
+    var hasSelectedChild = false;
+    for (final child in node.children) {
+      if (child is TreeItemNode<FilterNode>) {
+        final data = child.data;
+        if (data is DeckFilterNode && data.deck.id == deckId) {
+          newChildren.add(TreeItemNode<FilterNode>(
+            data: data,
+            selected: true,
+            children: child.children,
+            expanded: child.expanded,
+          ));
+          hasSelectedChild = true;
+        } else {
+          final updated = _selectDeckInTree(child, deckId);
+          newChildren.add(updated);
+          if (updated.selected ||
+              updated.children.any((c) => c is TreeItemNode && c.selected)) {
+            hasSelectedChild = true;
+          }
+        }
+      } else {
+        newChildren.add(child);
+      }
+    }
+    return TreeItemNode<FilterNode>(
+      data: node.data,
+      expanded: hasSelectedChild ? true : node.expanded,
+      children: newChildren,
+      selected: node.selected,
+    );
   }
 
   TreeItemNode<FilterNode> _buildDeckTree(List<DeckResponse> decks) {
@@ -419,6 +469,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
+    final deckParam = GoRouterState.of(context).uri.queryParameters['deck'];
+    final targetDeckId = deckParam != null ? int.tryParse(deckParam) : null;
+    if (targetDeckId != null && _lastTargetDeckId != targetDeckId) {
+      _lastTargetDeckId = targetDeckId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<BrowserProvider>().setDeckIds([targetDeckId]);
+        }
+      });
+    }
 
     return Scaffold(
       child: Column(
