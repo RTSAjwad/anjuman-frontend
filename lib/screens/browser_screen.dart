@@ -590,36 +590,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ),
       if (!isCompact || _compactView != _CompactView.table)
         if (_compactView == _CompactView.table)
-          ButtonGroup(
-            children: [
-              ButtonGroupItem(
-                child: Button.outline(
-                  onPressed: _activeTab == 0
-                      ? null
-                      : () => setState(() => _activeTab = 0),
-                  child: Text(
-                    'Cards',
-                    style: TextStyle(
-                      fontWeight:
-                          _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-              ButtonGroupItem(
-                child: Button.outline(
-                  onPressed: _activeTab == 1
-                      ? null
-                      : () => setState(() => _activeTab = 1),
-                  child: Text(
-                    'Notes',
-                    style: TextStyle(
-                      fontWeight:
-                          _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
+          Tabs(
+            index: _activeTab,
+            onChanged: (index) => setState(() => _activeTab = index),
+            children: const [
+              TabItem(child: Text('Cards')),
+              TabItem(child: Text('Notes')),
             ],
           ),
       IconButton.outline(
@@ -663,38 +639,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 title: const Text('Filters'),
                 trailing: [
                   if (isCompact)
-                    ButtonGroup(
-                      children: [
-                        ButtonGroupItem(
-                          child: Button.outline(
-                            onPressed: _activeTab == 0
-                                ? null
-                                : () => setState(() => _activeTab = 0),
-                            child: Text(
-                              'Cards',
-                              style: TextStyle(
-                                fontWeight: _activeTab == 0
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ),
-                        ButtonGroupItem(
-                          child: Button.outline(
-                            onPressed: _activeTab == 1
-                                ? null
-                                : () => setState(() => _activeTab = 1),
-                            child: Text(
-                              'Notes',
-                              style: TextStyle(
-                                fontWeight: _activeTab == 1
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ),
+                    Tabs(
+                      index: _activeTab,
+                      onChanged: (index) => setState(() => _activeTab = index),
+                      children: const [
+                        TabItem(child: Text('Cards')),
+                        TabItem(child: Text('Notes')),
                       ],
                     ),
                   IconButton.outline(
