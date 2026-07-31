@@ -61,6 +61,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
     return cards[_selectedCardIndex!];
   }
 
+  List<BrowserCard> get _selectedNoteCards {
+    final card = _selectedCard;
+    if (card == null) return [];
+    final cards = context.read<BrowserProvider>().cards;
+    return cards.where((c) => c.noteId == card.noteId).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -633,8 +640,17 @@ class _BrowserScreenState extends State<BrowserScreen> {
   Widget _buildCardDetailPane() {
     final card = _selectedCard;
     if (card == null) {
-      return const Center(child: Text('Select a card to view details'));
+      return const Center(child: Text('Select an item to view details'));
     }
+
+    if (_activeTab == 0) {
+      return _buildCardDetail(card);
+    } else {
+      return _buildNoteDetail(card);
+    }
+  }
+
+  Widget _buildCardDetail(BrowserCard card) {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -680,43 +696,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             const SizedBox(height: 16),
             const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 8),
-            OutlinedContainer(
-              child: Column(
-                children: card.fields.entries.map((e) {
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: colors.border, width: 0.5),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 100,
-                          child: Text(
-                            e.key,
-                            style: TextStyle(
-                              color: colors.mutedForeground,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            e.value.toString(),
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+            _buildFieldsTable(card.fields, colors),
             const SizedBox(height: 16),
             const Text('Card Info', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 8),
@@ -737,6 +717,138 @@ class _BrowserScreenState extends State<BrowserScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNoteDetail(BrowserCard card) {
+    final colors = Theme.of(context).colorScheme;
+    final noteCards = _selectedNoteCards;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('Note Details'),
+          trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.x, size: 20),
+              onPressed: () => setState(() => _selectedCardIndex = null),
+            ),
+          ],
+        ),
+      ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 8),
+            _buildFieldsTable(card.fields, colors),
+            const SizedBox(height: 16),
+            const Text('Note Info', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 8),
+            OutlinedContainer(
+              child: Column(
+                children: [
+                  _infoRow('Deck', card.deckTitle, colors),
+                  _infoRow('Note Type', card.noteTypeName, colors),
+                  _infoRow('Cards', noteCards.length.toString(), colors),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Cards', style: TextStyle(fontSize: 13)).semiBold(),
+            const SizedBox(height: 8),
+            OutlinedContainer(
+              child: Column(
+                children: noteCards.asMap().entries.map((e) {
+                  final c = e.value;
+                  final displayState = c.state ?? 'new';
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: colors.border, width: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Card ${e.key + 1}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                c.front
+                                    .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                                    .trim(),
+                                style: TextStyle(
+                                    color: colors.mutedForeground,
+                                    fontSize: 13),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlineBadge(
+                          child: Text(displayState),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldsTable(Map<String, dynamic> fields, ColorScheme colors) {
+    return OutlinedContainer(
+      child: Column(
+        children: fields.entries.map((e) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: colors.border, width: 0.5),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: Text(
+                    e.key,
+                    style: TextStyle(
+                      color: colors.mutedForeground,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    e.value.toString(),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }
