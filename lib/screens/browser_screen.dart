@@ -501,7 +501,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = MediaQuery.of(context).size.width;
-        final isCompact = width < Breakpoints.medium;
+        final isCompact = width < Breakpoints.expanded;
 
         return Scaffold(
           child: Column(
@@ -581,7 +581,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   List<Widget> _buildAppBarActions(ColorScheme colors) {
     final width = MediaQuery.of(context).size.width;
-    final isCompact = width < Breakpoints.medium;
+    final isCompact = width < Breakpoints.expanded;
     final actions = <Widget>[
       if (isCompact && _compactView == _CompactView.table)
         IconButton.outline(
@@ -625,7 +625,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _showFilterDrawer() {
     final width = MediaQuery.of(context).size.width;
-    final isCompact = width < Breakpoints.medium;
+    final isCompact = width < Breakpoints.expanded;
     showOverlay(
       context,
       DrawerConfiguration(
