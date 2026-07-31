@@ -276,44 +276,43 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      child: ResizablePanel.horizontal(
-        draggerBuilder: (context) {
-          return const HorizontalResizableDragger();
-        },
+      child: Column(
         children: [
-          ResizablePane(
-            initialSize: 220,
-            minSize: 160,
-            child: Column(
+          AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                AppBar(
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Browser'),
-                      Consumer<BrowserProvider>(
-                        builder: (context, provider, _) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: OutlineBadge(
-                              child: Text(
-                                  '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
-                            ),
-                          );
-                        },
+                const Text('Browser'),
+                Consumer<BrowserProvider>(
+                  builder: (context, provider, _) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: OutlineBadge(
+                        child: Text(
+                            '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
                       ),
-                    ],
-                  ),
-                  trailing: [
-                    IconButton.outline(
-                      icon: const Icon(LucideIcons.refreshCw, size: 20),
-                      onPressed: () =>
-                          context.read<BrowserProvider>().loadCards(),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-                Expanded(
+              ],
+            ),
+            trailing: [
+              IconButton.outline(
+                icon: const Icon(LucideIcons.refreshCw, size: 20),
+                onPressed: () => context.read<BrowserProvider>().loadCards(),
+              ),
+            ],
+          ),
+          Expanded(
+            child: ResizablePanel.horizontal(
+              draggerBuilder: (context) {
+                return const HorizontalResizableDragger();
+              },
+              children: [
+                ResizablePane(
+                  initialSize: 220,
+                  minSize: 160,
                   child: _filterNodes.length <= 1
                       ? const Center(child: CircularProgressIndicator())
                       : Theme(
@@ -358,151 +357,156 @@ class _BrowserScreenState extends State<BrowserScreen> {
                           ),
                         ),
                 ),
-              ],
-            ),
-          ),
-          ResizablePane.flex(
-            child: Column(
-              children: [
-                _FilterBar(
-                  searchController: _searchController,
-                  onSearch: _onSearch,
-                ),
-                Expanded(
-                  child: Consumer<BrowserProvider>(
-                    builder: (context, provider, _) {
-                      if (provider.isLoading && provider.cards.isEmpty) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                ResizablePane.flex(
+                  child: Column(
+                    children: [
+                      _FilterBar(
+                        searchController: _searchController,
+                        onSearch: _onSearch,
+                      ),
+                      Expanded(
+                        child: Consumer<BrowserProvider>(
+                          builder: (context, provider, _) {
+                            if (provider.isLoading && provider.cards.isEmpty) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
 
-                      if (provider.error != null && provider.cards.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('Failed to load cards'),
-                              const SizedBox(height: 8),
-                              Text(provider.error!,
-                                  style: TextStyle(
-                                      color: colors.mutedForeground,
-                                      fontSize: 13)),
-                              const SizedBox(height: 16),
-                              Button.secondary(
-                                onPressed: () => provider.loadCards(),
-                                child: const Text('Retry'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      if (provider.cards.isEmpty) {
-                        return const Center(child: Text('No cards found'));
-                      }
-
-                      final headerCells = <TableCell>[];
-                      for (var i = 0; i < _columns.length; i++) {
-                        final active = _activeSort == _sortFields[i];
-                        headerCells.add(TableCell(
-                          theme: TableCellTheme(
-                            border: WidgetStatePropertyAll(
-                              Border.all(
-                                color: colors.border,
-                                strokeAlign: BorderSide.strokeAlignCenter,
-                              ),
-                            ),
-                          ),
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _onSort(i),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 6),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      _columns[i],
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: active
-                                            ? colors.primary
-                                            : colors.mutedForeground,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                            if (provider.error != null &&
+                                provider.cards.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('Failed to load cards'),
+                                    const SizedBox(height: 8),
+                                    Text(provider.error!,
+                                        style: TextStyle(
+                                            color: colors.mutedForeground,
+                                            fontSize: 13)),
+                                    const SizedBox(height: 16),
+                                    Button.secondary(
+                                      onPressed: () => provider.loadCards(),
+                                      child: const Text('Retry'),
                                     ),
-                                  ),
-                                  if (active)
-                                    Icon(
-                                      _sortAsc
-                                          ? LucideIcons.arrowUp
-                                          : LucideIcons.arrowDown,
-                                      size: 14,
-                                      color: colors.primary,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ));
-                      }
-
-                      final rows = <TableRow>[
-                        TableHeader(cells: headerCells),
-                      ];
-
-                      for (final card in provider.cards) {
-                        final frontText = card.front
-                            .replaceAll(RegExp(r'<[^>]*>'), ' ')
-                            .replaceAll(RegExp(r'\s+'), ' ')
-                            .trim();
-
-                        final role = context.read<AuthProvider>().role;
-                        final isTeacher = role == 'teacher' || role == 'admin';
-
-                        if (isTeacher) {
-                          rows.add(TableRow(cells: [
-                            _buildCell(frontText),
-                            _buildCell(card.deckTitle),
-                          ]));
-                        } else {
-                          rows.add(TableRow(cells: [
-                            _buildCell(frontText),
-                            _buildStateCell(card),
-                            _buildDueCell(card),
-                            _buildCell(card.deckTitle),
-                          ]));
-                        }
-                      }
-
-                      return ListView(
-                        controller: _scrollController,
-                        children: [
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    minWidth: constraints.maxWidth,
-                                  ),
-                                  child: ResizableTable(
-                                    controller: _tableController,
-                                    rows: rows,
-                                  ),
+                                  ],
                                 ),
                               );
-                            },
-                          ),
-                          if (provider.isLoading)
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                        ],
-                      );
-                    },
+                            }
+
+                            if (provider.cards.isEmpty) {
+                              return const Center(
+                                  child: Text('No cards found'));
+                            }
+
+                            final headerCells = <TableCell>[];
+                            for (var i = 0; i < _columns.length; i++) {
+                              final active = _activeSort == _sortFields[i];
+                              headerCells.add(TableCell(
+                                theme: TableCellTheme(
+                                  border: WidgetStatePropertyAll(
+                                    Border.all(
+                                      color: colors.border,
+                                      strokeAlign: BorderSide.strokeAlignCenter,
+                                    ),
+                                  ),
+                                ),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => _onSort(i),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 6),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            _columns[i],
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: active
+                                                  ? colors.primary
+                                                  : colors.mutedForeground,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (active)
+                                          Icon(
+                                            _sortAsc
+                                                ? LucideIcons.arrowUp
+                                                : LucideIcons.arrowDown,
+                                            size: 14,
+                                            color: colors.primary,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ));
+                            }
+
+                            final rows = <TableRow>[
+                              TableHeader(cells: headerCells),
+                            ];
+
+                            for (final card in provider.cards) {
+                              final frontText = card.front
+                                  .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                                  .replaceAll(RegExp(r'\s+'), ' ')
+                                  .trim();
+
+                              final role = context.read<AuthProvider>().role;
+                              final isTeacher =
+                                  role == 'teacher' || role == 'admin';
+
+                              if (isTeacher) {
+                                rows.add(TableRow(cells: [
+                                  _buildCell(frontText),
+                                  _buildCell(card.deckTitle),
+                                ]));
+                              } else {
+                                rows.add(TableRow(cells: [
+                                  _buildCell(frontText),
+                                  _buildStateCell(card),
+                                  _buildDueCell(card),
+                                  _buildCell(card.deckTitle),
+                                ]));
+                              }
+                            }
+
+                            return ListView(
+                              controller: _scrollController,
+                              children: [
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minWidth: constraints.maxWidth,
+                                        ),
+                                        child: ResizableTable(
+                                          controller: _tableController,
+                                          rows: rows,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                if (provider.isLoading)
+                                  const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
