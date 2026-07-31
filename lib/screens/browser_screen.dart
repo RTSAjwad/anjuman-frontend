@@ -665,6 +665,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
               AppBar(
                 title: const Text('Filters'),
                 trailing: [
+                  Tabs(
+                    index: _activeTab,
+                    onChanged: (index) => setState(() => _activeTab = index),
+                    children: const [
+                      TabItem(child: Text('Cards')),
+                      TabItem(child: Text('Notes')),
+                    ],
+                  ),
                   IconButton.outline(
                     icon: const Icon(LucideIcons.x, size: 20),
                     onPressed: () => closeOverlay(ctx),
