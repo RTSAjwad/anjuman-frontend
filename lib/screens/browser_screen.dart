@@ -521,8 +521,32 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildAppBar(ColorScheme colors, bool isCompact) {
     if (isCompact) {
+      final width = MediaQuery.of(context).size.width;
+      final isNarrow = width < Breakpoints.medium;
       if (_compactView == _CompactView.table) {
-        return NarrowAppBar(
+        if (isNarrow) {
+          return NarrowAppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Browser'),
+                Consumer<BrowserProvider>(
+                  builder: (context, provider, _) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: OutlineBadge(
+                        child: Text('${provider.total} selected'),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            trailing: _buildAppBarActions(colors),
+          );
+        }
+        return AppBar(
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -581,23 +605,28 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   List<Widget> _buildAppBarActions(ColorScheme colors) {
     final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < Breakpoints.medium;
     final isCompact = width < Breakpoints.expanded;
     final actions = <Widget>[
-      if (isCompact && _compactView == _CompactView.table)
+      if (isNarrow && _compactView == _CompactView.table)
         IconButton.outline(
           icon: const Icon(LucideIcons.filter, size: 20),
           onPressed: () => _showFilterDrawer(),
         ),
-      if (!isCompact || _compactView != _CompactView.table)
-        if (_compactView == _CompactView.table)
-          Tabs(
-            index: _activeTab,
-            onChanged: (index) => setState(() => _activeTab = index),
-            children: const [
-              TabItem(child: Text('Cards')),
-              TabItem(child: Text('Notes')),
-            ],
-          ),
+      if (!isNarrow && (!isCompact || _compactView == _CompactView.table))
+        Tabs(
+          index: _activeTab,
+          onChanged: (index) => setState(() => _activeTab = index),
+          children: const [
+            TabItem(child: Text('Cards')),
+            TabItem(child: Text('Notes')),
+          ],
+        ),
+      if (!isNarrow && isCompact && _compactView == _CompactView.table)
+        IconButton.outline(
+          icon: const Icon(LucideIcons.filter, size: 20),
+          onPressed: () => _showFilterDrawer(),
+        ),
       IconButton.outline(
         icon: const Icon(LucideIcons.refreshCw, size: 20),
         onPressed: () => context.read<BrowserProvider>().loadCards(),
@@ -624,21 +653,19 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _showFilterDrawer() {
-    final width = MediaQuery.of(context).size.width;
-    final isCompact = width < Breakpoints.expanded;
-    showOverlay(
+    showResponsiveDialog(
       context,
-      DrawerConfiguration(
-        position: OverlayPosition.bottom,
-        expands: false,
-        builder: (ctx) => SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            children: [
-              AppBar(
-                title: const Text('Filters'),
-                trailing: [
-                  if (isCompact)
+      builder: (ctx, _) {
+        final width = MediaQuery.of(context).size.width;
+        final isNarrow = width < Breakpoints.medium;
+        if (isNarrow) {
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Column(
+              children: [
+                AppBar(
+                  title: const Text('Filters'),
+                  trailing: [
                     Tabs(
                       index: _activeTab,
                       onChanged: (index) => setState(() => _activeTab = index),
@@ -647,17 +674,31 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         TabItem(child: Text('Notes')),
                       ],
                     ),
-                  IconButton.outline(
-                    icon: const Icon(LucideIcons.x, size: 20),
-                    onPressed: () => closeOverlay(ctx),
-                  ),
-                ],
-              ),
-              Expanded(child: _buildFilterTree()),
-            ],
+                    IconButton.outline(
+                      icon: const Icon(LucideIcons.x, size: 20),
+                      onPressed: () => closeOverlay(ctx),
+                    ),
+                  ],
+                ),
+                Expanded(child: _buildFilterTree()),
+              ],
+            ),
+          );
+        }
+        return AlertDialog(
+          title: const Text('Filters'),
+          content: SizedBox(
+            width: 400,
+            child: _buildFilterTree(),
           ),
-        ),
-      ),
+          actions: [
+            Button.ghost(
+              onPressed: () => closeOverlay(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
