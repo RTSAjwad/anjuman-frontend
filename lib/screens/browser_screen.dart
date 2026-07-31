@@ -7,7 +7,9 @@ import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
+import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
+import '../config/breakpoints.dart';
 import 'deck_detail_screen.dart';
 
 sealed class FilterNode {
@@ -58,6 +60,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   int? _selectedCardIndex;
   int _activeTab = 0; // 0 = Cards, 1 = Notes
   int? _lastTargetDeckId;
+  _CompactView _compactView = _CompactView.table;
   BrowserCard? get _selectedCard {
     if (_selectedCardIndex == null) return null;
     final cards = context.read<BrowserProvider>().cards;
@@ -412,6 +415,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             _selectedCardIndex = null;
           } else {
             _selectedCardIndex = i;
+            _compactView = _CompactView.detail;
           }
         });
       };
@@ -454,6 +458,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             _selectedCardIndex = null;
           } else {
             _selectedCardIndex = cardIndex;
+            _compactView = _CompactView.detail;
           }
         });
       };
@@ -493,222 +498,310 @@ class _BrowserScreenState extends State<BrowserScreen> {
       });
     }
 
-    return Scaffold(
-      child: Column(
-        children: [
-          AppBar(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Browser'),
-                Consumer<BrowserProvider>(
-                  builder: (context, provider, _) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: OutlineBadge(
-                        child: Text(
-                            '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            trailing: [
-              Button.ghost(
-                onPressed: () => setState(() => _activeTab = 0),
-                child: Text(
-                  'Cards',
-                  style: TextStyle(
-                    fontWeight:
-                        _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ),
-              Button.ghost(
-                onPressed: () => setState(() => _activeTab = 1),
-                child: Text(
-                  'Notes',
-                  style: TextStyle(
-                    fontWeight:
-                        _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ),
-              IconButton.outline(
-                icon: const Icon(LucideIcons.refreshCw, size: 20),
-                onPressed: () => context.read<BrowserProvider>().loadCards(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = MediaQuery.of(context).size.width;
+        final isCompact = width < Breakpoints.medium;
+
+        return Scaffold(
+          child: Column(
+            children: [
+              _buildAppBar(colors, isCompact),
+              Expanded(
+                child: isCompact
+                    ? _buildCompactContent(colors)
+                    : _buildDesktopContent(colors),
               ),
             ],
           ),
-          Expanded(
-            child: ResizablePanel.horizontal(
-              draggerBuilder: (context) {
-                return const HorizontalResizableDragger();
-              },
-              children: [
-                ResizablePane(
-                  initialSize: 220,
-                  minSize: 160,
-                  child: _filterNodes.length <= 1
-                      ? const Center(child: CircularProgressIndicator())
-                      : Theme(
-                          data: Theme.of(context).copyWith(radius: () => 0),
-                          child: Tree<FilterNode>(
-                            shrinkWrap: true,
-                            padding: EdgeInsets.zero,
-                            allowMultiSelect: true,
-                            nodes: _filterNodes,
-                            branchLine: BranchLine.line,
-                            onSelectionChanged: Tree.defaultSelectionHandler(
-                              _filterNodes,
-                              (value) {
-                                setState(() {
-                                  _filterNodes = value;
-                                  _syncAllFilters(value);
-                                });
-                              },
-                            ),
-                            builder: (context, node) {
-                              final data = node.data;
-                              final isSection = _isSectionRoot(data);
-                              final hasChildren = node.children.isNotEmpty;
-                              return TreeItem(
-                                onPressed:
-                                    (isSection || hasChildren) ? null : () {},
-                                onExpand: (isSection || hasChildren)
-                                    ? Tree.defaultItemExpandHandler(
-                                        _filterNodes,
-                                        node,
-                                        (value) {
-                                          setState(() => _filterNodes = value);
-                                        },
-                                      )
-                                    : null,
-                                child: Text(
-                                  _sectionLabel(data),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAppBar(ColorScheme colors, bool isCompact) {
+    if (isCompact) {
+      final showBack = _compactView == _CompactView.filters ||
+          _compactView == _CompactView.detail;
+      final title = _compactView == _CompactView.filters
+          ? 'Filters'
+          : _compactView == _CompactView.detail
+              ? 'Details'
+              : 'Browser';
+      return NarrowAppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title),
+            if (_compactView == _CompactView.table)
+              Consumer<BrowserProvider>(
+                builder: (context, provider, _) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: OutlineBadge(
+                      child: Text('${provider.total} selected'),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+        leading: showBack
+            ? [
+                IconButton.outline(
+                  icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                  onPressed: () =>
+                      setState(() => _compactView = _CompactView.table),
                 ),
-                ResizablePane.flex(
-                  child: Column(
-                    children: [
-                      _FilterBar(
-                        searchController: _searchController,
-                        onSearch: _onSearch,
-                      ),
-                      Expanded(
-                        child: Consumer<BrowserProvider>(
-                          builder: (context, provider, _) {
-                            if (provider.isLoading && provider.cards.isEmpty) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
+              ]
+            : const [],
+        trailing: _buildAppBarActions(colors),
+      );
+    }
 
-                            if (provider.error != null &&
-                                provider.cards.isEmpty) {
-                              return Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text('Failed to load cards'),
-                                    const SizedBox(height: 8),
-                                    Text(provider.error!,
-                                        style: TextStyle(
-                                            color: colors.mutedForeground,
-                                            fontSize: 13)),
-                                    const SizedBox(height: 16),
-                                    Button.secondary(
-                                      onPressed: () => provider.loadCards(),
-                                      child: const Text('Retry'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (provider.cards.isEmpty) {
-                              return const Center(child: Text('Nothing found'));
-                            }
-
-                            final headerCells = <TableCell>[];
-                            if (_activeTab == 0) {
-                              for (var i = 0; i < _columns.length; i++) {
-                                final active = _activeSort == _sortFields[i];
-                                headerCells.add(_buildHeader(
-                                    colors, i, active, _columns[i]));
-                              }
-                            } else {
-                              headerCells.add(
-                                  _buildHeader(colors, 0, false, 'Sort Field'));
-                              headerCells
-                                  .add(_buildHeader(colors, 1, false, 'Cards'));
-                              headerCells.add(
-                                  _buildHeader(colors, 2, false, 'Note Type'));
-                            }
-
-                            final rows = <TableRow>[
-                              TableHeader(cells: headerCells),
-                            ];
-
-                            final role = context.read<AuthProvider>().role;
-                            final isTeacher =
-                                role == 'teacher' || role == 'admin';
-
-                            if (_activeTab == 0) {
-                              _buildCardRows(provider, colors, isTeacher, rows);
-                            } else {
-                              _buildNoteRows(provider, colors, isTeacher, rows);
-                            }
-
-                            return ListView(
-                              controller: _scrollController,
-                              children: [
-                                LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    return SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          minWidth: constraints.maxWidth,
-                                        ),
-                                        child: ResizableTable(
-                                          controller: _tableController,
-                                          rows: rows,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                if (provider.isLoading)
-                                  const Padding(
-                                    padding: EdgeInsets.all(16),
-                                    child: Center(
-                                        child: CircularProgressIndicator()),
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+    return AppBar(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Browser'),
+          Consumer<BrowserProvider>(
+            builder: (context, provider, _) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: OutlineBadge(
+                  child: Text(
+                      '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
                 ),
-                if (_selectedCard != null &&
-                    !context.watch<BrowserProvider>().isLoading)
-                  ResizablePane.flex(
-                    child: _buildCardDetailPane(),
-                  ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
+      trailing: _buildAppBarActions(colors),
+    );
+  }
+
+  List<Widget> _buildAppBarActions(ColorScheme colors) {
+    return [
+      if (_compactView == _CompactView.table ||
+          _compactView == _CompactView.filters) ...[
+        Button.ghost(
+          onPressed: () => setState(() => _activeTab = 0),
+          child: Text(
+            'Cards',
+            style: TextStyle(
+              fontWeight: _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+        Button.ghost(
+          onPressed: () => setState(() => _activeTab = 1),
+          child: Text(
+            'Notes',
+            style: TextStyle(
+              fontWeight: _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ],
+      IconButton.outline(
+        icon: const Icon(LucideIcons.refreshCw, size: 20),
+        onPressed: () => context.read<BrowserProvider>().loadCards(),
+      ),
+    ];
+  }
+
+  Widget _buildCompactContent(ColorScheme colors) {
+    switch (_compactView) {
+      case _CompactView.table:
+        return Column(
+          children: [
+            _FilterBar(
+              searchController: _searchController,
+              onSearch: _onSearch,
+            ),
+            Row(
+              children: [
+                const SizedBox(width: 8),
+                IconButton.ghost(
+                  icon: const Icon(LucideIcons.filter, size: 20),
+                  onPressed: () =>
+                      setState(() => _compactView = _CompactView.filters),
+                ),
+              ],
+            ),
+            Expanded(child: _buildTableContent(colors)),
+          ],
+        );
+      case _CompactView.filters:
+        return _buildFilterTree();
+      case _CompactView.detail:
+        return _buildCardDetailPane();
+    }
+  }
+
+  Widget _buildDesktopContent(ColorScheme colors) {
+    return ResizablePanel.horizontal(
+      draggerBuilder: (context) {
+        return const HorizontalResizableDragger();
+      },
+      children: [
+        ResizablePane(
+          initialSize: 220,
+          minSize: 160,
+          child: _buildFilterTree(),
+        ),
+        ResizablePane.flex(
+          child: Column(
+            children: [
+              _FilterBar(
+                searchController: _searchController,
+                onSearch: _onSearch,
+              ),
+              Expanded(child: _buildTableContent(colors)),
+            ],
+          ),
+        ),
+        if (_selectedCard != null &&
+            !context.watch<BrowserProvider>().isLoading)
+          ResizablePane.flex(
+            child: _buildCardDetailPane(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFilterTree() {
+    if (_filterNodes.length <= 1) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Theme(
+      data: Theme.of(context).copyWith(radius: () => 0),
+      child: Tree<FilterNode>(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        allowMultiSelect: true,
+        nodes: _filterNodes,
+        branchLine: BranchLine.line,
+        onSelectionChanged: Tree.defaultSelectionHandler(
+          _filterNodes,
+          (value) {
+            setState(() {
+              _filterNodes = value;
+              _syncAllFilters(value);
+            });
+          },
+        ),
+        builder: (context, node) {
+          final data = node.data;
+          final isSection = _isSectionRoot(data);
+          final hasChildren = node.children.isNotEmpty;
+          return TreeItem(
+            onPressed: (isSection || hasChildren) ? null : () {},
+            onExpand: (isSection || hasChildren)
+                ? Tree.defaultItemExpandHandler(
+                    _filterNodes,
+                    node,
+                    (value) {
+                      setState(() => _filterNodes = value);
+                    },
+                  )
+                : null,
+            child: Text(
+              _sectionLabel(data),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTableContent(ColorScheme colors) {
+    return Consumer<BrowserProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoading && provider.cards.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (provider.error != null && provider.cards.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Failed to load cards'),
+                const SizedBox(height: 8),
+                Text(provider.error!,
+                    style:
+                        TextStyle(color: colors.mutedForeground, fontSize: 13)),
+                const SizedBox(height: 16),
+                Button.secondary(
+                  onPressed: () => provider.loadCards(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (provider.cards.isEmpty) {
+          return const Center(child: Text('Nothing found'));
+        }
+
+        final headerCells = <TableCell>[];
+        if (_activeTab == 0) {
+          for (var i = 0; i < _columns.length; i++) {
+            final active = _activeSort == _sortFields[i];
+            headerCells.add(_buildHeader(colors, i, active, _columns[i]));
+          }
+        } else {
+          headerCells.add(_buildHeader(colors, 0, false, 'Sort Field'));
+          headerCells.add(_buildHeader(colors, 1, false, 'Cards'));
+          headerCells.add(_buildHeader(colors, 2, false, 'Note Type'));
+        }
+
+        final rows = <TableRow>[
+          TableHeader(cells: headerCells),
+        ];
+
+        final role = context.read<AuthProvider>().role;
+        final isTeacher = role == 'teacher' || role == 'admin';
+
+        if (_activeTab == 0) {
+          _buildCardRows(provider, colors, isTeacher, rows);
+        } else {
+          _buildNoteRows(provider, colors, isTeacher, rows);
+        }
+
+        return ListView(
+          controller: _scrollController,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: constraints.maxWidth,
+                    ),
+                    child: ResizableTable(
+                      controller: _tableController,
+                      rows: rows,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (provider.isLoading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -1136,3 +1229,5 @@ class _FilterBar extends StatelessWidget {
     );
   }
 }
+
+enum _CompactView { table, filters, detail }
