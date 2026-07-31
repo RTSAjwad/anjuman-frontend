@@ -7,6 +7,7 @@ import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
+import '../widgets/drawer_context.dart';
 import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
 import '../config/breakpoints.dart';
@@ -547,6 +548,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
           );
         }
         return AppBar(
+          leading: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.menu, size: 20),
+              onPressed: () => DrawerContext.of(context)?.call(),
+            ),
+          ],
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
