@@ -521,20 +521,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildAppBar(ColorScheme colors, bool isCompact) {
     if (isCompact) {
-      final showBack = _compactView == _CompactView.filters ||
-          _compactView == _CompactView.detail;
-      final title = _compactView == _CompactView.filters
-          ? 'Filters'
-          : _compactView == _CompactView.detail
-              ? 'Details'
-              : 'Browser';
-      return NarrowAppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title),
-            if (_compactView == _CompactView.table)
+      if (_compactView == _CompactView.table) {
+        return NarrowAppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Browser'),
               Consumer<BrowserProvider>(
                 builder: (context, provider, _) {
                   return Padding(
@@ -545,17 +538,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
                   );
                 },
               ),
-          ],
-        ),
-        leading: showBack
-            ? [
-                IconButton.outline(
-                  icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                  onPressed: () =>
-                      setState(() => _compactView = _CompactView.table),
-                ),
-              ]
-            : const [],
+            ],
+          ),
+          trailing: _buildAppBarActions(colors),
+        );
+      }
+
+      return AppBar(
+        title: const Text('Details'),
+        leading: [
+          IconButton.outline(
+            icon: const Icon(LucideIcons.arrowLeft, size: 20),
+            onPressed: () => setState(() => _compactView = _CompactView.table),
+          ),
+        ],
         trailing: _buildAppBarActions(colors),
       );
     }
@@ -584,33 +580,54 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   List<Widget> _buildAppBarActions(ColorScheme colors) {
-    return [
-      if (_compactView == _CompactView.table ||
-          _compactView == _CompactView.filters) ...[
-        Button.ghost(
-          onPressed: () => setState(() => _activeTab = 0),
-          child: Text(
-            'Cards',
-            style: TextStyle(
-              fontWeight: _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < Breakpoints.medium;
+    final actions = <Widget>[
+      if (isCompact && _compactView == _CompactView.table)
+        IconButton.outline(
+          icon: const Icon(LucideIcons.filter, size: 20),
+          onPressed: () => _showFilterDrawer(),
         ),
-        Button.ghost(
-          onPressed: () => setState(() => _activeTab = 1),
-          child: Text(
-            'Notes',
-            style: TextStyle(
-              fontWeight: _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
-            ),
+      if (!isCompact || _compactView != _CompactView.table)
+        if (_compactView == _CompactView.table)
+          ButtonGroup(
+            children: [
+              ButtonGroupItem(
+                child: Button.outline(
+                  onPressed: _activeTab == 0
+                      ? null
+                      : () => setState(() => _activeTab = 0),
+                  child: Text(
+                    'Cards',
+                    style: TextStyle(
+                      fontWeight:
+                          _activeTab == 0 ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+              ButtonGroupItem(
+                child: Button.outline(
+                  onPressed: _activeTab == 1
+                      ? null
+                      : () => setState(() => _activeTab = 1),
+                  child: Text(
+                    'Notes',
+                    style: TextStyle(
+                      fontWeight:
+                          _activeTab == 1 ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
       IconButton.outline(
         icon: const Icon(LucideIcons.refreshCw, size: 20),
         onPressed: () => context.read<BrowserProvider>().loadCards(),
       ),
     ];
+    return actions;
   }
 
   Widget _buildCompactContent(ColorScheme colors) {
@@ -622,24 +639,76 @@ class _BrowserScreenState extends State<BrowserScreen> {
               searchController: _searchController,
               onSearch: _onSearch,
             ),
-            Row(
-              children: [
-                const SizedBox(width: 8),
-                IconButton.ghost(
-                  icon: const Icon(LucideIcons.filter, size: 20),
-                  onPressed: () =>
-                      setState(() => _compactView = _CompactView.filters),
-                ),
-              ],
-            ),
             Expanded(child: _buildTableContent(colors)),
           ],
         );
-      case _CompactView.filters:
-        return _buildFilterTree();
       case _CompactView.detail:
         return _buildCardDetailPane();
     }
+  }
+
+  void _showFilterDrawer() {
+    final width = MediaQuery.of(context).size.width;
+    final isCompact = width < Breakpoints.medium;
+    showOverlay(
+      context,
+      DrawerConfiguration(
+        position: OverlayPosition.bottom,
+        expands: false,
+        builder: (ctx) => SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              AppBar(
+                title: const Text('Filters'),
+                trailing: [
+                  if (isCompact)
+                    ButtonGroup(
+                      children: [
+                        ButtonGroupItem(
+                          child: Button.outline(
+                            onPressed: _activeTab == 0
+                                ? null
+                                : () => setState(() => _activeTab = 0),
+                            child: Text(
+                              'Cards',
+                              style: TextStyle(
+                                fontWeight: _activeTab == 0
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                        ButtonGroupItem(
+                          child: Button.outline(
+                            onPressed: _activeTab == 1
+                                ? null
+                                : () => setState(() => _activeTab = 1),
+                            child: Text(
+                              'Notes',
+                              style: TextStyle(
+                                fontWeight: _activeTab == 1
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.x, size: 20),
+                    onPressed: () => closeOverlay(ctx),
+                  ),
+                ],
+              ),
+              Expanded(child: _buildFilterTree()),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDesktopContent(ColorScheme colors) {
@@ -1230,4 +1299,4 @@ class _FilterBar extends StatelessWidget {
   }
 }
 
-enum _CompactView { table, filters, detail }
+enum _CompactView { table, detail }
