@@ -307,7 +307,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showCreateNoteDialog(BuildContext context) {
     showResponsiveDialog(
       context,
-      builder: (ctx, _) => _NoteFormDialog(
+      builder: (ctx, _) => NoteFormDialog(
         deckId: widget.deck.id,
         provider: widget.provider,
         onSuccess: () {
@@ -321,7 +321,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   void _showEditNoteDialog(BuildContext context, NoteResponse note) {
     showResponsiveDialog(
       context,
-      builder: (ctx, _) => _NoteFormDialog(
+      builder: (ctx, _) => NoteFormDialog(
         deckId: widget.deck.id,
         provider: widget.provider,
         existingNote: note,
@@ -982,13 +982,13 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
   }
 }
 
-class _NoteFormDialog extends StatefulWidget {
+class NoteFormDialog extends StatefulWidget {
   final int deckId;
   final DeckProvider provider;
   final NoteResponse? existingNote;
   final VoidCallback onSuccess;
 
-  const _NoteFormDialog({
+  const NoteFormDialog({
     required this.deckId,
     required this.provider,
     this.existingNote,
@@ -996,10 +996,10 @@ class _NoteFormDialog extends StatefulWidget {
   });
 
   @override
-  State<_NoteFormDialog> createState() => _NoteFormDialogState();
+  State<NoteFormDialog> createState() => _NoteFormDialogState();
 }
 
-class _NoteFormDialogState extends State<_NoteFormDialog> {
+class _NoteFormDialogState extends State<NoteFormDialog> {
   bool _isSubmitting = false;
   bool _loadingTypes = true;
   String? _error;

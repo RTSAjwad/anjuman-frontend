@@ -6,6 +6,8 @@ import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
+import '../widgets/responsive_dialog.dart';
+import 'deck_detail_screen.dart';
 
 sealed class FilterNode {
   const FilterNode();
@@ -637,6 +639,39 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
+  void _showEditNoteDialog(BrowserCard card) {
+    final provider = context.read<DeckProvider>();
+    final noteCards = _selectedNoteCards;
+    final note = NoteResponse(
+      id: card.noteId,
+      deckIds: [card.deckId],
+      noteTypeId: 0,
+      noteTypeName: card.noteTypeName,
+      fields: card.fields,
+      cards: noteCards
+          .map((c) => CardSummary(
+                id: c.cardId,
+                templateIndex: c.templateIndex,
+                front: c.front,
+                back: c.back,
+              ))
+          .toList(),
+      createdAt: card.createdAt,
+    );
+    showResponsiveDialog(
+      context,
+      builder: (ctx, _) => NoteFormDialog(
+        deckId: card.deckId,
+        provider: provider,
+        existingNote: note,
+        onSuccess: () {
+          safeCloseOverlay(ctx);
+          context.read<BrowserProvider>().loadCards();
+        },
+      ),
+    );
+  }
+
   Widget _buildCardDetailPane() {
     final card = _selectedCard;
     if (card == null) {
@@ -657,6 +692,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       headers: [
         AppBar(
           title: const Text('Card Details'),
+          leading: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () => _showEditNoteDialog(card),
+            ),
+          ],
           trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.x, size: 20),
@@ -729,6 +770,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       headers: [
         AppBar(
           title: const Text('Note Details'),
+          leading: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.pencil, size: 20),
+              onPressed: () => _showEditNoteDialog(card),
+            ),
+          ],
           trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.x, size: 20),
