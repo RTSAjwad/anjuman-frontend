@@ -692,13 +692,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
       headers: [
         AppBar(
           title: const Text('Card Details'),
-          leading: [
+          trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.pencil, size: 20),
               onPressed: () => _showEditNoteDialog(card),
             ),
-          ],
-          trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.x, size: 20),
               onPressed: () => setState(() => _selectedCardIndex = null),
@@ -770,13 +768,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
       headers: [
         AppBar(
           title: const Text('Note Details'),
-          leading: [
+          trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.pencil, size: 20),
               onPressed: () => _showEditNoteDialog(card),
             ),
-          ],
-          trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.x, size: 20),
               onPressed: () => setState(() => _selectedCardIndex = null),
