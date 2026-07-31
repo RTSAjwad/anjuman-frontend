@@ -109,6 +109,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _onDecksChanged() {
+    _rebuildDeckTree();
+  }
+
+  void _rebuildDeckTree() {
     final decks = context.read<DeckProvider>().decks;
     if (decks.isEmpty) return;
     final selectedIds = context.read<BrowserProvider>().deckIds.toSet();
@@ -123,8 +127,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   TreeItemNode<FilterNode> _selectDeckInTree(
       TreeItemNode<FilterNode> node, int deckId) {
+    return _selectDeckInTreeInternal(node, deckId).node;
+  }
+
+  ({TreeItemNode<FilterNode> node, bool found}) _selectDeckInTreeInternal(
+      TreeItemNode<FilterNode> node, int deckId) {
+    var foundInSubtree = false;
     final newChildren = <TreeNode<FilterNode>>[];
-    var hasSelectedChild = false;
     for (final child in node.children) {
       if (child is TreeItemNode<FilterNode>) {
         final data = child.data;
@@ -135,24 +144,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
             children: child.children,
             expanded: child.expanded,
           ));
-          hasSelectedChild = true;
+          foundInSubtree = true;
         } else {
-          final updated = _selectDeckInTree(child, deckId);
-          newChildren.add(updated);
-          if (updated.selected ||
-              updated.children.any((c) => c is TreeItemNode && c.selected)) {
-            hasSelectedChild = true;
+          final result = _selectDeckInTreeInternal(child, deckId);
+          newChildren.add(result.node);
+          if (result.found) {
+            foundInSubtree = true;
           }
         }
       } else {
         newChildren.add(child);
       }
     }
-    return TreeItemNode<FilterNode>(
-      data: node.data,
-      expanded: hasSelectedChild ? true : node.expanded,
-      children: newChildren,
-      selected: node.selected,
+    return (
+      node: TreeItemNode<FilterNode>(
+        data: node.data,
+        expanded: foundInSubtree || node.expanded,
+        children: newChildren,
+        selected: node.selected,
+      ),
+      found: foundInSubtree,
     );
   }
 
@@ -477,6 +488,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           context.read<BrowserProvider>().setDeckIds([targetDeckId]);
+          _rebuildDeckTree();
         }
       });
     }
