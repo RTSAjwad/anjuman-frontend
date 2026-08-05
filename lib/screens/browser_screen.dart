@@ -32,6 +32,11 @@ class NoteTypeFilterNode extends FilterNode {
   const NoteTypeFilterNode(this.noteType);
 }
 
+class FlagFilterNode extends FilterNode {
+  final int flag;
+  const FlagFilterNode(this.flag);
+}
+
 class BrowserScreen extends StatefulWidget {
   const BrowserScreen({super.key});
 
@@ -90,6 +95,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
           TreeItemNode(data: const StateFilterNode('review'), children: []),
           TreeItemNode(data: const StateFilterNode('relearning'), children: []),
           TreeItemNode(data: const StateFilterNode('due'), children: []),
+        ],
+      ),
+      TreeItemNode<FilterNode>(
+        data: const FlagFilterNode(0),
+        expanded: true,
+        children: [
+          for (var i = 1; i <= 7; i++)
+            TreeItemNode(data: FlagFilterNode(i), children: []),
         ],
       ),
     ];
@@ -239,6 +252,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     if (data is NoteTypeFilterNode && data.noteType.id == -1) {
       return 'noteTypes';
     }
+    if (data is FlagFilterNode && data.flag == 0) return 'flags';
     return null;
   }
 
@@ -248,18 +262,45 @@ class _BrowserScreenState extends State<BrowserScreen> {
     if (data is DeckFilterNode) return data.deck.title;
     if (data is StateFilterNode) return _stateLabel(data.state);
     if (data is NoteTypeFilterNode) return data.noteType.name;
+    if (data is FlagFilterNode) return _flagLabel(data.flag);
     return '';
+  }
+
+  static const _flagColors = {
+    1: Color(0xFFE53935),
+    2: Color(0xFFF57C00),
+    3: Color(0xFF43A047),
+    4: Color(0xFF1E88E5),
+    5: Color(0xFFD81B60),
+    6: Color(0xFF00BCD4),
+    7: Color(0xFF8E24AA),
+  };
+
+  String _flagLabel(int flag) {
+    if (flag == 0) return 'Flags';
+    const labels = {
+      1: 'Red',
+      2: 'Orange',
+      3: 'Green',
+      4: 'Blue',
+      5: 'Pink',
+      6: 'Turquoise',
+      7: 'Purple',
+    };
+    return labels[flag] ?? 'Flag $flag';
   }
 
   void _syncAllFilters(List<TreeNode<FilterNode>> nodes) {
     final deckIds = <int>[];
     final states = <String>[];
     final noteTypeIds = <int>[];
-    _walkSelected(nodes, deckIds, states, noteTypeIds);
+    final flags = <int>[];
+    _walkSelected(nodes, deckIds, states, noteTypeIds, flags);
     context.read<BrowserProvider>().setFilters(
           deckIds: deckIds,
           states: states,
           noteTypeIds: noteTypeIds,
+          flags: flags,
         );
   }
 
@@ -268,6 +309,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     List<int> deckIds,
     List<String> states,
     List<int> noteTypeIds,
+    List<int> flags,
   ) {
     for (final node in nodes) {
       if (node is TreeItemNode<FilterNode> && node.selected) {
@@ -278,9 +320,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
           states.add(data.state);
         } else if (data is NoteTypeFilterNode && data.noteType.id != -1) {
           noteTypeIds.add(data.noteType.id);
+        } else if (data is FlagFilterNode && data.flag != 0) {
+          flags.add(data.flag);
         }
       }
-      _walkSelected(node.children, deckIds, states, noteTypeIds);
+      _walkSelected(node.children, deckIds, states, noteTypeIds, flags);
     }
   }
 
@@ -333,6 +377,33 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
     final order = _sortAsc ? '' : '-';
     context.read<BrowserProvider>().setSort('$order$field');
+  }
+
+  TableCell _buildFlagCell(BrowserCard card, {VoidCallback? onTap}) {
+    final colors = Theme.of(context).colorScheme;
+    final flagColor =
+        card.flag != null && card.flag! > 0 ? _flagColors[card.flag] : null;
+    return TableCell(
+      theme: TableCellTheme(
+        border: WidgetStatePropertyAll(
+          Border.all(
+            color: colors.border,
+            strokeAlign: BorderSide.strokeAlignCenter,
+          ),
+        ),
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          alignment: Alignment.center,
+          child: flagColor != null
+              ? Icon(LucideIcons.flag, size: 14, color: flagColor)
+              : const SizedBox(width: 14),
+        ),
+      ),
+    );
   }
 
   TableCell _buildCell(String text,
@@ -428,6 +499,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ]));
       } else {
         rows.add(TableRow(cells: [
+          _buildFlagCell(card, onTap: onTap),
           _buildCell(frontText, onTap: onTap),
           _buildStateCell(card, onTap: onTap),
           _buildDueCell(card, onTap: onTap),
@@ -759,6 +831,16 @@ class _BrowserScreenState extends State<BrowserScreen> {
                     (value) {
                       setState(() => _filterNodes = value);
                     },
+                  )
+                : null,
+            leading: data is FlagFilterNode && data.flag != 0
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Icon(
+                      LucideIcons.flag,
+                      size: 14,
+                      color: _flagColors[data.flag],
+                    ),
                   )
                 : null,
             child: Text(
