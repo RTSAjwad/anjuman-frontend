@@ -41,6 +41,22 @@ class StudyCard {
                 .map((k, v) => MapEntry(k, (v as num).toInt()))
             : null,
       );
+
+  StudyCard copyWith({String? state}) {
+    return StudyCard(
+      cardId: cardId,
+      front: front,
+      back: back,
+      state: state ?? this.state,
+      dueAt: dueAt,
+      stability: stability,
+      difficulty: difficulty,
+      reps: reps,
+      lapses: lapses,
+      deckTitle: deckTitle,
+      predictedInterval: predictedInterval,
+    );
+  }
 }
 
 class StudySession {

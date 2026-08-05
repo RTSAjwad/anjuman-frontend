@@ -160,6 +160,12 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
       ));
       _cardStates[currentCard!.cardId] = response.state;
 
+      // Update the card in _cards so counts reflect the new state
+      final idx = _cards.indexWhere((c) => c.cardId == currentCard!.cardId);
+      if (idx >= 0) {
+        _cards[idx] = _cards[idx].copyWith(state: response.state);
+      }
+
       _isSubmitting = false;
       safeNotify();
       _ratingCompleter?.complete(true);
