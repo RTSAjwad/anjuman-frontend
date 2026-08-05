@@ -15,6 +15,7 @@ class BrowserService {
     int? perPage,
     List<String>? states,
     List<int>? noteTypeIds,
+    List<int>? flags,
   }) async {
     final params = <String, String>{};
     if (deckIds != null && deckIds.isNotEmpty) {
@@ -29,6 +30,9 @@ class BrowserService {
     }
     if (noteTypeIds != null && noteTypeIds.isNotEmpty) {
       params['note_type_id'] = noteTypeIds.join(',');
+    }
+    if (flags != null && flags.isNotEmpty) {
+      params['flag'] = flags.join(',');
     }
 
     final queryString = params.isNotEmpty

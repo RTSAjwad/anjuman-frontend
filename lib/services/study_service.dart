@@ -16,4 +16,10 @@ class StudyService {
     final json = await _client.post(ApiConfig.reviews, body: review.toJson());
     return ReviewResponse.fromJson(json);
   }
+
+  Future<Map<String, dynamic>> setCardFlag(int cardId, int flag) async {
+    final json =
+        await _client.patch(ApiConfig.cardFlag(cardId), body: {'flag': flag});
+    return json;
+  }
 }
