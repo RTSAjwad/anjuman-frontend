@@ -460,12 +460,17 @@ class _DeckTreeState extends State<_DeckTree> {
           ),
         ] else ...[
           OutlineBadge(
+            leading: const Icon(LucideIcons.sparkles, size: 12),
             child: Text('$newCount', style: const TextStyle(fontSize: 12)),
           ),
+          const SizedBox(width: 4),
           OutlineBadge(
+            leading: const Icon(LucideIcons.graduationCap, size: 12),
             child: Text('$learnCount', style: const TextStyle(fontSize: 12)),
           ),
+          const SizedBox(width: 4),
           OutlineBadge(
+            leading: const Icon(LucideIcons.clock, size: 12),
             child: Text('$dueCount', style: const TextStyle(fontSize: 12)),
           ),
         ],
