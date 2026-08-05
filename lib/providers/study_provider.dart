@@ -5,14 +5,18 @@ import '../models/study.dart';
 import '../services/api_client.dart';
 import '../services/study_service.dart';
 import '../widgets/safe_notify.dart';
+import 'card_state_provider.dart';
 
 class StudyProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
+  late CardStateProvider _cardState;
   late final StudyService _studyService;
 
-  StudyProvider(this._apiClient) {
+  StudyProvider(this._apiClient, this._cardState) {
     _studyService = StudyService(_apiClient);
   }
+
+  set cardState(CardStateProvider value) => _cardState = value;
 
   List<StudyCard> _cards = [];
   int _currentIndex = 0;
@@ -25,9 +29,6 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   // Metadata
   String? _deckTitle;
   int? _deckId;
-
-  // Session-wide card state tracking (cardId → state) for live count updates
-  final Map<int, String> _cardStates = {};
 
   List<StudyCard> get cards => _cards;
   int get currentIndex => _currentIndex;
@@ -45,14 +46,10 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   int get totalCount => _cards.length;
   int get reviewedCount => _currentIndex;
 
-  int get newCount => _cards.where((c) => c.state == 'new').length;
-  int get learningCount => _cards
-      .where((c) => c.state == 'learning' || c.state == 'relearning')
-      .length;
-  int get reviewCount => _cards.where((c) => c.state == 'review').length;
-  int get relearningCount =>
-      _cards.where((c) => c.state == 'relearning').length;
-  int get dueCount => _cards.where((c) => c.state == 'review').length;
+  /// Counts are delegated to CardStateProvider.
+  int get newCount => _cardState.deckNewCount(_deckId ?? -1);
+  int get learningCount => _cardState.deckLearningCount(_deckId ?? -1);
+  int get dueCount => _cardState.deckDueCount(_deckId ?? -1);
 
   /// Incremented each time a new fetch loop starts.
   int _loopGeneration = 0;
@@ -94,10 +91,11 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         }).toList();
         _cards = dueCards;
 
-        // Seed session-wide state tracking from this batch
-        for (final c in session.cards) {
-          _cardStates[c.cardId] = c.state;
-        }
+        // Seed card state in the shared provider so counts stay up-to-date
+        _cardState.seedFromStudyCards(
+          _deckId!,
+          session.cards.map((c) => (cardId: c.cardId, state: c.state)),
+        );
 
         // Terminal: queue is empty, study session complete
         if (session.totalCards == 0) {
@@ -150,6 +148,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   Future<void> setCardFlag(int cardId, int flag) async {
     try {
       await _studyService.setCardFlag(cardId, flag);
+      _cardState.setCardFlag(cardId, flag);
       final idx = _cards.indexWhere((c) => c.cardId == cardId);
       if (idx >= 0) {
         _cards[idx] = _cards[idx].copyWith(flag: flag);
@@ -172,7 +171,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         cardId: currentCard!.cardId,
         rating: rating,
       ));
-      _cardStates[currentCard!.cardId] = response.state;
+      _cardState.setCardState(currentCard!.cardId, _deckId!, response.state);
 
       // Update the card in _cards so counts reflect the new state
       final idx = _cards.indexWhere((c) => c.cardId == currentCard!.cardId);
@@ -222,7 +221,6 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
     _isComplete = false;
     _deckTitle = null;
     _deckId = null;
-    _cardStates.clear();
   }
 
   @override

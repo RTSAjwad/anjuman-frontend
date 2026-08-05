@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/card_state_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
 import '../providers/study_provider.dart';
@@ -212,7 +213,6 @@ class _DecksScreenState extends State<DecksScreen> {
                             ? (deck) => _confirmDelete(context, deck)
                             : null,
                         colors: colors,
-                        studyProvider: context.read<StudyProvider>(),
                       ),
                     ),
                   ],
@@ -261,7 +261,6 @@ class _DecksScreenState extends State<DecksScreen> {
                                 ? (deck) => _confirmDelete(context, deck)
                                 : null,
                             colors: colors,
-                            studyProvider: context.read<StudyProvider>(),
                           ),
                         ),
                       ],
@@ -366,7 +365,6 @@ class _DeckTree extends StatefulWidget {
   final int? selectedId;
   final void Function(DeckResponse)? onDelete;
   final ColorScheme colors;
-  final StudyProvider? studyProvider;
 
   const _DeckTree({
     super.key,
@@ -376,7 +374,6 @@ class _DeckTree extends StatefulWidget {
     this.selectedId,
     this.onDelete,
     required this.colors,
-    this.studyProvider,
   });
 
   @override
@@ -415,7 +412,6 @@ class _DeckTreeState extends State<_DeckTree> {
   void initState() {
     super.initState();
     _buildNodes();
-    widget.studyProvider?.addListener(_onStudyChanged);
   }
 
   @override
@@ -425,30 +421,17 @@ class _DeckTreeState extends State<_DeckTree> {
         oldWidget.selectedId != widget.selectedId) {
       _buildNodes();
     }
-    if (oldWidget.studyProvider != widget.studyProvider) {
-      oldWidget.studyProvider?.removeListener(_onStudyChanged);
-      widget.studyProvider?.addListener(_onStudyChanged);
-    }
   }
 
   @override
   void dispose() {
-    widget.studyProvider?.removeListener(_onStudyChanged);
     super.dispose();
   }
 
-  void _onStudyChanged() {
-    setState(() {});
-  }
-
-  Widget _buildBadges(DeckResponse deck) {
-    final study = widget.studyProvider;
-    final isStudying = study != null && study.deckId == deck.id;
-    final newCount = isStudying ? study.newCount : deck.newCount ?? 0;
-    final learnCount = isStudying
-        ? study.learningCount
-        : (deck.learningCount ?? 0) + (deck.relearningCount ?? 0);
-    final dueCount = isStudying ? study.dueCount : deck.dueCount ?? 0;
+  Widget _buildBadges(DeckResponse deck, CardStateProvider cardState) {
+    final newCount = cardState.deckNewCount(deck.id);
+    final learnCount = cardState.deckLearningCount(deck.id);
+    final dueCount = cardState.deckDueCount(deck.id);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -513,7 +496,9 @@ class _DeckTreeState extends State<_DeckTree> {
                     },
                   )
                 : null,
-            trailing: _buildBadges(deck),
+            trailing: Consumer<CardStateProvider>(
+              builder: (context, cardState, _) => _buildBadges(deck, cardState),
+            ),
             child: Text(
               deck.title,
               overflow: TextOverflow.ellipsis,

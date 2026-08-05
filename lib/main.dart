@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/browser_provider.dart';
+import 'providers/card_state_provider.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/study_provider.dart';
@@ -64,16 +65,23 @@ class AnkiClassroomApp extends StatelessWidget {
                             context.read<AuthProvider>().apiClient),
                       ),
                       ChangeNotifierProvider(
+                        create: (_) => CardStateProvider(),
+                      ),
+                      ChangeNotifierProxyProvider<CardStateProvider,
+                          StudyProvider>(
                         create: (_) => StudyProvider(
-                            context.read<AuthProvider>().apiClient),
+                            context.read<AuthProvider>().apiClient,
+                            CardStateProvider()),
+                        update: (_, cardState, study) =>
+                            study!..cardState = cardState,
                       ),
-                      ChangeNotifierProvider(
-                        create: (_) => UserProvider(
-                            context.read<AuthProvider>().apiClient),
-                      ),
-                      ChangeNotifierProvider(
+                      ChangeNotifierProxyProvider<CardStateProvider,
+                          BrowserProvider>(
                         create: (_) => BrowserProvider(
-                            context.read<AuthProvider>().apiClient),
+                            context.read<AuthProvider>().apiClient,
+                            CardStateProvider()),
+                        update: (_, cardState, browser) =>
+                            browser!..cardState = cardState,
                       ),
                     ],
                     child: _ShellScaffold(navigationShell: navigationShell),

@@ -3,14 +3,18 @@ import '../models/browser_card.dart';
 import '../services/api_client.dart';
 import '../services/browser_service.dart';
 import '../widgets/safe_notify.dart';
+import 'card_state_provider.dart';
 
 class BrowserProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
+  late CardStateProvider _cardState;
   late final BrowserService _browserService;
 
-  BrowserProvider(this._apiClient) {
+  BrowserProvider(this._apiClient, this._cardState) {
     _browserService = BrowserService(_apiClient);
   }
+
+  set cardState(CardStateProvider value) => _cardState = value;
 
   List<BrowserCard> _cards = [];
   bool _isLoading = false;
@@ -66,6 +70,16 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
         _cards = response.cards;
       }
       _total = response.total;
+
+      // Seed CardStateProvider with state and flag from loaded cards
+      for (final c in response.cards) {
+        _cardState.setCardState(c.cardId, c.deckId, c.state ?? 'new');
+      }
+      for (final c in response.cards) {
+        if (c.flag != null) {
+          _cardState.setCardFlag(c.cardId, c.flag!);
+        }
+      }
     } on Exception catch (e) {
       _error = e.toString();
     }
@@ -169,6 +183,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
   }
 
   void updateCardFlag(int cardId, int flag) {
+    _cardState.setCardFlag(cardId, flag);
     final idx = _cards.indexWhere((c) => c.cardId == cardId);
     if (idx >= 0) {
       _cards[idx] = BrowserCard(

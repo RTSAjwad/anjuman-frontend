@@ -2,7 +2,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/study_provider.dart';
-import '../providers/browser_provider.dart';
+import '../providers/card_state_provider.dart';
 import '../models/study.dart';
 
 class StudyScreen extends StatefulWidget {
@@ -118,7 +118,16 @@ class _StudyScreenState extends State<StudyScreen> {
               ),
           ],
           subtitle: (!_provider.isLoading && _provider.totalCount > 0)
-              ? _CardCountBar(provider: _provider)
+              ? Consumer<CardStateProvider>(
+                  builder: (context, cardState, _) {
+                    final deckId = _provider.deckId;
+                    if (deckId == null) return const SizedBox.shrink();
+                    return _CardCountBar(
+                      deckId: deckId,
+                      cardState: cardState,
+                    );
+                  },
+                )
               : null,
         ),
       ],
@@ -342,15 +351,6 @@ class _StudyScreenState extends State<StudyScreen> {
     final card = _provider.currentCard;
     if (card == null) return;
     await _provider.setCardFlag(card.cardId, flag);
-    // Also update flag in the browser provider so the tree/table reflect it
-    if (context.mounted) {
-      final browserProvider = context.read<BrowserProvider>();
-      final idx =
-          browserProvider.cards.indexWhere((c) => c.cardId == card.cardId);
-      if (idx >= 0) {
-        browserProvider.updateCardFlag(card.cardId, flag);
-      }
-    }
   }
 
   Widget _buildFlagMenu(BuildContext context) {
@@ -430,16 +430,19 @@ class _StudyScreenState extends State<StudyScreen> {
 }
 
 class _CardCountBar extends StatelessWidget {
-  final StudyProvider provider;
+  final int deckId;
+  final CardStateProvider cardState;
 
-  const _CardCountBar({required this.provider});
+  const _CardCountBar({required this.deckId, required this.cardState});
 
   @override
   Widget build(BuildContext context) {
-    final hasNew = provider.newCount > 0;
-    final hasLearning =
-        provider.learningCount > 0 || provider.relearningCount > 0;
-    final hasDue = provider.dueCount > 0;
+    final newCount = cardState.deckNewCount(deckId);
+    final learnCount = cardState.deckLearningCount(deckId);
+    final dueCount = cardState.deckDueCount(deckId);
+    final hasNew = newCount > 0;
+    final hasLearning = learnCount > 0;
+    final hasDue = dueCount > 0;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -448,15 +451,14 @@ class _CardCountBar extends StatelessWidget {
           if (hasNew)
             OutlineBadge(
               leading: const Icon(LucideIcons.sparkles, size: 12),
-              child: Text('${provider.newCount} new'),
+              child: Text('$newCount new'),
             ),
           if (hasLearning)
             Padding(
               padding: EdgeInsets.only(left: hasNew ? 8 : 0),
               child: OutlineBadge(
                 leading: const Icon(LucideIcons.graduationCap, size: 12),
-                child: Text(
-                    '${provider.learningCount + provider.relearningCount} learning'),
+                child: Text('$learnCount learning'),
               ),
             ),
           if (hasDue)
@@ -464,7 +466,7 @@ class _CardCountBar extends StatelessWidget {
               padding: EdgeInsets.only(left: hasNew || hasLearning ? 8 : 0),
               child: OutlineBadge(
                 leading: const Icon(LucideIcons.clock, size: 12),
-                child: Text('${provider.dueCount} due'),
+                child: Text('$dueCount due'),
               ),
             ),
         ],
