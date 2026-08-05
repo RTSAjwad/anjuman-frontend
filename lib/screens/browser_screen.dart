@@ -337,8 +337,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _columns = ['Sort Field', 'Deck'];
       _sortFields = ['question', 'deck'];
     } else {
-      _columns = ['Sort Field', 'State', 'Due', 'Deck'];
-      _sortFields = ['question', '', 'due_at', 'deck'];
+      _columns = ['Sort Field', 'State', 'Due', 'Flag', 'Deck'];
+      _sortFields = ['question', '', 'due_at', '', 'deck'];
     }
   }
 
@@ -499,10 +499,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ]));
       } else {
         rows.add(TableRow(cells: [
-          _buildFlagCell(card, onTap: onTap),
           _buildCell(frontText, onTap: onTap),
           _buildStateCell(card, onTap: onTap),
           _buildDueCell(card, onTap: onTap),
+          _buildFlagCell(card, onTap: onTap),
           _buildCell(card.deckTitle, onTap: onTap),
         ]));
       }
