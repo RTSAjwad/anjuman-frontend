@@ -2,6 +2,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/study_provider.dart';
+import '../providers/browser_provider.dart';
 import '../models/study.dart';
 
 class StudyScreen extends StatefulWidget {
@@ -26,6 +27,27 @@ class StudyScreen extends StatefulWidget {
 
 class _StudyScreenState extends State<StudyScreen> {
   late StudyProvider _provider;
+  final _menuKey = GlobalKey();
+
+  static const _flagColors = {
+    1: Color(0xFFE53935),
+    2: Color(0xFFF57C00),
+    3: Color(0xFF43A047),
+    4: Color(0xFF1E88E5),
+    5: Color(0xFFD81B60),
+    6: Color(0xFF00BCD4),
+    7: Color(0xFF8E24AA),
+  };
+
+  static const _flagLabels = {
+    1: 'Red',
+    2: 'Orange',
+    3: 'Green',
+    4: 'Blue',
+    5: 'Pink',
+    6: 'Turquoise',
+    7: 'Purple',
+  };
 
   @override
   void initState() {
@@ -80,6 +102,10 @@ class _StudyScreenState extends State<StudyScreen> {
           ],
           title: Text(title),
           trailing: [
+            if (_provider.currentCard != null &&
+                !_provider.isLoading &&
+                !_provider.isComplete)
+              _buildFlagMenu(context),
             if (!widget.isFullscreen && widget.onFullscreen != null)
               IconButton.outline(
                 icon: const Icon(LucideIcons.externalLink, size: 20),
@@ -310,6 +336,88 @@ class _StudyScreenState extends State<StudyScreen> {
 
   void _submitRating(int rating) {
     _provider.submitRating(rating);
+  }
+
+  Future<void> _setFlag(int flag) async {
+    final card = _provider.currentCard;
+    if (card == null) return;
+    await _provider.setCardFlag(card.cardId, flag);
+    // Also update flag in the browser provider so the tree/table reflect it
+    if (context.mounted) {
+      final browserProvider = context.read<BrowserProvider>();
+      final idx =
+          browserProvider.cards.indexWhere((c) => c.cardId == card.cardId);
+      if (idx >= 0) {
+        browserProvider.updateCardFlag(card.cardId, flag);
+      }
+    }
+  }
+
+  Widget _buildFlagMenu(BuildContext context) {
+    final currentFlag = _provider.currentCard?.flag;
+
+    final List<MenuItem> flagItems = [];
+    for (final entry in _flagColors.entries) {
+      flagItems.add(
+        MenuButton(
+          leading: Icon(
+            LucideIcons.flag,
+            size: 16,
+            color: entry.value,
+          ),
+          trailing: currentFlag == entry.key
+              ? const Icon(LucideIcons.check, size: 16)
+              : null,
+          onPressed: (_) {
+            _setFlag(entry.key);
+          },
+          child: Text(_flagLabels[entry.key]!),
+        ),
+      );
+    }
+    if (currentFlag != null && currentFlag > 0) {
+      flagItems.add(const MenuDivider());
+      flagItems.add(
+        MenuButton(
+          leading: const Icon(LucideIcons.flagOff, size: 16),
+          onPressed: (_) {
+            _setFlag(0);
+          },
+          child: const Text('Clear flag'),
+        ),
+      );
+    }
+
+    return Builder(
+      builder: (builderContext) {
+        return IconButton.outline(
+          key: _menuKey,
+          icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
+          onPressed: () {
+            showDropdown(
+              context: builderContext,
+              builder: (context) {
+                return DropdownMenu(
+                  children: [
+                    MenuButton(
+                      leading: Icon(
+                        LucideIcons.flag,
+                        size: 16,
+                        color: currentFlag != null && currentFlag > 0
+                            ? _flagColors[currentFlag]
+                            : null,
+                      ),
+                      subMenu: flagItems,
+                      child: const Text('Set Flag'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   String _intervalLabel(StudyCard? card, String rating, String fallback) {

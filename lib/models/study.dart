@@ -45,7 +45,7 @@ class StudyCard {
         flag: json['flag'],
       );
 
-  StudyCard copyWith({String? state}) {
+  StudyCard copyWith({String? state, int? flag}) {
     return StudyCard(
       cardId: cardId,
       front: front,
@@ -58,6 +58,7 @@ class StudyCard {
       lapses: lapses,
       deckTitle: deckTitle,
       predictedInterval: predictedInterval,
+      flag: flag ?? this.flag,
     );
   }
 }

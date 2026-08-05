@@ -147,6 +147,20 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
     notifyListeners();
   }
 
+  Future<void> setCardFlag(int cardId, int flag) async {
+    try {
+      await _studyService.setCardFlag(cardId, flag);
+      final idx = _cards.indexWhere((c) => c.cardId == cardId);
+      if (idx >= 0) {
+        _cards[idx] = _cards[idx].copyWith(flag: flag);
+      }
+      notifyListeners();
+    } on Exception catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   Future<void> submitRating(int rating) async {
     if (currentCard == null) return;
 

@@ -167,4 +167,31 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
       await loadCards();
     }
   }
+
+  void updateCardFlag(int cardId, int flag) {
+    final idx = _cards.indexWhere((c) => c.cardId == cardId);
+    if (idx >= 0) {
+      _cards[idx] = BrowserCard(
+        cardId: _cards[idx].cardId,
+        noteId: _cards[idx].noteId,
+        deckId: _cards[idx].deckId,
+        deckTitle: _cards[idx].deckTitle,
+        templateIndex: _cards[idx].templateIndex,
+        front: _cards[idx].front,
+        back: _cards[idx].back,
+        noteTypeName: _cards[idx].noteTypeName,
+        fields: _cards[idx].fields,
+        state: _cards[idx].state,
+        dueAt: _cards[idx].dueAt,
+        stability: _cards[idx].stability,
+        difficulty: _cards[idx].difficulty,
+        reps: _cards[idx].reps,
+        lapses: _cards[idx].lapses,
+        createdAt: _cards[idx].createdAt,
+        newCardPosition: _cards[idx].newCardPosition,
+        flag: flag,
+      );
+      notifyListeners();
+    }
+  }
 }
