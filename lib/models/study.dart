@@ -10,6 +10,7 @@ class StudyCard {
   final int lapses;
   final String deckTitle;
   final Map<String, int>? predictedInterval;
+  final int? flag;
 
   StudyCard({
     required this.cardId,
@@ -23,6 +24,7 @@ class StudyCard {
     required this.lapses,
     required this.deckTitle,
     this.predictedInterval,
+    this.flag,
   });
 
   factory StudyCard.fromJson(Map<String, dynamic> json) => StudyCard(
@@ -40,6 +42,7 @@ class StudyCard {
             ? (json['predicted_interval'] as Map<String, dynamic>)
                 .map((k, v) => MapEntry(k, (v as num).toInt()))
             : null,
+        flag: json['flag'],
       );
 
   StudyCard copyWith({String? state}) {
