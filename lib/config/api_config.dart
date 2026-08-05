@@ -68,4 +68,5 @@ class ApiConfig {
 
   // Browser
   static const String browseCards = '/cards';
+  static String cardFlag(int cardId) => '/cards/$cardId/flag';
 }
