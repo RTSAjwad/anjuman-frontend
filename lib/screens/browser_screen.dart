@@ -580,6 +580,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           child: Column(
             children: [
               _buildAppBar(colors, isCompact),
+              const Divider(),
               Expanded(
                 child: isCompact
                     ? _buildCompactContent(colors)
