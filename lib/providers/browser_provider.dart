@@ -24,6 +24,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
   String _sort = 'created_at';
   List<String> _states = [];
   List<int> _noteTypeIds = [];
+  List<int> _flags = [];
 
   List<BrowserCard> get cards => _cards;
   bool get isLoading => _isLoading;
@@ -36,6 +37,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
   String get sort => _sort;
   List<String> get states => _states;
   List<int> get noteTypeIds => _noteTypeIds;
+  List<int> get flags => _flags;
 
   bool get hasNextPage => _page * _perPage < _total;
   bool get hasPrevPage => _page > 1;
@@ -56,6 +58,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
         perPage: _perPage,
         states: _states.isEmpty ? null : _states,
         noteTypeIds: _noteTypeIds.isEmpty ? null : _noteTypeIds,
+        flags: _flags.isEmpty ? null : _flags,
       );
       if (append) {
         _cards = [..._cards, ...response.cards];
@@ -131,14 +134,22 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
     loadCards();
   }
 
+  void setFlags(List<int> flags) {
+    _flags = List.of(flags);
+    _page = 1;
+    loadCards();
+  }
+
   void setFilters({
     List<int>? deckIds,
     List<String>? states,
     List<int>? noteTypeIds,
+    List<int>? flags,
   }) {
     if (deckIds != null) _deckIds = List.of(deckIds);
     if (states != null) _states = List.of(states);
     if (noteTypeIds != null) _noteTypeIds = List.of(noteTypeIds);
+    if (flags != null) _flags = List.of(flags);
     _page = 1;
     loadCards();
   }
