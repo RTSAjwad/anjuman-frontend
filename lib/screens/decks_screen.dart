@@ -212,6 +212,7 @@ class _DecksScreenState extends State<DecksScreen> {
                             ? (deck) => _confirmDelete(context, deck)
                             : null,
                         colors: colors,
+                        studyProvider: context.read<StudyProvider>(),
                       ),
                     ),
                   ],
@@ -260,6 +261,7 @@ class _DecksScreenState extends State<DecksScreen> {
                                 ? (deck) => _confirmDelete(context, deck)
                                 : null,
                             colors: colors,
+                            studyProvider: context.read<StudyProvider>(),
                           ),
                         ),
                       ],
@@ -364,6 +366,7 @@ class _DeckTree extends StatefulWidget {
   final int? selectedId;
   final void Function(DeckResponse)? onDelete;
   final ColorScheme colors;
+  final StudyProvider? studyProvider;
 
   const _DeckTree({
     super.key,
@@ -373,6 +376,7 @@ class _DeckTree extends StatefulWidget {
     this.selectedId,
     this.onDelete,
     required this.colors,
+    this.studyProvider,
   });
 
   @override
@@ -411,6 +415,7 @@ class _DeckTreeState extends State<_DeckTree> {
   void initState() {
     super.initState();
     _buildNodes();
+    widget.studyProvider?.addListener(_onStudyChanged);
   }
 
   @override
@@ -420,9 +425,31 @@ class _DeckTreeState extends State<_DeckTree> {
         oldWidget.selectedId != widget.selectedId) {
       _buildNodes();
     }
+    if (oldWidget.studyProvider != widget.studyProvider) {
+      oldWidget.studyProvider?.removeListener(_onStudyChanged);
+      widget.studyProvider?.addListener(_onStudyChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.studyProvider?.removeListener(_onStudyChanged);
+    super.dispose();
+  }
+
+  void _onStudyChanged() {
+    setState(() {});
   }
 
   Widget _buildBadges(DeckResponse deck) {
+    final study = widget.studyProvider;
+    final isStudying = study != null && study.deckId == deck.id;
+    final newCount = isStudying ? study.newCount : deck.newCount ?? 0;
+    final learnCount = isStudying
+        ? study.learningCount
+        : (deck.learningCount ?? 0) + (deck.relearningCount ?? 0);
+    final dueCount = isStudying ? study.dueCount : deck.dueCount ?? 0;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -433,17 +460,13 @@ class _DeckTreeState extends State<_DeckTree> {
           ),
         ] else ...[
           OutlineBadge(
-            child: Text('${deck.newCount ?? 0}',
-                style: const TextStyle(fontSize: 12)),
+            child: Text('$newCount', style: const TextStyle(fontSize: 12)),
           ),
           OutlineBadge(
-            child: Text(
-                '${(deck.learningCount ?? 0) + (deck.relearningCount ?? 0)}',
-                style: const TextStyle(fontSize: 12)),
+            child: Text('$learnCount', style: const TextStyle(fontSize: 12)),
           ),
           OutlineBadge(
-            child: Text('${deck.dueCount ?? 0}',
-                style: const TextStyle(fontSize: 12)),
+            child: Text('$dueCount', style: const TextStyle(fontSize: 12)),
           ),
         ],
       ],
