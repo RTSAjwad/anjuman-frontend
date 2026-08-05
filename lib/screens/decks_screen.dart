@@ -432,22 +432,19 @@ class _DeckTreeState extends State<_DeckTree> {
                 style: const TextStyle(fontSize: 12)),
           ),
         ] else ...[
-          if ((deck.newCount ?? 0) > 0)
-            OutlineBadge(
-              child: Text('${deck.newCount}',
-                  style: const TextStyle(fontSize: 12)),
-            ),
-          if ((deck.learningCount ?? 0) + (deck.relearningCount ?? 0) > 0)
-            OutlineBadge(
-              child: Text(
-                  '${(deck.learningCount ?? 0) + (deck.relearningCount ?? 0)}',
-                  style: const TextStyle(fontSize: 12)),
-            ),
-          if ((deck.dueCount ?? 0) > 0)
-            OutlineBadge(
-              child: Text('${deck.dueCount}',
-                  style: const TextStyle(fontSize: 12)),
-            ),
+          OutlineBadge(
+            child: Text('${deck.newCount ?? 0}',
+                style: const TextStyle(fontSize: 12)),
+          ),
+          OutlineBadge(
+            child: Text(
+                '${(deck.learningCount ?? 0) + (deck.relearningCount ?? 0)}',
+                style: const TextStyle(fontSize: 12)),
+          ),
+          OutlineBadge(
+            child: Text('${deck.dueCount ?? 0}',
+                style: const TextStyle(fontSize: 12)),
+          ),
         ],
       ],
     );
