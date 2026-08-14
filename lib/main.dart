@@ -162,6 +162,11 @@ class AnkiClassroomApp extends StatelessWidget {
           return ShadcnApp.router(
             title: 'Anki Classroom',
             debugShowCheckedModeBanner: false,
+            builder: (context, child) {
+              // Prevent content from being drawn behind the Android status bar
+              // (Flutter 3.44+ enables edge-to-edge rendering by default).
+              return SafeArea(child: child ?? const SizedBox.shrink());
+            },
             theme: ThemeData(
               colorScheme: ColorSchemes.lightNeutral,
               typography: _interTypography,
