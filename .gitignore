@@ -52,6 +52,10 @@ app.*.map.json
 
 # Android / Flutter local configuration (machine-specific paths)
 /android/local.properties
+local.properties
+
+# Android generated artifacts (debug keystore, cache, etc.)
+.android/
 
 # api.yaml exists in backend repository as main source of truth but sometimes
 # a copy kept here that shouldn't be pushed. Architecture explanation will be
