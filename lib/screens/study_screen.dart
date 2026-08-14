@@ -1,9 +1,9 @@
-import 'package:flutter_html/flutter_html.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/study_provider.dart';
 import '../providers/card_state_provider.dart';
 import '../models/study.dart';
+import '../widgets/card_html_view.dart';
 
 class StudyScreen extends StatefulWidget {
   final int deckId;
@@ -225,21 +225,8 @@ class _StudyScreenState extends State<StudyScreen> {
       child: Column(
         children: [
           Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Html(
-                  data: _provider.showBack ? card.back : card.front,
-                  style: {
-                    'body': Style(
-                      margin: Margins.zero,
-                      padding: HtmlPaddings.zero,
-                      fontSize: FontSize(20),
-                      fontWeight: FontWeight.w400,
-                      textAlign: TextAlign.center,
-                    ),
-                  },
-                ),
-              ),
+            child: CardHtmlView(
+              html: _provider.showBack ? card.back : card.front,
             ),
           ),
           if (!provider.showBack && !provider.isSubmitting)

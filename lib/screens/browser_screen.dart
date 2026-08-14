@@ -10,6 +10,7 @@ import '../widgets/deck_tree.dart';
 import '../widgets/drawer_context.dart';
 import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
+import '../widgets/card_html_view.dart';
 import '../config/breakpoints.dart';
 import 'deck_detail_screen.dart';
 
@@ -1014,24 +1015,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
             const SizedBox(height: 4),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              height: 200,
               decoration: BoxDecoration(
                 color: colors.muted.withAlpha(50),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(card.front),
+              clipBehavior: Clip.antiAlias,
+              child: CardHtmlView(html: card.front),
             ),
             const SizedBox(height: 16),
             const Text('Back', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 4),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              height: 200,
               decoration: BoxDecoration(
                 color: colors.muted.withAlpha(50),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(card.back),
+              clipBehavior: Clip.antiAlias,
+              child: CardHtmlView(html: card.back),
             ),
             const SizedBox(height: 16),
             const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),

@@ -22,7 +22,10 @@ dependencies:
   # Searchable dropdown
   dropdown_search: ^7.0.0
 
-  # HTML rendering for card content
+  # WebView for rendering Anki card HTML (Android/iOS)
+  webview_flutter: ^4.14.1
+
+  # HTML rendering fallback for desktop/web (webview_flutter unsupported there)
   flutter_html: ^3.0.0-beta.2
 
   # shadcn-style UI components
