@@ -33,6 +33,12 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# devenv
+.devenv/
+
+# Android Gradle build artifacts
+/android/build/
+
 # Symbolication related
 app.*.symbols
 
@@ -43,6 +49,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android / Flutter local configuration (machine-specific paths)
+/android/local.properties
 
 # api.yaml exists in backend repository as main source of truth but sometimes
 # a copy kept here that shouldn't be pushed. Architecture explanation will be
