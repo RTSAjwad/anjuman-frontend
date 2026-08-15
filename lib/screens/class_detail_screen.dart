@@ -182,28 +182,20 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
     final rows = <TableRow>[
       TableHeader(cells: [
-        TableCell(
-          theme: cellTheme,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            child:
-                const Text('', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ),
-        _headerCell('First Name', cellTheme),
-        _headerCell('Last Name', cellTheme),
-        _headerCell('Email', cellTheme),
-        _headerCell('Role', cellTheme),
-        _headerCell('Joined', cellTheme),
-        if (isTeacher)
-          TableCell(theme: cellTheme, child: const SizedBox(width: 48)),
+        _headerCell('Avatar', cellTheme, colors),
+        _headerCell('First Name', cellTheme, colors),
+        _headerCell('Last Name', cellTheme, colors),
+        _headerCell('Email', cellTheme, colors),
+        _headerCell('Role', cellTheme, colors),
+        _headerCell('Joined', cellTheme, colors),
+        if (isTeacher) _headerCell('Actions', cellTheme, colors),
       ]),
       for (final member in members)
         TableRow(cells: [
           TableCell(
             theme: cellTheme,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Avatar(
                 size: 28,
                 borderRadius: 14,
@@ -216,7 +208,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           TableCell(
             theme: cellTheme,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               alignment: Alignment.centerLeft,
               child: Text(member.firstName, overflow: TextOverflow.ellipsis),
             ),
@@ -224,7 +216,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           TableCell(
             theme: cellTheme,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               alignment: Alignment.centerLeft,
               child: Text(member.lastName, overflow: TextOverflow.ellipsis),
             ),
@@ -232,7 +224,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           TableCell(
             theme: cellTheme,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               alignment: Alignment.centerLeft,
               child: Text(member.email,
                   overflow: TextOverflow.ellipsis,
@@ -242,7 +234,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           TableCell(
             theme: cellTheme,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               alignment: Alignment.centerLeft,
               child: _RoleBadge(role: member.role),
             ),
@@ -250,7 +242,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           TableCell(
             theme: cellTheme,
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               alignment: Alignment.centerLeft,
               child: Text(
                 _formatJoined(member.joinedAt),
@@ -309,12 +301,19 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     );
   }
 
-  TableCell _headerCell(String label, TableCellTheme cellTheme) {
+  TableCell _headerCell(
+      String label, TableCellTheme cellTheme, ColorScheme colors) {
     return TableCell(
       theme: cellTheme,
       child: Container(
-        padding: const EdgeInsets.all(8),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: colors.mutedForeground,
+          ),
+        ),
       ),
     );
   }
