@@ -34,6 +34,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   late Future<RosterResponse?> _rosterFuture;
   final _verticalScrollController = ScrollController();
   final _tableScrollController = ScrollController();
+  final ResizableTableController _tableController = ResizableTableController(
+    defaultColumnWidth: 150,
+    defaultRowHeight: 40,
+    defaultHeightConstraint: const ConstrainedTableSize(min: 40),
+    defaultWidthConstraint: const ConstrainedTableSize(min: 80),
+  );
 
   late ClassProvider _provider;
 
@@ -48,6 +54,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   void dispose() {
     _verticalScrollController.dispose();
     _tableScrollController.dispose();
+    _tableController.dispose();
     super.dispose();
   }
 
@@ -266,38 +273,25 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         ]),
     ];
 
-    return Scrollbar(
-      controller: _verticalScrollController,
-      thumbVisibility: true,
-      child: SingleChildScrollView(
-        controller: _verticalScrollController,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Scrollbar(
-              controller: _tableScrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _tableScrollController,
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: Table(
-                    columnWidths: {
-                      0: const IntrinsicTableSize(),
-                      1: const IntrinsicTableSize(),
-                      2: const IntrinsicTableSize(),
-                      4: const IntrinsicTableSize(),
-                      5: const IntrinsicTableSize(),
-                      if (isTeacher) 6: const IntrinsicTableSize(),
-                    },
-                    rows: rows,
-                  ),
-                ),
-              ),
-            );
-          },
+    return Stack(
+      children: [
+        Scrollbar(
+          controller: _verticalScrollController,
+          thumbVisibility: true,
+          child: Scrollbar(
+            controller: _tableScrollController,
+            thumbVisibility: true,
+            notificationPredicate: (notification) =>
+                notification.metrics.axis == Axis.horizontal,
+            child: ResizableTable(
+              controller: _tableController,
+              rows: rows,
+              verticalController: _verticalScrollController,
+              horizontalController: _tableScrollController,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
