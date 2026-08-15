@@ -32,6 +32,7 @@ class ClassDetailScreen extends StatefulWidget {
 
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
   late Future<RosterResponse?> _rosterFuture;
+  final _tableScrollController = ScrollController();
 
   late ClassProvider _provider;
 
@@ -40,6 +41,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     super.initState();
     _provider = widget.provider;
     _rosterFuture = _provider.loadRoster(widget.classResponse.id);
+  }
+
+  @override
+  void dispose() {
+    _tableScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -148,110 +155,133 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   const SizedBox(height: 12),
 
                   // Member table
-                  OutlinedContainer(
-                    child: Table(
-                      columnWidths: {
-                        0: const IntrinsicTableSize(),
-                        1: const IntrinsicTableSize(),
-                        2: const IntrinsicTableSize(),
-                        4: const IntrinsicTableSize(),
-                        5: const IntrinsicTableSize(),
-                        if (isTeacher) 6: const IntrinsicTableSize(),
-                      },
-                      rows: [
-                        TableHeader(cells: [
-                          TableCell(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              child: const Text('',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Scrollbar(
+                        controller: _tableScrollController,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _tableScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: constraints.maxWidth,
+                            ),
+                            child: OutlinedContainer(
+                              child: Table(
+                                columnWidths: {
+                                  0: const IntrinsicTableSize(),
+                                  1: const IntrinsicTableSize(),
+                                  2: const IntrinsicTableSize(),
+                                  4: const IntrinsicTableSize(),
+                                  5: const IntrinsicTableSize(),
+                                  if (isTeacher) 6: const IntrinsicTableSize(),
+                                },
+                                rows: [
+                                  TableHeader(cells: [
+                                    TableCell(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        child: const Text('',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                                    _headerCell('First Name'),
+                                    _headerCell('Last Name'),
+                                    _headerCell('Email'),
+                                    _headerCell('Role'),
+                                    _headerCell('Joined'),
+                                    if (isTeacher)
+                                      const TableCell(
+                                        child: SizedBox(width: 48),
+                                      ),
+                                  ]),
+                                  for (final member in members)
+                                    TableRow(cells: [
+                                      TableCell(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Avatar(
+                                            size: 28,
+                                            borderRadius: 14,
+                                            initials: member
+                                                    .firstName.isNotEmpty
+                                                ? member.firstName[0]
+                                                    .toUpperCase()
+                                                : member.email[0].toUpperCase(),
+                                          ),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(member.firstName,
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(member.lastName,
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(member.email,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  color:
+                                                      colors.mutedForeground)),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          alignment: Alignment.centerLeft,
+                                          child: _RoleBadge(role: member.role),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            _formatJoined(member.joinedAt),
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                                color: colors.mutedForeground),
+                                          ),
+                                        ),
+                                      ),
+                                      if (isTeacher)
+                                        TableCell(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4),
+                                            child: IconButton.ghost(
+                                              icon: const Icon(
+                                                  LucideIcons.userMinus,
+                                                  size: 18,
+                                                  color: Colors.red),
+                                              onPressed: () =>
+                                                  _confirmRemoveMember(
+                                                      context, member),
+                                            ),
+                                          ),
+                                        ),
+                                    ]),
+                                ],
+                              ),
                             ),
                           ),
-                          _headerCell('First Name'),
-                          _headerCell('Last Name'),
-                          _headerCell('Email'),
-                          _headerCell('Role'),
-                          _headerCell('Joined'),
-                          if (isTeacher)
-                            const TableCell(
-                              child: SizedBox(width: 48),
-                            ),
-                        ]),
-                        for (final member in members)
-                          TableRow(cells: [
-                            TableCell(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Avatar(
-                                  size: 28,
-                                  borderRadius: 14,
-                                  initials: member.firstName.isNotEmpty
-                                      ? member.firstName[0].toUpperCase()
-                                      : member.email[0].toUpperCase(),
-                                ),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(member.firstName,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(member.lastName,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(member.email,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        color: colors.mutedForeground)),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                alignment: Alignment.centerLeft,
-                                child: _RoleBadge(role: member.role),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _formatJoined(member.joinedAt),
-                                  overflow: TextOverflow.ellipsis,
-                                  style:
-                                      TextStyle(color: colors.mutedForeground),
-                                ),
-                              ),
-                            ),
-                            if (isTeacher)
-                              TableCell(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: IconButton.ghost(
-                                    icon: const Icon(LucideIcons.userMinus,
-                                        size: 18, color: Colors.red),
-                                    onPressed: () =>
-                                        _confirmRemoveMember(context, member),
-                                  ),
-                                ),
-                              ),
-                          ]),
-                      ],
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
