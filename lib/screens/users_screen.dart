@@ -19,6 +19,8 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   final _sort =
       TableSort<UserDetail, UserSortField>(UserSortField.lastName, true);
+  final _verticalScrollController = ScrollController();
+  final _tableScrollController = ScrollController();
 
   @override
   void initState() {
@@ -29,211 +31,270 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   @override
+  void dispose() {
+    _verticalScrollController.dispose();
+    _tableScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      headers: [
-        NarrowAppBar(
-          title: const Text('Users'),
-          trailing: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.userPlus, size: 20),
-              onPressed: () => _showCreateDialog(context),
-            ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.refreshCw, size: 20),
-              onPressed: () => context.read<UserProvider>().loadUsers(),
-            ),
-          ],
-        ),
-      ],
-      child: Consumer<UserProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading && provider.users.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.error != null && provider.users.isEmpty) {
-            final err = provider.error!;
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.circleAlert,
-                        size: 48, color: colors.destructive),
-                    const SizedBox(height: 16),
-                    const Text('Failed to load users'),
-                    const SizedBox(height: 8),
-                    Text(err,
-                        style: TextStyle(
-                            color: colors.mutedForeground, fontSize: 13),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    Button.secondary(
-                      onPressed: () => provider.loadUsers(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
+      child: Column(
+        children: [
+          NarrowAppBar(
+            title: const Text('Users'),
+            trailing: [
+              IconButton.outline(
+                icon: const Icon(LucideIcons.userPlus, size: 20),
+                onPressed: () => _showCreateDialog(context),
               ),
-            );
-          }
-
-          if (provider.users.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.users,
-                      size: 64, color: colors.mutedForeground),
-                  const SizedBox(height: 16),
-                  const Text('No users found'),
-                ],
-              ),
-            );
-          }
-
-          final sorted = _sort.sort(
-              provider.users,
-              (u, f) => switch (f) {
-                    UserSortField.id => u.id,
-                    UserSortField.firstName => u.firstName,
-                    UserSortField.lastName => u.lastName,
-                    UserSortField.email => u.email,
-                    UserSortField.role => u.role,
-                    UserSortField.created => u.createdAt,
-                  });
-
-          return ListView(
-            padding: const EdgeInsets.all(8),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: OutlinedContainer(
-                    child: Table(
-                      columnWidths: {
-                        0: const IntrinsicTableSize(),
-                        1: const FlexTableSize(),
-                        2: const FlexTableSize(),
-                        3: const FlexTableSize(flex: 3),
-                        4: const IntrinsicTableSize(),
-                        5: const IntrinsicTableSize(),
-                        6: const IntrinsicTableSize(),
-                      },
-                      rows: [
-                        TableHeader(cells: [
-                          TableCell(
-                            child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: const Text('',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                          ),
-                          TableCell(
-                              child:
-                                  _sortCell('First', UserSortField.firstName)),
-                          TableCell(
-                              child: _sortCell('Last', UserSortField.lastName)),
-                          TableCell(
-                              child: _sortCell('Email', UserSortField.email)),
-                          TableCell(
-                              child: _sortCell('Role', UserSortField.role)),
-                          TableCell(
-                              child:
-                                  _sortCell('Created', UserSortField.created)),
-                          const TableCell(
-                            child: SizedBox(width: 80),
-                          ),
-                        ]),
-                        for (final user in sorted)
-                          TableRow(cells: [
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Avatar(
-                                  size: 28,
-                                  borderRadius: 14,
-                                  initials: user.firstName.isNotEmpty
-                                      ? user.firstName[0].toUpperCase()
-                                      : user.email[0].toUpperCase(),
-                                ),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(user.firstName,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(user.lastName,
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(user.email,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        color: colors.mutedForeground)),
-                              ),
-                            ),
-                            TableCell(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _RoleBadge(role: user.role),
-                                ),
-                              ),
-                            ),
-                            TableCell(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  '${user.createdAt.year}-${user.createdAt.month.toString().padLeft(2, '0')}-${user.createdAt.day.toString().padLeft(2, '0')}',
-                                  overflow: TextOverflow.ellipsis,
-                                  style:
-                                      TextStyle(color: colors.mutedForeground),
-                                ),
-                              ),
-                            ),
-                            TableCell(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton.ghost(
-                                    icon: const Icon(LucideIcons.pencil,
-                                        size: 18),
-                                    onPressed: () =>
-                                        _showEditDialog(context, user),
-                                  ),
-                                  IconButton.ghost(
-                                    icon: const Icon(LucideIcons.trash2,
-                                        size: 18, color: Colors.red),
-                                    onPressed: () =>
-                                        _confirmDelete(context, user),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ]),
-                      ],
-                    ),
-                  ),
-                ),
+              IconButton.outline(
+                icon: const Icon(LucideIcons.refreshCw, size: 20),
+                onPressed: () => context.read<UserProvider>().loadUsers(),
               ),
             ],
-          );
-        },
+          ),
+          const Divider(),
+          Expanded(
+            child: Consumer<UserProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading && provider.users.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.error != null && provider.users.isEmpty) {
+                  final err = provider.error!;
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.circleAlert,
+                              size: 48, color: colors.destructive),
+                          const SizedBox(height: 16),
+                          const Text('Failed to load users'),
+                          const SizedBox(height: 8),
+                          Text(err,
+                              style: TextStyle(
+                                  color: colors.mutedForeground, fontSize: 13),
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          Button.secondary(
+                            onPressed: () => provider.loadUsers(),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (provider.users.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.users,
+                            size: 64, color: colors.mutedForeground),
+                        const SizedBox(height: 16),
+                        const Text('No users found'),
+                      ],
+                    ),
+                  );
+                }
+
+                final sorted = _sort.sort(
+                    provider.users,
+                    (u, f) => switch (f) {
+                          UserSortField.id => u.id,
+                          UserSortField.firstName => u.firstName,
+                          UserSortField.lastName => u.lastName,
+                          UserSortField.email => u.email,
+                          UserSortField.role => u.role,
+                          UserSortField.created => u.createdAt,
+                        });
+
+                final cellTheme = TableCellTheme(
+                  border: WidgetStatePropertyAll(
+                    Border.all(
+                      color: colors.border,
+                      strokeAlign: BorderSide.strokeAlignCenter,
+                    ),
+                  ),
+                );
+
+                final rows = <TableRow>[
+                  TableHeader(cells: [
+                    _headerCell('Avatar', cellTheme, colors),
+                    TableCell(
+                      theme: cellTheme,
+                      child: _sortCell('First', UserSortField.firstName),
+                    ),
+                    TableCell(
+                      theme: cellTheme,
+                      child: _sortCell('Last', UserSortField.lastName),
+                    ),
+                    TableCell(
+                      theme: cellTheme,
+                      child: _sortCell('Email', UserSortField.email),
+                    ),
+                    TableCell(
+                      theme: cellTheme,
+                      child: _sortCell('Role', UserSortField.role),
+                    ),
+                    TableCell(
+                      theme: cellTheme,
+                      child: _sortCell('Created', UserSortField.created),
+                    ),
+                    _headerCell('Actions', cellTheme, colors),
+                  ]),
+                  for (final user in sorted)
+                    TableRow(cells: [
+                      TableCell(
+                        theme: cellTheme,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Avatar(
+                            size: 28,
+                            borderRadius: 14,
+                            initials: user.firstName.isNotEmpty
+                                ? user.firstName[0].toUpperCase()
+                                : user.email[0].toUpperCase(),
+                          ),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Text(user.firstName,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Text(user.lastName,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Text(user.email,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: colors.mutedForeground)),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _RoleBadge(role: user.role),
+                          ),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Text(
+                            '${user.createdAt.year}-${user.createdAt.month.toString().padLeft(2, '0')}-${user.createdAt.day.toString().padLeft(2, '0')}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: colors.mutedForeground),
+                          ),
+                        ),
+                      ),
+                      TableCell(
+                        theme: cellTheme,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton.ghost(
+                              icon: const Icon(LucideIcons.pencil, size: 18),
+                              onPressed: () => _showEditDialog(context, user),
+                            ),
+                            IconButton.ghost(
+                              icon: const Icon(LucideIcons.trash2,
+                                  size: 18, color: Colors.red),
+                              onPressed: () => _confirmDelete(context, user),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
+                ];
+
+                return Scrollbar(
+                  controller: _verticalScrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _verticalScrollController,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Scrollbar(
+                          controller: _tableScrollController,
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            controller: _tableScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                  minWidth: constraints.maxWidth),
+                              child: Table(
+                                columnWidths: {
+                                  0: const IntrinsicTableSize(),
+                                  1: const IntrinsicTableSize(),
+                                  2: const IntrinsicTableSize(),
+                                  3: const IntrinsicTableSize(),
+                                  4: const IntrinsicTableSize(),
+                                  5: const IntrinsicTableSize(),
+                                  6: const IntrinsicTableSize(),
+                                },
+                                rows: rows,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  TableCell _headerCell(
+      String label, TableCellTheme cellTheme, ColorScheme colors) {
+    return TableCell(
+      theme: cellTheme,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: colors.mutedForeground,
+          ),
+        ),
       ),
     );
   }
