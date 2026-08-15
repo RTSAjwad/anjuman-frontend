@@ -48,6 +48,7 @@ class BrowserScreen extends StatefulWidget {
 class _BrowserScreenState extends State<BrowserScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  final _tableScrollController = ScrollController();
   bool _fetchingMore = false;
 
   final ResizableTableController _tableController = ResizableTableController(
@@ -347,6 +348,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _tableScrollController.dispose();
     _tableController.dispose();
     super.dispose();
   }
@@ -916,15 +918,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: constraints.maxWidth,
-                    ),
-                    child: ResizableTable(
-                      controller: _tableController,
-                      rows: rows,
+                return Scrollbar(
+                  controller: _tableScrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _tableScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                      ),
+                      child: ResizableTable(
+                        controller: _tableController,
+                        rows: rows,
+                      ),
                     ),
                   ),
                 );
