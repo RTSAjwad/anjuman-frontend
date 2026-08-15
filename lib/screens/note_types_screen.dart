@@ -1,6 +1,7 @@
+import 'package:flutter/material.dart' show Colors;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/deck_provider.dart';
 import '../models/deck.dart';
 import '../config/breakpoints.dart';
@@ -171,12 +172,12 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
           title: Text(noteType.name),
           trailing: [
             IconButton.outline(
-              icon: const Icon(LucideIcons.trash2, size: 20),
-              onPressed: () => _confirmDeleteNoteType(context, noteType),
-            ),
-            IconButton.outline(
               icon: const Icon(LucideIcons.save, size: 20),
               onPressed: _saveEnabled ? _submitCurrent : null,
+            ),
+            IconButton.outline(
+              icon: const Icon(LucideIcons.trash2, size: 20, color: Colors.red),
+              onPressed: () => _confirmDeleteNoteType(context, noteType),
             ),
           ],
         ),

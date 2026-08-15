@@ -1,4 +1,5 @@
-import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:flutter/material.dart' show Colors;
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../models/deck.dart';
 import '../providers/deck_provider.dart';
 import 'template_detail_screen.dart';
@@ -292,7 +293,8 @@ class _NoteTypeDetailScreenState extends State<NoteTypeDetailScreen> {
                     ),
                     ButtonGroupItem(
                       child: IconButton.outline(
-                        icon: const Icon(LucideIcons.trash2, size: 14),
+                        icon: const Icon(LucideIcons.trash2,
+                            size: 14, color: Colors.red),
                         onPressed: () => _removeTemplate(index),
                       ),
                     ),
