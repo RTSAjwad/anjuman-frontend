@@ -21,9 +21,12 @@ class NoteTypesScreen extends StatefulWidget {
 class _NoteTypesScreenState extends State<NoteTypesScreen> {
   DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
   late final DeckProvider _cachedProvider;
-  final _saveEnabled = ValueNotifier<bool>(false);
-  GlobalKey<NoteTypeDetailScreenState>? _detailKey;
+  bool _saveEnabled = false;
   int? _lastNoteTypeId;
+  final Map<int, NoteTypeDraft> _drafts = {};
+
+  NoteTypeDraft? get _currentDraft =>
+      _lastNoteTypeId == null ? null : _drafts[_lastNoteTypeId];
 
   @override
   void initState() {
@@ -38,7 +41,6 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   @override
   void dispose() {
     _cachedProvider.removeListener(_onChanged);
-    _saveEnabled.dispose();
     super.dispose();
   }
 
@@ -149,11 +151,12 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
 
   Widget _buildDetailPane(NoteType noteType, {bool showBack = false}) {
     if (_lastNoteTypeId != noteType.id) {
-      _detailKey = GlobalKey<NoteTypeDetailScreenState>();
       _lastNoteTypeId = noteType.id;
-      _saveEnabled.value = false;
+      _saveEnabled = false;
+      _drafts.putIfAbsent(noteType.id, () => NoteTypeDraft(noteType));
     }
-    final key = _detailKey!;
+    final draft = _drafts[noteType.id]!;
+
     return Scaffold(
       headers: [
         AppBar(
@@ -171,18 +174,9 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
               icon: const Icon(LucideIcons.trash2, size: 20),
               onPressed: () => _confirmDeleteNoteType(context, noteType),
             ),
-            ValueListenableBuilder<bool>(
-              valueListenable: _saveEnabled,
-              builder: (context, enabled, _) {
-                return IconButton.outline(
-                  icon: const Icon(LucideIcons.save, size: 20),
-                  onPressed: enabled
-                      ? () {
-                          key.currentState?.submit();
-                        }
-                      : null,
-                );
-              },
+            IconButton.outline(
+              icon: const Icon(LucideIcons.save, size: 20),
+              onPressed: _saveEnabled ? _submitCurrent : null,
             ),
           ],
         ),
@@ -190,12 +184,13 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       child: KeyedSubtree(
         key: ValueKey(noteType.id),
         child: NoteTypeDetailScreen(
-          key: key,
           provider: _provider,
           noteType: noteType,
-          onChanged: () =>
-              _saveEnabled.value = key.currentState?.hasChanges ?? false,
-          onSaved: () => _saveEnabled.value = false,
+          draft: draft,
+          onChanged: () {
+            setState(() => _saveEnabled = draft.hasChanges);
+          },
+          onSaved: () => setState(() => _saveEnabled = false),
           onTemplateSelected: (index) {
             final uri = GoRouterState.of(context).uri;
             context.go(
@@ -212,8 +207,53 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     );
   }
 
+  Future<void> _submitCurrent() async {
+    final draft = _currentDraft;
+    if (draft == null || _lastNoteTypeId == null) return;
+
+    if (draft.name.trim().isEmpty) {
+      setState(() => draft.error = 'Name is required');
+      return;
+    }
+    if (draft.fieldNames.isEmpty) {
+      setState(() => draft.error = 'Add at least one field name');
+      return;
+    }
+    if (draft.templates.isEmpty) {
+      setState(() => draft.error = 'Add at least one template');
+      return;
+    }
+
+    setState(() {
+      draft.isSubmitting = true;
+      draft.error = null;
+    });
+
+    final ok = await _provider.updateNoteType(
+        _lastNoteTypeId!, draft.toCreateNoteType());
+    if (mounted) {
+      if (ok) {
+        _provider.loadNoteTypes();
+        setState(() => _saveEnabled = false);
+      } else {
+        setState(() {
+          draft.isSubmitting = false;
+          draft.error = _provider.error ?? 'Failed to update note type';
+        });
+      }
+    }
+  }
+
   Widget _buildTemplateDetailPane(NoteType noteType, {bool showBack = false}) {
-    final templates = noteType.templates;
+    final draft = _drafts[noteType.id];
+    final templates = draft?.templates ??
+        noteType.templates
+            .map((t) => NoteTemplateEntry(
+                  name: t.name,
+                  frontPattern: t.frontPattern,
+                  backPattern: t.backPattern,
+                ))
+            .toList();
     final templateIndexStr =
         GoRouterState.of(context).uri.queryParameters['template'];
     final templateIndex =
@@ -225,12 +265,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       );
     }
 
-    final source = templates[templateIndex];
-    final template = NoteTemplateEntry(
-      name: source.name,
-      frontPattern: source.frontPattern,
-      backPattern: source.backPattern,
-    );
+    final template = templates[templateIndex];
 
     return Scaffold(
       headers: [
@@ -270,7 +305,8 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
         child: TemplateDetailScreen(
           template: template,
           onChanged: (updated) {
-            _detailKey?.currentState?.updateTemplate(templateIndex, updated);
+            draft?.updateTemplate(templateIndex, updated);
+            setState(() => _saveEnabled = draft?.hasChanges ?? false);
           },
         ),
       ),
