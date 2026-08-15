@@ -32,6 +32,7 @@ class ClassDetailScreen extends StatefulWidget {
 
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
   late Future<RosterResponse?> _rosterFuture;
+  final _verticalScrollController = ScrollController();
   final _tableScrollController = ScrollController();
 
   late ClassProvider _provider;
@@ -45,6 +46,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   @override
   void dispose() {
+    _verticalScrollController.dispose();
     _tableScrollController.dispose();
     super.dispose();
   }
@@ -55,245 +57,261 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      headers: [
-        AppBar(
-          leading: [
-            if (widget.showBack)
-              IconButton.outline(
-                icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                onPressed: () {
-                  if (widget.onClose != null) {
-                    widget.onClose!();
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                },
+    return FutureBuilder<RosterResponse?>(
+      future: _rosterFuture,
+      builder: (context, snapshot) {
+        final roster = snapshot.data;
+        final members = roster?.members ?? const <MemberResponse>[];
+        final teacherCount = members.where((m) => m.role == 'teacher').length;
+        final studentCount = members.where((m) => m.role == 'student').length;
+
+        return Scaffold(
+          child: Column(
+            children: [
+              AppBar(
+                leading: [
+                  if (widget.showBack)
+                    IconButton.outline(
+                      icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                      onPressed: () {
+                        if (widget.onClose != null) {
+                          widget.onClose!();
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                    ),
+                ],
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(widget.classResponse.name),
+                    if (roster != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            OutlineBadge(
+                              leading: const Icon(LucideIcons.graduationCap,
+                                  size: 14),
+                              child: Text(
+                                  '$teacherCount teacher${teacherCount == 1 ? '' : 's'}'),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlineBadge(
+                              leading: const Icon(LucideIcons.users, size: 14),
+                              child: Text(
+                                  '$studentCount student${studentCount == 1 ? '' : 's'}'),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                trailing: [
+                  if (isTeacher)
+                    IconButton.outline(
+                      icon: const Icon(LucideIcons.userPlus, size: 20),
+                      onPressed: () => _showAddMemberDialog(context),
+                    ),
+                  if (isTeacher)
+                    IconButton.outline(
+                      icon: const Icon(LucideIcons.trash2,
+                          size: 20, color: Colors.red),
+                      onPressed: () => _confirmDelete(context),
+                    ),
+                ],
               ),
-          ],
-          title: Text(widget.classResponse.name),
-          trailing: [
-            if (isTeacher)
-              IconButton.outline(
-                icon:
-                    const Icon(LucideIcons.trash2, size: 20, color: Colors.red),
-                onPressed: () => _confirmDelete(context),
+              const Divider(),
+              Expanded(
+                child: _buildBody(snapshot, colors, isTeacher, members),
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(
+    AsyncSnapshot<RosterResponse?> snapshot,
+    ColorScheme colors,
+    bool isTeacher,
+    List<MemberResponse> members,
+  ) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.circleAlert, size: 48, color: colors.destructive),
+            const SizedBox(height: 16),
+            const Text('Failed to load roster'),
+            const SizedBox(height: 8),
+            Button.secondary(
+              onPressed: () {
+                setState(() {
+                  _rosterFuture = _provider.loadRoster(widget.classResponse.id);
+                });
+              },
+              child: const Text('Retry'),
+            ),
           ],
         ),
-      ],
-      child: FutureBuilder<RosterResponse?>(
-        future: _rosterFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      );
+    }
 
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.circleAlert,
-                      size: 48, color: colors.destructive),
-                  const SizedBox(height: 16),
-                  const Text('Failed to load roster'),
-                  const SizedBox(height: 8),
-                  Button.secondary(
-                    onPressed: () {
-                      setState(() {
-                        _rosterFuture =
-                            _provider.loadRoster(widget.classResponse.id);
-                      });
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+    if (members.isEmpty) {
+      return const Center(child: Text('No members'));
+    }
 
-          final roster = snapshot.data!;
-          final members = roster.members;
+    final cellTheme = TableCellTheme(
+      border: WidgetStatePropertyAll(
+        Border.all(
+          color: colors.border,
+          strokeAlign: BorderSide.strokeAlignCenter,
+        ),
+      ),
+    );
 
-          final teacherCount = members.where((m) => m.role == 'teacher').length;
-          final studentCount = members.where((m) => m.role == 'student').length;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header row with counts + add button
-                  Row(
-                    children: [
-                      const Text('Members').semiBold(),
-                      const SizedBox(width: 16),
-                      OutlineBadge(
-                        leading:
-                            const Icon(LucideIcons.graduationCap, size: 14),
-                        child: Text(
-                            '$teacherCount teacher${teacherCount == 1 ? '' : 's'}'),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlineBadge(
-                        leading: const Icon(LucideIcons.users, size: 14),
-                        child: Text(
-                            '$studentCount student${studentCount == 1 ? '' : 's'}'),
-                      ),
-                      const Spacer(),
-                      if (isTeacher)
-                        Button.secondary(
-                          leading: const Icon(LucideIcons.userPlus, size: 18),
-                          onPressed: () => _showAddMemberDialog(context),
-                          child: const Text('Add'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Member table
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Scrollbar(
-                        controller: _tableScrollController,
-                        thumbVisibility: true,
-                        child: SingleChildScrollView(
-                          controller: _tableScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: constraints.maxWidth,
-                            ),
-                            child: OutlinedContainer(
-                              child: Table(
-                                columnWidths: {
-                                  0: const IntrinsicTableSize(),
-                                  1: const IntrinsicTableSize(),
-                                  2: const IntrinsicTableSize(),
-                                  4: const IntrinsicTableSize(),
-                                  5: const IntrinsicTableSize(),
-                                  if (isTeacher) 6: const IntrinsicTableSize(),
-                                },
-                                rows: [
-                                  TableHeader(cells: [
-                                    TableCell(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        child: const Text('',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w600)),
-                                      ),
-                                    ),
-                                    _headerCell('First Name'),
-                                    _headerCell('Last Name'),
-                                    _headerCell('Email'),
-                                    _headerCell('Role'),
-                                    _headerCell('Joined'),
-                                    if (isTeacher)
-                                      const TableCell(
-                                        child: SizedBox(width: 48),
-                                      ),
-                                  ]),
-                                  for (final member in members)
-                                    TableRow(cells: [
-                                      TableCell(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8),
-                                          child: Avatar(
-                                            size: 28,
-                                            borderRadius: 14,
-                                            initials: member
-                                                    .firstName.isNotEmpty
-                                                ? member.firstName[0]
-                                                    .toUpperCase()
-                                                : member.email[0].toUpperCase(),
-                                          ),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(member.firstName,
-                                              overflow: TextOverflow.ellipsis),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(member.lastName,
-                                              overflow: TextOverflow.ellipsis),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(member.email,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                  color:
-                                                      colors.mutedForeground)),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          alignment: Alignment.centerLeft,
-                                          child: _RoleBadge(role: member.role),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            _formatJoined(member.joinedAt),
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                                color: colors.mutedForeground),
-                                          ),
-                                        ),
-                                      ),
-                                      if (isTeacher)
-                                        TableCell(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(4),
-                                            child: IconButton.ghost(
-                                              icon: const Icon(
-                                                  LucideIcons.userMinus,
-                                                  size: 18,
-                                                  color: Colors.red),
-                                              onPressed: () =>
-                                                  _confirmRemoveMember(
-                                                      context, member),
-                                            ),
-                                          ),
-                                        ),
-                                    ]),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+    final rows = <TableRow>[
+      TableHeader(cells: [
+        TableCell(
+          theme: cellTheme,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child:
+                const Text('', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ),
+        _headerCell('First Name', cellTheme),
+        _headerCell('Last Name', cellTheme),
+        _headerCell('Email', cellTheme),
+        _headerCell('Role', cellTheme),
+        _headerCell('Joined', cellTheme),
+        if (isTeacher)
+          TableCell(theme: cellTheme, child: const SizedBox(width: 48)),
+      ]),
+      for (final member in members)
+        TableRow(cells: [
+          TableCell(
+            theme: cellTheme,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Avatar(
+                size: 28,
+                borderRadius: 14,
+                initials: member.firstName.isNotEmpty
+                    ? member.firstName[0].toUpperCase()
+                    : member.email[0].toUpperCase(),
               ),
             ),
-          );
-        },
+          ),
+          TableCell(
+            theme: cellTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.centerLeft,
+              child: Text(member.firstName, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+          TableCell(
+            theme: cellTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.centerLeft,
+              child: Text(member.lastName, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+          TableCell(
+            theme: cellTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.centerLeft,
+              child: Text(member.email,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: colors.mutedForeground)),
+            ),
+          ),
+          TableCell(
+            theme: cellTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.centerLeft,
+              child: _RoleBadge(role: member.role),
+            ),
+          ),
+          TableCell(
+            theme: cellTheme,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _formatJoined(member.joinedAt),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colors.mutedForeground),
+              ),
+            ),
+          ),
+          if (isTeacher)
+            TableCell(
+              theme: cellTheme,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: IconButton.ghost(
+                  icon: const Icon(LucideIcons.userMinus,
+                      size: 18, color: Colors.red),
+                  onPressed: () => _confirmRemoveMember(context, member),
+                ),
+              ),
+            ),
+        ]),
+    ];
+
+    return Scrollbar(
+      controller: _verticalScrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _verticalScrollController,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Scrollbar(
+              controller: _tableScrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _tableScrollController,
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: Table(
+                    columnWidths: {
+                      0: const IntrinsicTableSize(),
+                      1: const IntrinsicTableSize(),
+                      2: const IntrinsicTableSize(),
+                      4: const IntrinsicTableSize(),
+                      5: const IntrinsicTableSize(),
+                      if (isTeacher) 6: const IntrinsicTableSize(),
+                    },
+                    rows: rows,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  TableCell _headerCell(String label) {
+  TableCell _headerCell(String label, TableCellTheme cellTheme) {
     return TableCell(
+      theme: cellTheme,
       child: Container(
         padding: const EdgeInsets.all(8),
         child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
