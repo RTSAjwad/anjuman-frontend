@@ -51,12 +51,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   final _tableScrollController = ScrollController();
   bool _fetchingMore = false;
 
-  final ResizableTableController _tableController = ResizableTableController(
-    defaultColumnWidth: 150,
-    defaultRowHeight: 40,
-    defaultHeightConstraint: const ConstrainedTableSize(min: 40),
-    defaultWidthConstraint: const ConstrainedTableSize(min: 80),
-  );
+  late ResizableTableController _tableController;
 
   List<String> _columns = ['Sort Field', 'Deck'];
   List<String> _sortFields = ['question', 'deck'];
@@ -87,6 +82,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _tableController = _newTableController();
     _filterNodes = [
       TreeItemNode<FilterNode>(
         data: const StateFilterNode('root'),
@@ -363,6 +359,32 @@ class _BrowserScreenState extends State<BrowserScreen> {
         _fetchingMore = false;
       });
     }
+  }
+
+  ResizableTableController _newTableController() {
+    return ResizableTableController(
+      defaultColumnWidth: 150,
+      defaultRowHeight: 40,
+      defaultHeightConstraint: const ConstrainedTableSize(min: 40),
+      defaultWidthConstraint: const ConstrainedTableSize(min: 80),
+    );
+  }
+
+  void _onTabChanged(int index) {
+    if (index == _activeTab) return;
+    setState(() {
+      _activeTab = index;
+      _tableController = _newTableController();
+    });
+    // Reset scroll positions so pagination and layout start fresh for the
+    // newly selected tab.
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    if (_tableScrollController.hasClients) {
+      _tableScrollController.jumpTo(0);
+    }
+    _fetchingMore = false;
   }
 
   void _onSearch(String value) {
@@ -699,7 +721,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (!isNarrow && (!isCompact || _compactView == _CompactView.table))
         Tabs(
           index: _activeTab,
-          onChanged: (index) => setState(() => _activeTab = index),
+          onChanged: _onTabChanged,
           children: const [
             TabItem(child: Text('Cards')),
             TabItem(child: Text('Notes')),
@@ -750,7 +772,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 trailing: [
                   Tabs(
                     index: _activeTab,
-                    onChanged: (index) => setState(() => _activeTab = index),
+                    onChanged: _onTabChanged,
                     children: const [
                       TabItem(child: Text('Cards')),
                       TabItem(child: Text('Notes')),
@@ -771,6 +793,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _buildDesktopContent(ColorScheme colors) {
+    final selectedCard = _selectedCard;
+    final isLoading = context.watch<BrowserProvider>().isLoading;
+
+    // Keep the pane count stable. Removing/adding a third ResizablePane on
+    // selection makes the shadcn ResizablePanel reuse elements by position
+    // (the panes carry no keys), which prevents the detail pane from
+    // refreshing. Instead we always render all three panes and swap the
+    // detail pane's contents, keyed on the selected card so it updates.
     return ResizablePanel.horizontal(
       draggerBuilder: (context) {
         return const HorizontalResizableDragger();
@@ -792,11 +822,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
             ],
           ),
         ),
-        if (_selectedCard != null &&
-            !context.watch<BrowserProvider>().isLoading)
-          ResizablePane.flex(
-            child: _buildCardDetailPane(),
-          ),
+        ResizablePane.flex(
+          child: selectedCard == null || isLoading
+              ? const Center(child: Text('Select an item to view details'))
+              : KeyedSubtree(
+                  key: ValueKey<int>(selectedCard.cardId),
+                  child: _buildCardDetailPane(),
+                ),
+        ),
       ],
     );
   }
@@ -924,6 +957,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 notificationPredicate: (notification) =>
                     notification.metrics.axis == Axis.horizontal,
                 child: ResizableTable(
+                  // Key the table by tab so switching Cards/Notes tears down
+                  // and recreates the table element. ResizableTable caches its
+                  // flattened cells internally and relies on deep row equality
+                  // in didUpdateWidget, which can fail to repaint when the row
+                  // schema changes between tabs.
+                  key: ValueKey<int>(_activeTab),
                   controller: _tableController,
                   rows: rows,
                   verticalController: _scrollController,
