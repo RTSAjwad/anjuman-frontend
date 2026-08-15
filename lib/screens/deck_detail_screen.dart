@@ -1,6 +1,6 @@
 import 'package:anki_classroom_frontend/widgets/responsive_dialog.dart';
 import 'package:flutter/material.dart'
-    show ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
+    show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
@@ -109,7 +109,8 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
               ),
             if (isTeacher && canManage)
               IconButton.outline(
-                icon: const Icon(LucideIcons.trash2, size: 20),
+                icon:
+                    const Icon(LucideIcons.trash2, size: 20, color: Colors.red),
                 onPressed: () => _confirmDeleteDeck(context),
               ),
           ],
