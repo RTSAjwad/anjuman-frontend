@@ -39,8 +39,6 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     defaultRowHeight: 40,
     defaultHeightConstraint: const ConstrainedTableSize(min: 40),
     defaultWidthConstraint: const ConstrainedTableSize(min: 80),
-    // Narrow the avatar and actions columns so they fit their content instead
-    // of inheriting the 150px default width.
     columnWidths: {
       0: 44,
       6: 80,
@@ -281,25 +279,33 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
         ]),
     ];
 
-    return Stack(
-      children: [
-        Scrollbar(
-          controller: _verticalScrollController,
-          thumbVisibility: true,
-          child: Scrollbar(
-            controller: _tableScrollController,
-            thumbVisibility: true,
-            notificationPredicate: (notification) =>
-                notification.metrics.axis == Axis.horizontal,
-            child: ResizableTable(
-              controller: _tableController,
-              rows: rows,
-              verticalController: _verticalScrollController,
-              horizontalController: _tableScrollController,
-            ),
-          ),
+    return Scrollbar(
+      controller: _verticalScrollController,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        controller: _verticalScrollController,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Scrollbar(
+              controller: _tableScrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _tableScrollController,
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: ResizableTable(
+                    // No scroll controllers to avoid shadcn's buggy
+                    // ScrollableClient 2D viewport; parent handles 1D scroll.
+                    controller: _tableController,
+                    rows: rows,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
-      ],
+      ),
     );
   }
 

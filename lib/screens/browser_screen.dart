@@ -47,11 +47,15 @@ class BrowserScreen extends StatefulWidget {
 
 class _BrowserScreenState extends State<BrowserScreen> {
   final _searchController = TextEditingController();
-  late ScrollController _scrollController;
-  late ScrollController _tableScrollController;
+  final _scrollController = ScrollController();
+  final _tableScrollController = ScrollController();
+  final ResizableTableController _tableController = ResizableTableController(
+    defaultColumnWidth: 150,
+    defaultRowHeight: 40,
+    defaultHeightConstraint: const ConstrainedTableSize(min: 40),
+    defaultWidthConstraint: const ConstrainedTableSize(min: 80),
+  );
   bool _fetchingMore = false;
-
-  late ResizableTableController _tableController;
 
   List<String> _columns = ['Sort Field', 'Deck'];
   List<String> _sortFields = ['question', 'deck'];
@@ -81,10 +85,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _tableScrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    _tableController = _newTableController();
     _filterNodes = [
       TreeItemNode<FilterNode>(
         data: const StateFilterNode('root'),
@@ -363,37 +364,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  ResizableTableController _newTableController() {
-    return ResizableTableController(
-      defaultColumnWidth: 150,
-      defaultRowHeight: 40,
-      defaultHeightConstraint: const ConstrainedTableSize(min: 40),
-      defaultWidthConstraint: const ConstrainedTableSize(min: 80),
-    );
-  }
-
   void _onTabChanged(int index) {
     if (index == _activeTab) return;
-    // The table is keyed by tab, which tears down and recreates the
-    // ResizableTable element. Recreate its paired controllers at the same time
-    // so the old controllers (owned by the outgoing element) are never shared
-    // with the newly created element. Dispose the old controllers after the
-    // frame, once the outgoing element has been unmounted.
-    final oldTableController = _tableController;
-    final oldScrollController = _scrollController;
-    final oldTableScrollController = _tableScrollController;
     setState(() {
       _activeTab = index;
-      _tableController = _newTableController();
-      _scrollController = ScrollController()..addListener(_onScroll);
-      _tableScrollController = ScrollController();
     });
+    // Reset scroll positions so pagination and layout start fresh for the
+    // newly selected tab.
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    if (_tableScrollController.hasClients) {
+      _tableScrollController.jumpTo(0);
+    }
     _fetchingMore = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      oldTableController.dispose();
-      oldScrollController.dispose();
-      oldTableScrollController.dispose();
-    });
   }
 
   void _onSearch(String value) {
@@ -960,22 +944,35 @@ class _BrowserScreenState extends State<BrowserScreen> {
             Scrollbar(
               controller: _scrollController,
               thumbVisibility: true,
-              child: Scrollbar(
-                controller: _tableScrollController,
-                thumbVisibility: true,
-                notificationPredicate: (notification) =>
-                    notification.metrics.axis == Axis.horizontal,
-                child: ResizableTable(
-                  // Key the table by tab so switching Cards/Notes tears down
-                  // and recreates the table element. ResizableTable caches its
-                  // flattened cells internally and relies on deep row equality
-                  // in didUpdateWidget, which can fail to repaint when the row
-                  // schema changes between tabs.
-                  key: ValueKey<int>(_activeTab),
-                  controller: _tableController,
-                  rows: rows,
-                  verticalController: _scrollController,
-                  horizontalController: _tableScrollController,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Scrollbar(
+                      controller: _tableScrollController,
+                      thumbVisibility: true,
+                      notificationPredicate: (notification) =>
+                          notification.metrics.axis == Axis.horizontal,
+                      child: SingleChildScrollView(
+                        controller: _tableScrollController,
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minWidth: constraints.maxWidth),
+                          child: ResizableTable(
+                            // No verticalController/horizontalController:
+                            // passing them makes shadcn use its buggy
+                            // ScrollableClient 2D viewport (crashes on
+                            // resize/rebuild). Without them the table renders
+                            // plain and the parent SingleChildScrollViews
+                            // provide 1D scrolling.
+                            controller: _tableController,
+                            rows: rows,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
