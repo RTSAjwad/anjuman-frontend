@@ -39,6 +39,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
     defaultRowHeight: 40,
     defaultHeightConstraint: const ConstrainedTableSize(min: 40),
     defaultWidthConstraint: const ConstrainedTableSize(min: 80),
+    // Narrow the avatar and actions columns so they fit their content instead
+    // of inheriting the 150px default width.
+    columnWidths: {
+      0: 44,
+      6: 80,
+    },
   );
 
   late ClassProvider _provider;
@@ -189,7 +195,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
     final rows = <TableRow>[
       TableHeader(cells: [
-        _headerCell('Avatar', cellTheme, colors),
+        _headerCell('', cellTheme, colors),
         _headerCell('First Name', cellTheme, colors),
         _headerCell('Last Name', cellTheme, colors),
         _headerCell('Email', cellTheme, colors),
@@ -203,12 +209,14 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             theme: cellTheme,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Avatar(
-                size: 28,
-                borderRadius: 14,
-                initials: member.firstName.isNotEmpty
-                    ? member.firstName[0].toUpperCase()
-                    : member.email[0].toUpperCase(),
+              child: Center(
+                child: Avatar(
+                  size: 28,
+                  borderRadius: 14,
+                  initials: member.firstName.isNotEmpty
+                      ? member.firstName[0].toUpperCase()
+                      : member.email[0].toUpperCase(),
+                ),
               ),
             ),
           ),

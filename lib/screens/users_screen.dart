@@ -26,6 +26,12 @@ class _UsersScreenState extends State<UsersScreen> {
     defaultRowHeight: 40,
     defaultHeightConstraint: const ConstrainedTableSize(min: 40),
     defaultWidthConstraint: const ConstrainedTableSize(min: 80),
+    // Narrow the avatar and actions columns so they fit their content instead
+    // of inheriting the 150px default width.
+    columnWidths: {
+      0: 44,
+      6: 80,
+    },
   );
 
   @override
@@ -136,7 +142,7 @@ class _UsersScreenState extends State<UsersScreen> {
 
                 final rows = <TableRow>[
                   TableHeader(cells: [
-                    _headerCell('Avatar', cellTheme, colors),
+                    _headerCell('', cellTheme, colors),
                     TableCell(
                       theme: cellTheme,
                       child: _sortCell('First', UserSortField.firstName),
@@ -166,12 +172,14 @@ class _UsersScreenState extends State<UsersScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 6),
-                          child: Avatar(
-                            size: 28,
-                            borderRadius: 14,
-                            initials: user.firstName.isNotEmpty
-                                ? user.firstName[0].toUpperCase()
-                                : user.email[0].toUpperCase(),
+                          child: Center(
+                            child: Avatar(
+                              size: 28,
+                              borderRadius: 14,
+                              initials: user.firstName.isNotEmpty
+                                  ? user.firstName[0].toUpperCase()
+                                  : user.email[0].toUpperCase(),
+                            ),
                           ),
                         ),
                       ),
