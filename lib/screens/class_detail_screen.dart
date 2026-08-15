@@ -16,12 +16,14 @@ class ClassDetailScreen extends StatefulWidget {
   final ClassResponse classResponse;
   final ClassProvider provider;
   final VoidCallback? onClose;
+  final bool showBack;
 
   const ClassDetailScreen({
     super.key,
     required this.classResponse,
     required this.provider,
     this.onClose,
+    this.showBack = false,
   });
 
   @override
@@ -50,10 +52,16 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
       headers: [
         AppBar(
           leading: [
-            if (widget.onClose == null)
+            if (widget.showBack)
               IconButton.outline(
                 icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  if (widget.onClose != null) {
+                    widget.onClose!();
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
               ),
           ],
           title: Text(widget.classResponse.name),

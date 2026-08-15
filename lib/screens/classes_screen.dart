@@ -116,23 +116,11 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
               // Compact: show selected class with back button
               if (isCompact && selectedClass != null) {
-                return Scaffold(
-                  headers: [
-                    AppBar(
-                      leading: [
-                        IconButton.outline(
-                          icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                          onPressed: () => context.go('/classes'),
-                        ),
-                      ],
-                      title: Text(selectedClass.name),
-                    ),
-                  ],
-                  child: ClassDetailScreen(
-                    classResponse: selectedClass,
-                    provider: provider,
-                    onClose: () => context.go('/classes'),
-                  ),
+                return ClassDetailScreen(
+                  classResponse: selectedClass,
+                  provider: provider,
+                  onClose: () => context.go('/classes'),
+                  showBack: true,
                 );
               }
 
