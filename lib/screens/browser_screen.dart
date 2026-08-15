@@ -913,35 +913,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
           _buildNoteRows(provider, colors, isTeacher, rows);
         }
 
-        return ListView(
-          controller: _scrollController,
+        return Stack(
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return Scrollbar(
-                  controller: _tableScrollController,
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    controller: _tableScrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minWidth: constraints.maxWidth,
-                      ),
-                      child: ResizableTable(
-                        controller: _tableController,
-                        rows: rows,
-                      ),
-                    ),
-                  ),
-                );
-              },
+            Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              child: Scrollbar(
+                controller: _tableScrollController,
+                thumbVisibility: true,
+                notificationPredicate: (notification) =>
+                    notification.metrics.axis == Axis.horizontal,
+                child: ResizableTable(
+                  controller: _tableController,
+                  rows: rows,
+                  verticalController: _scrollController,
+                  horizontalController: _tableScrollController,
+                ),
+              ),
             ),
             if (provider.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              const Center(child: CircularProgressIndicator()),
           ],
         );
       },
