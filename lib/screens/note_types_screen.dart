@@ -140,10 +140,21 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
             ResizablePane.flex(
               child: detailWidget,
             ),
-            if (templateIndex != null && selectedNoteType != null)
-              ResizablePane.flex(
-                child: _buildTemplateDetailPane(selectedNoteType),
-              ),
+            // Keep the pane count stable. Conditionally adding/removing the
+            // third ResizablePane makes shadcn's ResizablePanel reuse elements
+            // by position (panes carry no keys), causing crashes when the
+            // template detail pane appears/disappears. Instead we always render
+            // three panes and swap the third pane's contents.
+            ResizablePane.flex(
+              child: templateIndex != null && selectedNoteType != null
+                  ? KeyedSubtree(
+                      key: ValueKey('template_$templateIndex'),
+                      child: _buildTemplateDetailPane(selectedNoteType),
+                    )
+                  : const Center(
+                      child: Text('Select a template to view details'),
+                    ),
+            ),
           ],
         );
       },
