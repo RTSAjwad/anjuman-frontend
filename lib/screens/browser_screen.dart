@@ -47,8 +47,8 @@ class BrowserScreen extends StatefulWidget {
 
 class _BrowserScreenState extends State<BrowserScreen> {
   final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
-  final _tableScrollController = ScrollController();
+  late ScrollController _scrollController;
+  late ScrollController _tableScrollController;
   bool _fetchingMore = false;
 
   late ResizableTableController _tableController;
@@ -81,6 +81,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _tableScrollController = ScrollController();
     _scrollController.addListener(_onScroll);
     _tableController = _newTableController();
     _filterNodes = [
@@ -372,19 +374,26 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _onTabChanged(int index) {
     if (index == _activeTab) return;
+    // The table is keyed by tab, which tears down and recreates the
+    // ResizableTable element. Recreate its paired controllers at the same time
+    // so the old controllers (owned by the outgoing element) are never shared
+    // with the newly created element. Dispose the old controllers after the
+    // frame, once the outgoing element has been unmounted.
+    final oldTableController = _tableController;
+    final oldScrollController = _scrollController;
+    final oldTableScrollController = _tableScrollController;
     setState(() {
       _activeTab = index;
       _tableController = _newTableController();
+      _scrollController = ScrollController()..addListener(_onScroll);
+      _tableScrollController = ScrollController();
     });
-    // Reset scroll positions so pagination and layout start fresh for the
-    // newly selected tab.
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0);
-    }
-    if (_tableScrollController.hasClients) {
-      _tableScrollController.jumpTo(0);
-    }
     _fetchingMore = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      oldTableController.dispose();
+      oldScrollController.dispose();
+      oldTableScrollController.dispose();
+    });
   }
 
   void _onSearch(String value) {
