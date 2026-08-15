@@ -83,6 +83,10 @@ class AnkiClassroomApp extends StatelessWidget {
                         update: (_, cardState, browser) =>
                             browser!..cardState = cardState,
                       ),
+                      ChangeNotifierProvider(
+                        create: (_) => UserProvider(
+                            context.read<AuthProvider>().apiClient),
+                      ),
                     ],
                     child: _ShellScaffold(navigationShell: navigationShell),
                   );
