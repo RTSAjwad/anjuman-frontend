@@ -75,12 +75,40 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
               _buildDetailPane(selectedNoteType, showBack: true);
         }
 
-        if (isCompact && fullscreenContent != null) {
-          return fullscreenContent;
-        }
-
+        // On compact screens, show the template editor when a template is
+        // selected (third pane), otherwise show the note type detail.
         if (isCompact) {
-          return _buildList(context, colors, noteTypes, isTeacher: false);
+          Widget view;
+          if (templateIndex != null && selectedNoteType != null) {
+            view = _buildTemplateDetailPane(selectedNoteType, showBack: true);
+          } else if (fullscreenContent != null) {
+            view = fullscreenContent;
+          } else {
+            view = _buildList(context, colors, noteTypes, isTeacher: false);
+          }
+
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.25, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey(templateIndex != null
+                  ? 'template_$templateIndex'
+                  : (selectedNoteType != null
+                      ? 'detail_${selectedNoteType.id}'
+                      : 'list')),
+              child: view,
+            ),
+          );
         }
 
         // Build the note type list widget
@@ -109,9 +137,9 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
             ResizablePane.flex(
               child: detailWidget,
             ),
-            if (templateIndex != null)
+            if (templateIndex != null && selectedNoteType != null)
               ResizablePane.flex(
-                child: _buildTemplateDetailPane(),
+                child: _buildTemplateDetailPane(selectedNoteType),
               ),
           ],
         );
@@ -184,37 +212,56 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     );
   }
 
-  Widget _buildTemplateDetailPane() {
-    final templates = _detailKey?.currentState?.templates;
+  Widget _buildTemplateDetailPane(NoteType noteType, {bool showBack = false}) {
+    final templates = noteType.templates;
     final templateIndexStr =
         GoRouterState.of(context).uri.queryParameters['template'];
     final templateIndex =
         templateIndexStr != null ? int.tryParse(templateIndexStr) : null;
 
-    if (templateIndex == null ||
-        templates == null ||
-        templateIndex >= templates.length) {
+    if (templateIndex == null || templateIndex >= templates.length) {
       return const Center(
         child: Text('Select a template to view details'),
       );
     }
 
-    final template = templates[templateIndex];
+    final source = templates[templateIndex];
+    final template = NoteTemplateEntry(
+      name: source.name,
+      frontPattern: source.frontPattern,
+      backPattern: source.backPattern,
+    );
 
     return Scaffold(
       headers: [
         AppBar(
+          leading: showBack
+              ? [
+                  IconButton.outline(
+                    icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                    onPressed: () {
+                      final uri = GoRouterState.of(context).uri;
+                      final params =
+                          Map<String, String>.from(uri.queryParameters);
+                      params.remove('template');
+                      context
+                          .go(uri.replace(queryParameters: params).toString());
+                    },
+                  ),
+                ]
+              : const [],
           title: Text(template.name),
           trailing: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.x, size: 20),
-              onPressed: () {
-                final uri = GoRouterState.of(context).uri;
-                final params = Map<String, String>.from(uri.queryParameters);
-                params.remove('template');
-                context.go(uri.replace(queryParameters: params).toString());
-              },
-            ),
+            if (!showBack)
+              IconButton.outline(
+                icon: const Icon(LucideIcons.x, size: 20),
+                onPressed: () {
+                  final uri = GoRouterState.of(context).uri;
+                  final params = Map<String, String>.from(uri.queryParameters);
+                  params.remove('template');
+                  context.go(uri.replace(queryParameters: params).toString());
+                },
+              ),
           ],
         ),
       ],
