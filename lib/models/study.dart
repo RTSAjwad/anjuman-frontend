@@ -10,6 +10,7 @@ class StudyCard {
   final int lapses;
   final String deckTitle;
   final Map<String, int>? predictedInterval;
+  final int stepIndex;
   final int? flag;
 
   StudyCard({
@@ -24,6 +25,7 @@ class StudyCard {
     required this.lapses,
     required this.deckTitle,
     this.predictedInterval,
+    this.stepIndex = 0,
     this.flag,
   });
 
@@ -42,6 +44,7 @@ class StudyCard {
             ? (json['predicted_interval'] as Map<String, dynamic>)
                 .map((k, v) => MapEntry(k, (v as num).toInt()))
             : null,
+        stepIndex: json['step_index'] as int? ?? 0,
         flag: json['flag'],
       );
 
@@ -58,6 +61,7 @@ class StudyCard {
       lapses: lapses,
       deckTitle: deckTitle,
       predictedInterval: predictedInterval,
+      stepIndex: stepIndex,
       flag: flag ?? this.flag,
     );
   }
@@ -66,6 +70,7 @@ class StudyCard {
 class StudySession {
   final int? deckId;
   final String? deckTitle;
+  final StudySteps? steps;
   final List<StudyCard> cards;
   final int totalCards;
   final int reviewedCount;
@@ -73,6 +78,7 @@ class StudySession {
   StudySession({
     this.deckId,
     this.deckTitle,
+    this.steps,
     required this.cards,
     required this.totalCards,
     required this.reviewedCount,
@@ -81,10 +87,33 @@ class StudySession {
   factory StudySession.fromJson(Map<String, dynamic> json) => StudySession(
         deckId: json['deck_id'],
         deckTitle: json['deck_title'],
+        steps: json['steps'] != null
+            ? StudySteps.fromJson(json['steps'] as Map<String, dynamic>)
+            : null,
         cards:
             (json['cards'] as List).map((c) => StudyCard.fromJson(c)).toList(),
         totalCards: json['total_cards'],
         reviewedCount: json['reviewed_count'],
+      );
+}
+
+/// Deck-level scheduling step intervals (in seconds).
+class StudySteps {
+  final List<int> learningSteps;
+  final List<int> relearningSteps;
+
+  StudySteps({
+    required this.learningSteps,
+    required this.relearningSteps,
+  });
+
+  factory StudySteps.fromJson(Map<String, dynamic> json) => StudySteps(
+        learningSteps: (json['learning_steps'] as List? ?? [])
+            .map((e) => (e as num).toInt())
+            .toList(),
+        relearningSteps: (json['relearning_steps'] as List? ?? [])
+            .map((e) => (e as num).toInt())
+            .toList(),
       );
 }
 

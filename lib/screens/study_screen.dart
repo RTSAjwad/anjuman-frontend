@@ -256,8 +256,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _intervalLabel(
-                                  _provider.currentCard, '1', 'Re-study'),
+                              _ratingLabel(card, _provider.steps, 1),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -275,8 +274,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _intervalLabel(
-                                  _provider.currentCard, '2', '~1-2 days'),
+                              _ratingLabel(card, _provider.steps, 2),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -294,8 +292,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _intervalLabel(
-                                  _provider.currentCard, '3', 'Growing'),
+                              _ratingLabel(card, _provider.steps, 3),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -313,8 +310,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _intervalLabel(
-                                  _provider.currentCard, '4', 'Long'),
+                              _ratingLabel(card, _provider.steps, 4),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -407,12 +403,105 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  String _intervalLabel(StudyCard? card, String rating, String fallback) {
-    final interval = card?.predictedInterval?[rating];
-    if (interval == null) return fallback;
-    if (interval == 0) return 'Today';
-    if (interval == 1) return '1 day';
-    return '$interval days';
+  /// Renders the interval sub-label for a rating button, matching Anki.
+  ///
+  /// For new/learning/relearning cards the short step intervals come from the
+  /// deck's [steps]; for review (and graduated) buttons the FSRS interval in
+  /// [card.predictedInterval] is used.
+  String _ratingLabel(StudyCard card, StudySteps? steps, int rating) {
+    final predicted = card.predictedInterval;
+    final state = card.state;
+
+    String formatIntervalDays(int? days, String fallback) {
+      if (days == null) return fallback;
+      if (days == 0) return 'Today';
+      if (days == 1) return '1 day';
+      return '$days days';
+    }
+
+    // FSRS review interval (days) for a rating key.
+    String fsrs(String ratingKey, String fallback) =>
+        formatIntervalDays(predicted?[ratingKey], fallback);
+
+    // Returns the step duration at [index], or falls back to the FSRS interval
+    // (graduate) when the index is beyond the end of the list.
+    String stepOrGraduate(
+        List<int> stepsList, int index, String ratingKey, String fallback) {
+      if (steps == null || stepsList.isEmpty) {
+        return fsrs(ratingKey, fallback);
+      }
+      if (index < stepsList.length) {
+        return _formatSeconds(stepsList[index]);
+      }
+      return fsrs(ratingKey, fallback);
+    }
+
+    // Helper for Again/Hard/Good that advances one step from the current
+    // step_index. Advancing past the last step graduates to review.
+    String nextStep(List<int> stepsList, String ratingKey, String fallback) {
+      final nextIndex = card.stepIndex + 1;
+      return stepOrGraduate(stepsList, nextIndex, ratingKey, fallback);
+    }
+
+    final learning = steps?.learningSteps ?? const <int>[];
+    final relearning = steps?.relearningSteps ?? const <int>[];
+
+    switch (state) {
+      case 'new':
+      case 'learning':
+        switch (rating) {
+          case 1: // Again -> first learning step
+            return stepOrGraduate(learning, 0, '1', 'Re-study');
+          case 2: // Hard -> next learning step (or graduate)
+            return nextStep(learning, '2', '~1-2 days');
+          case 3: // Good -> next learning step (or graduate)
+            return nextStep(learning, '3', 'Growing');
+          case 4: // Easy -> graduate to review
+            return fsrs('4', 'Long');
+        }
+        break;
+      case 'relearning':
+        switch (rating) {
+          case 1: // Again -> first relearning step
+            return stepOrGraduate(relearning, 0, '1', 'Re-study');
+          case 2: // Hard -> next relearning step (or review)
+            return nextStep(relearning, '2', '~1-2 days');
+          case 3: // Good -> next relearning step (or review)
+            return nextStep(relearning, '3', 'Growing');
+          case 4: // Easy -> FSRS review
+            return fsrs('4', 'Long');
+        }
+        break;
+      case 'review':
+      default:
+        switch (rating) {
+          case 1: // Again -> lapse into relearning first step
+            return stepOrGraduate(relearning, 0, '1', 'Re-study');
+          case 2:
+            return fsrs('2', '~1-2 days');
+          case 3:
+            return fsrs('3', 'Growing');
+          case 4:
+            return fsrs('4', 'Long');
+        }
+        break;
+    }
+    return '';
+  }
+
+  String _formatSeconds(int seconds) {
+    if (seconds < 60) return '${seconds}s';
+    final minutes = seconds ~/ 60;
+    if (minutes < 60) return '${minutes}m';
+    final hours = minutes ~/ 60;
+    final remMinutes = minutes % 60;
+    if (hours < 24) {
+      return remMinutes == 0 ? '${hours}h' : '${hours}h ${remMinutes}m';
+    }
+    final days = hours ~/ 24;
+    final remHours = hours % 24;
+    if (remHours == 0) return '${days}d';
+    return '${days}d ${remHours}h';
   }
 }
 

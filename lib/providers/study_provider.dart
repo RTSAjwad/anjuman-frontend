@@ -29,6 +29,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   // Metadata
   String? _deckTitle;
   int? _deckId;
+  StudySteps? _steps;
 
   List<StudyCard> get cards => _cards;
   int get currentIndex => _currentIndex;
@@ -43,6 +44,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
 
   String? get deckTitle => _deckTitle;
   int? get deckId => _deckId;
+  StudySteps? get steps => _steps;
   int get totalCount => _cards.length;
   int get reviewedCount => _currentIndex;
 
@@ -78,6 +80,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         if (gen != _loopGeneration) return;
 
         _deckTitle = session.deckTitle ?? 'Study';
+        _steps = session.steps;
         _isLoading = false;
 
         // Filter out cards that aren't actually due yet.
@@ -97,14 +100,10 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
           session.cards.map((c) => (cardId: c.cardId, state: c.state)),
         );
 
-        // Terminal: queue is empty, study session complete
-        if (session.totalCards == 0) {
-          _isComplete = true;
-          safeNotify();
-          return;
-        }
-
-        // No due cards available
+        // No due cards available — the study session is complete. The backend
+        // returns every card in the deck (including future-dated interday
+        // learning cards), so this is the real terminal condition; a card may
+        // become due again on a later fetch.
         if (_cards.isEmpty) {
           _isComplete = true;
           safeNotify();
@@ -221,6 +220,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
     _isComplete = false;
     _deckTitle = null;
     _deckId = null;
+    _steps = null;
   }
 
   @override
