@@ -373,11 +373,8 @@ class _ShellScaffoldState extends State<_ShellScaffold>
         final showNavRail = width >= Breakpoints.expanded;
         final navChildren = _buildNavChildren(role, currentIndex);
 
-        Widget navRail = NavigationRail(
+        Widget navSidebar = NavigationSidebar(
           selectedKey: ValueKey(currentIndex),
-          expanded: width >= Breakpoints.large,
-          labelType: NavigationLabelType.all,
-          labelPosition: NavigationLabelPosition.bottom,
           onSelected: (key) {
             if (key is ValueKey<int>) {
               widget.navigationShell.goBranch(key.value);
@@ -390,7 +387,7 @@ class _ShellScaffoldState extends State<_ShellScaffold>
           _drawerOpen = false;
           return Row(
             children: [
-              navRail,
+              navSidebar,
               const VerticalDivider(width: 0),
               Expanded(child: widget.navigationShell),
             ],
@@ -422,11 +419,8 @@ class _ShellScaffoldState extends State<_ShellScaffold>
                       position: _drawerSlide,
                       child: Container(
                         color: Theme.of(context).colorScheme.background,
-                        child: NavigationRail(
+                        child: NavigationSidebar(
                           selectedKey: ValueKey(currentIndex),
-                          expanded: true,
-                          labelType: NavigationLabelType.all,
-                          labelPosition: NavigationLabelPosition.bottom,
                           onSelected: (key) {
                             if (key is ValueKey<int>) {
                               widget.navigationShell.goBranch(key.value);
