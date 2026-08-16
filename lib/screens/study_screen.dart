@@ -2,6 +2,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/study_provider.dart';
 import '../providers/card_store.dart';
+import '../models/card_record.dart';
 import '../models/study.dart';
 import '../widgets/card_html_view.dart';
 import '../widgets/responsive_dialog.dart';
@@ -85,7 +86,7 @@ class _StudyScreenState extends State<StudyScreen> {
       body = _errorView(context, _provider, colors);
     } else if (_provider.isComplete) {
       body = _completedView(context, _provider, colors);
-    } else if (_provider.cards.isEmpty) {
+    } else if (_provider.dueCardIds.isEmpty) {
       body = _emptyView(context, _provider, colors);
     } else {
       body = _cardView(context, _provider, colors);
@@ -491,7 +492,7 @@ class _StudyScreenState extends State<StudyScreen> {
   /// For new/learning/relearning cards the short step intervals come from the
   /// deck's [steps]; for review (and graduated) buttons the FSRS interval in
   /// [card.predictedInterval] is used.
-  String _ratingLabel(StudyCard card, StudySteps? steps, int rating) {
+  String _ratingLabel(CardRecord card, StudySteps? steps, int rating) {
     final predicted = card.predictedInterval;
     final state = card.state;
 

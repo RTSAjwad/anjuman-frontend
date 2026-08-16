@@ -142,6 +142,8 @@ class CardStore extends ChangeNotifier with SafeNotify {
       difficulty: existing.difficulty,
       reps: existing.reps,
       lapses: existing.lapses,
+      predictedInterval: existing.predictedInterval,
+      stepIndex: existing.stepIndex,
     );
     notifyListeners();
   }

@@ -22,7 +22,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
 
   set store(CardStore value) => _store = value;
 
-  List<StudyCard> _cards = [];
+  List<int> _dueCardIds = [];
   int _currentIndex = 0;
   bool _showBack = false;
   bool _isLoading = false;
@@ -35,7 +35,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   int? _deckId;
   StudySteps? _steps;
 
-  List<StudyCard> get cards => _cards;
+  List<int> get dueCardIds => _dueCardIds;
   int get currentIndex => _currentIndex;
   bool get showBack => _showBack;
   bool get isLoading => _isLoading;
@@ -43,13 +43,14 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   String? get error => _error;
   bool get isComplete => _isComplete;
 
-  StudyCard? get currentCard =>
-      _currentIndex < _cards.length ? _cards[_currentIndex] : null;
+  CardRecord? get currentCard => _currentIndex < _dueCardIds.length
+      ? _store.card(_dueCardIds[_currentIndex])
+      : null;
 
   String? get deckTitle => _deckTitle;
   int? get deckId => _deckId;
   StudySteps? get steps => _steps;
-  int get totalCount => _cards.length;
+  int get totalCount => _dueCardIds.length;
   int get reviewedCount => _currentIndex;
 
   /// Counts are delegated to CardStore.
@@ -87,26 +88,27 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         _steps = session.steps;
         _isLoading = false;
 
-        // Filter out cards that aren't actually due yet.
-        // New cards (new state) are always due. For review/learning/
-        // relearning cards, only include those with due_at <= now.
-        final now = DateTime.now();
-        final dueCards = session.cards.where((c) {
-          if (c.dueAt == null) return true;
-          final due = parseTimestamp(c.dueAt);
-          return !due.isAfter(now);
-        }).toList();
-        _cards = dueCards;
-
-        // Upsert full CardRecords so other screens (browser) reflect the
-        // authoritative card state immediately.
+        // Upsert full CardRecords so the store is the single source of truth
+        // and other screens (browser) reflect authoritative card state.
         _store.upsertCards(session.cards.map(_toRecord));
+
+        // Build the due queue: cards with due_at <= now (new cards are always
+        // due). Read back ordered card ids from the store.
+        final now = DateTime.now();
+        _dueCardIds = session.cards
+            .where((c) {
+              if (c.dueAt == null) return true;
+              final due = parseTimestamp(c.dueAt);
+              return !due.isAfter(now);
+            })
+            .map((c) => c.cardId)
+            .toList();
 
         // No due cards available — the study session is complete. The backend
         // returns every card in the deck (including future-dated interday
         // learning cards), so this is the real terminal condition; a card may
         // become due again on a later fetch.
-        if (_cards.isEmpty) {
+        if (_dueCardIds.isEmpty) {
           _isComplete = true;
           safeNotify();
           return;
@@ -115,7 +117,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         safeNotify();
 
         // Review each card in this batch
-        for (var i = 0; i < _cards.length; i++) {
+        for (var i = 0; i < _dueCardIds.length; i++) {
           if (gen != _loopGeneration) return;
           _currentIndex = i;
           _showBack = false;
@@ -150,10 +152,6 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
     try {
       await _studyService.setCardFlag(cardId, flag);
       _store.setCardFlag(cardId, flag);
-      final idx = _cards.indexWhere((c) => c.cardId == cardId);
-      if (idx >= 0) {
-        _cards[idx] = _cards[idx].copyWith(flag: flag);
-      }
       notifyListeners();
     } on Exception catch (e) {
       _error = e.toString();
@@ -215,10 +213,10 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
       _applyCardAction(() async => _cardService.buryCard(currentCard!.cardId));
 
   Future<void> suspendNote() => _applyCardAction(
-      () async => _cardService.suspendNote(currentCard!.noteId!));
+      () async => _cardService.suspendNote(currentCard!.noteId));
 
   Future<void> buryNote() =>
-      _applyCardAction(() async => _cardService.buryNote(currentCard!.noteId!));
+      _applyCardAction(() async => _cardService.buryNote(currentCard!.noteId));
 
   Future<void> rescheduleCard(int days) =>
       _applyCardAction(() async => _cardService.rescheduleCard(
@@ -242,12 +240,6 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         state: response.state,
         dueAt: response.dueAt,
       );
-
-      // Update the card in _cards so counts reflect the new state
-      final idx = _cards.indexWhere((c) => c.cardId == currentCard!.cardId);
-      if (idx >= 0) {
-        _cards[idx] = _cards[idx].copyWith(state: response.state);
-      }
 
       _isSubmitting = false;
       safeNotify();
@@ -282,7 +274,7 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
   }
 
   void _fullReset() {
-    _cards = [];
+    _dueCardIds = [];
     _currentIndex = 0;
     _showBack = false;
     _isLoading = false;
@@ -314,6 +306,8 @@ class StudyProvider extends ChangeNotifier with SafeNotify {
         difficulty: c.difficulty,
         reps: c.reps,
         lapses: c.lapses,
+        predictedInterval: c.predictedInterval,
+        stepIndex: c.stepIndex,
       );
 
   @override

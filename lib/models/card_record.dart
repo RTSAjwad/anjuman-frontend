@@ -29,6 +29,10 @@ class CardRecord {
   final int reps;
   final int lapses;
 
+  // Study-phase fields (present on the study projection)
+  final Map<String, int>? predictedInterval;
+  final int stepIndex;
+
   const CardRecord({
     required this.cardId,
     required this.noteId,
@@ -49,6 +53,8 @@ class CardRecord {
     required this.difficulty,
     required this.reps,
     required this.lapses,
+    this.predictedInterval,
+    this.stepIndex = 0,
   });
 
   CardRecord copyWith({
@@ -70,6 +76,8 @@ class CardRecord {
     double? difficulty,
     int? reps,
     int? lapses,
+    Map<String, int>? predictedInterval,
+    int? stepIndex,
   }) {
     return CardRecord(
       cardId: cardId,
@@ -91,6 +99,8 @@ class CardRecord {
       difficulty: difficulty ?? this.difficulty,
       reps: reps ?? this.reps,
       lapses: lapses ?? this.lapses,
+      predictedInterval: predictedInterval ?? this.predictedInterval,
+      stepIndex: stepIndex ?? this.stepIndex,
     );
   }
 }
