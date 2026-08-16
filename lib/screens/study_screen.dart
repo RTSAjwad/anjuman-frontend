@@ -1,9 +1,10 @@
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/study_provider.dart';
-import '../providers/card_state_provider.dart';
+import '../providers/card_store.dart';
 import '../models/study.dart';
 import '../widgets/card_html_view.dart';
+import '../widgets/responsive_dialog.dart';
 
 class StudyScreen extends StatefulWidget {
   final int deckId;
@@ -118,7 +119,7 @@ class _StudyScreenState extends State<StudyScreen> {
               ),
           ],
           subtitle: (!_provider.isLoading && _provider.totalCount > 0)
-              ? Consumer<CardStateProvider>(
+              ? Consumer<CardStore>(
                   builder: (context, cardState, _) {
                     final deckId = _provider.deckId;
                     if (deckId == null) return const SizedBox.shrink();
@@ -393,6 +394,45 @@ class _StudyScreenState extends State<StudyScreen> {
                       subMenu: flagItems,
                       child: const Text('Set Flag'),
                     ),
+                    const MenuDivider(),
+                    MenuButton(
+                      leading: const Icon(LucideIcons.calendarOff, size: 16),
+                      onPressed: (_) {
+                        _provider.buryCard();
+                      },
+                      child: const Text('Bury card'),
+                    ),
+                    MenuButton(
+                      leading: const Icon(LucideIcons.ban, size: 16),
+                      onPressed: (_) {
+                        _provider.suspendCard();
+                      },
+                      child: const Text('Suspend card'),
+                    ),
+                    MenuButton(
+                      leading: const Icon(LucideIcons.calendar, size: 16),
+                      onPressed: (_) {
+                        _showRescheduleDialog(builderContext);
+                      },
+                      child: const Text('Reschedule card'),
+                    ),
+                    if (_provider.currentCard?.noteId != null) ...[
+                      const MenuDivider(),
+                      MenuButton(
+                        leading: const Icon(LucideIcons.calendarOff, size: 16),
+                        onPressed: (_) {
+                          _provider.buryNote();
+                        },
+                        child: const Text('Bury note'),
+                      ),
+                      MenuButton(
+                        leading: const Icon(LucideIcons.ban, size: 16),
+                        onPressed: (_) {
+                          _provider.suspendNote();
+                        },
+                        child: const Text('Suspend note'),
+                      ),
+                    ],
                   ],
                 );
               },
@@ -400,6 +440,49 @@ class _StudyScreenState extends State<StudyScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showRescheduleDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showResponsiveDialog(
+      context,
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Reschedule card'),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Days from now', style: TextStyle(fontSize: 13))
+                  .semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: controller,
+                placeholder: const Text('e.g. 3'),
+                initialValue: '',
+                autofocus: true,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.primary(
+            onPressed: () {
+              final days = int.tryParse(controller.text.trim());
+              if (days == null) return;
+              closeOverlay(ctx);
+              _provider.rescheduleCard(days);
+            },
+            child: const Text('Reschedule'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -507,7 +590,7 @@ class _StudyScreenState extends State<StudyScreen> {
 
 class _CardCountBar extends StatelessWidget {
   final int deckId;
-  final CardStateProvider cardState;
+  final CardStore cardState;
 
   const _CardCountBar({required this.deckId, required this.cardState});
 

@@ -17,6 +17,8 @@ class BrowserCard {
   final DateTime createdAt;
   final int? newCardPosition;
   final int? flag;
+  final int? suspended;
+  final int? buriedUntil;
 
   BrowserCard({
     required this.cardId,
@@ -37,6 +39,8 @@ class BrowserCard {
     required this.createdAt,
     this.newCardPosition,
     this.flag,
+    this.suspended,
+    this.buriedUntil,
   });
 
   factory BrowserCard.fromJson(Map<String, dynamic> json) => BrowserCard(
@@ -62,6 +66,8 @@ class BrowserCard {
                 1000),
         newCardPosition: json['new_card_position'],
         flag: json['flag'],
+        suspended: json['suspended'] as int?,
+        buriedUntil: json['buried_until'] as int?,
       );
 }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
+import '../providers/card_store.dart';
 import '../providers/deck_provider.dart';
 import '../models/browser_card.dart';
 import '../models/deck.dart';
@@ -884,8 +885,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _buildTableContent(ColorScheme colors) {
-    return Consumer<BrowserProvider>(
-      builder: (context, provider, _) {
+    return Consumer2<BrowserProvider, CardStore>(
+      builder: (context, provider, store, _) {
+        // Watching CardStore makes the table (and its per-cell views) rebuild
+        // whenever any card state changes from any screen, so reschedules etc.
+        // reflect immediately without re-fetching.
         if (provider.isLoading && provider.cards.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -1017,6 +1021,122 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
+  /// Opens the card/note actions dropdown. [includeNote] controls whether the
+  /// note-level entries (bury note / suspend note) are shown.
+  ///
+  /// Card-level suspend/bury are rendered as checkable toggles only when the
+  /// card carries study state (student view); teachers/admins get `null` for
+  /// these fields and see no card-level toggle.
+  void _showCardActionsMenu(BuildContext context, BrowserCard card,
+      {required bool includeNote}) {
+    final browser = context.read<BrowserProvider>();
+    final cardStore = context.read<CardStore>();
+
+    showDropdown(
+      context: context,
+      builder: (context) {
+        // Read suspend/bury from the shared CardStore (single source of
+        // truth), falling back to the card itself for student cards whose
+        // scheduling state is present on the browse response.
+        final fresh = browser.cards.firstWhere(
+          (c) => c.cardId == card.cardId,
+          orElse: () => card,
+        );
+        final isStudent = fresh.suspended != null || fresh.buriedUntil != null;
+        final suspended = cardStore.isSuspended(card.cardId);
+        final buried = cardStore.isBuried(card.cardId);
+
+        return DropdownMenu(
+          children: [
+            if (isStudent)
+              MenuCheckbox(
+                value: buried,
+                onChanged: (context, value) {
+                  value
+                      ? browser.buryCard(card.cardId)
+                      : browser.unburyCard(card.cardId);
+                },
+                child: const Text('Bury card'),
+              ),
+            if (isStudent)
+              MenuCheckbox(
+                value: suspended,
+                onChanged: (context, value) {
+                  value
+                      ? browser.suspendCard(card.cardId)
+                      : browser.unsuspendCard(card.cardId);
+                },
+                child: const Text('Suspend card'),
+              ),
+            if (isStudent)
+              MenuButton(
+                leading: const Icon(LucideIcons.calendar, size: 16),
+                onPressed: (_) => _showRescheduleDialog(context, card),
+                child: const Text('Reschedule card'),
+              ),
+            if (includeNote) ...[
+              if (isStudent) const MenuDivider(),
+              MenuButton(
+                leading: const Icon(LucideIcons.calendarOff, size: 16),
+                onPressed: (_) => browser.buryNote(card.noteId),
+                child: const Text('Bury note'),
+              ),
+              MenuButton(
+                leading: const Icon(LucideIcons.ban, size: 16),
+                onPressed: (_) => browser.suspendNote(card.noteId),
+                child: const Text('Suspend note'),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRescheduleDialog(BuildContext context, BrowserCard card) {
+    final controller = TextEditingController();
+    final browser = context.read<BrowserProvider>();
+    showResponsiveDialog(
+      context,
+      builder: (ctx, _) => AlertDialog(
+        title: const Text('Reschedule card'),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Days from now', style: TextStyle(fontSize: 13))
+                  .semiBold(),
+              const SizedBox(height: 6),
+              TextField(
+                controller: controller,
+                placeholder: const Text('e.g. 3'),
+                initialValue: '',
+                autofocus: true,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Button.ghost(
+            onPressed: () => closeOverlay(ctx),
+            child: const Text('Cancel'),
+          ),
+          Button.primary(
+            onPressed: () {
+              final days = int.tryParse(controller.text.trim());
+              if (days == null) return;
+              browser.rescheduleCard(card.cardId, days);
+              closeOverlay(ctx);
+            },
+            child: const Text('Reschedule'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCardDetailPane() {
     final card = _selectedCard;
     if (card == null) {
@@ -1038,6 +1158,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
         AppBar(
           title: const Text('Card Details'),
           trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
+              onPressed: () =>
+                  _showCardActionsMenu(context, card, includeNote: true),
+            ),
             IconButton.outline(
               icon: const Icon(LucideIcons.pencil, size: 20),
               onPressed: () => _showEditNoteDialog(card),
@@ -1116,6 +1241,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
         AppBar(
           title: const Text('Note Details'),
           trailing: [
+            IconButton.outline(
+              icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
+              onPressed: () =>
+                  _showCardActionsMenu(context, card, includeNote: false),
+            ),
             IconButton.outline(
               icon: const Icon(LucideIcons.pencil, size: 20),
               onPressed: () => _showEditNoteDialog(card),
@@ -1274,47 +1404,43 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   TableCell _buildStateCell(BrowserCard card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
-    final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
-    if (displayState == null) {
-      return TableCell(
-        theme: TableCellTheme(
-          border: WidgetStatePropertyAll(
-            Border.all(
-              color: colors.border,
-              strokeAlign: BorderSide.strokeAlignCenter,
-            ),
-          ),
-        ),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            alignment: Alignment.centerLeft,
-            child: Text('—', style: TextStyle(color: colors.mutedForeground)),
-          ),
-        ),
-      );
-    }
 
-    return TableCell(
-      theme: TableCellTheme(
-        border: WidgetStatePropertyAll(
-          Border.all(
-            color: colors.border,
-            strokeAlign: BorderSide.strokeAlignCenter,
-          ),
+    final TableCellTheme cellTheme = TableCellTheme(
+      border: WidgetStatePropertyAll(
+        Border.all(
+          color: colors.border,
+          strokeAlign: BorderSide.strokeAlignCenter,
         ),
       ),
+    );
+
+    return TableCell(
+      theme: cellTheme,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          alignment: Alignment.centerLeft,
-          child: OutlineBadge(
-            child: Text(displayState),
-          ),
+        child: Consumer<CardStore>(
+          builder: (context, store, _) {
+            final record = store.card(card.cardId);
+            final state = record?.state ?? card.state;
+            final reps = record?.reps ?? card.reps;
+            final displayState = state ?? (reps == 0 ? 'new' : null);
+            if (displayState == null) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                alignment: Alignment.centerLeft,
+                child:
+                    Text('—', style: TextStyle(color: colors.mutedForeground)),
+              );
+            }
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              alignment: Alignment.centerLeft,
+              child: OutlineBadge(
+                child: Text(displayState),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -1322,14 +1448,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   TableCell _buildDueCell(BrowserCard card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
-    final displayState = card.state ?? (card.reps == 0 ? 'new' : null);
-    final isNew = displayState == 'new';
-
-    final text = isNew && card.newCardPosition != null
-        ? 'New #${card.newCardPosition}'
-        : card.dueAt != null
-            ? _formatDate(card.dueAt!)
-            : '—';
 
     return TableCell(
       theme: TableCellTheme(
@@ -1343,17 +1461,34 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            text,
-            style: TextStyle(
-                color: isNew && card.newCardPosition != null
-                    ? const Color(0xFF3B82F6)
-                    : colors.mutedForeground),
-            overflow: TextOverflow.ellipsis,
-          ),
+        child: Consumer<CardStore>(
+          builder: (context, store, _) {
+            // Read live due_at/newCardPosition from the store so a reschedule
+            // anywhere reflects here without re-fetching the browse page.
+            final record = store.card(card.cardId);
+            final dueAt = record?.dueAt ?? card.dueAt;
+            final newPos = record?.newCardPosition ?? card.newCardPosition;
+            final state = record?.state ?? card.state;
+            final isNewLive =
+                state == 'new' || (state == null && card.reps == 0);
+            final text = isNewLive && newPos != null
+                ? 'New #$newPos'
+                : dueAt != null
+                    ? _formatDate(dueAt)
+                    : '—';
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                text,
+                style: TextStyle(
+                    color: isNewLive && newPos != null
+                        ? const Color(0xFF3B82F6)
+                        : colors.mutedForeground),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          },
         ),
       ),
     );

@@ -72,4 +72,13 @@ class ApiConfig {
   // Browser
   static const String browseCards = '/cards';
   static String cardFlag(int cardId) => '/cards/$cardId/flag';
+
+  // Card & note actions
+  static String cardSuspend(int cardId) => '/cards/$cardId/suspend';
+  static String cardUnsuspend(int cardId) => '/cards/$cardId/unsuspend';
+  static String cardBury(int cardId) => '/cards/$cardId/bury';
+  static String cardUnbury(int cardId) => '/cards/$cardId/unbury';
+  static String cardReschedule(int cardId) => '/cards/$cardId/reschedule';
+  static String noteSuspend(int noteId) => '/notes/$noteId/suspend';
+  static String noteBury(int noteId) => '/notes/$noteId/bury';
 }

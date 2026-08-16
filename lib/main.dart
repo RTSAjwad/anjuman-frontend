@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/browser_provider.dart';
-import 'providers/card_state_provider.dart';
+import 'providers/card_store.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/study_provider.dart';
@@ -65,23 +65,19 @@ class AnkiClassroomApp extends StatelessWidget {
                             context.read<AuthProvider>().apiClient),
                       ),
                       ChangeNotifierProvider(
-                        create: (_) => CardStateProvider(),
+                        create: (_) => CardStore(),
                       ),
-                      ChangeNotifierProxyProvider<CardStateProvider,
-                          StudyProvider>(
+                      ChangeNotifierProxyProvider<CardStore, StudyProvider>(
                         create: (_) => StudyProvider(
                             context.read<AuthProvider>().apiClient,
-                            CardStateProvider()),
-                        update: (_, cardState, study) =>
-                            study!..cardState = cardState,
+                            CardStore()),
+                        update: (_, store, study) => study!..store = store,
                       ),
-                      ChangeNotifierProxyProvider<CardStateProvider,
-                          BrowserProvider>(
+                      ChangeNotifierProxyProvider<CardStore, BrowserProvider>(
                         create: (_) => BrowserProvider(
                             context.read<AuthProvider>().apiClient,
-                            CardStateProvider()),
-                        update: (_, cardState, browser) =>
-                            browser!..cardState = cardState,
+                            CardStore()),
+                        update: (_, store, browser) => browser!..store = store,
                       ),
                       ChangeNotifierProvider(
                         create: (_) => UserProvider(

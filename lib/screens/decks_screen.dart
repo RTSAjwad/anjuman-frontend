@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/auth_provider.dart';
-import '../providers/card_state_provider.dart';
+import '../providers/card_store.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
 import '../providers/study_provider.dart';
@@ -428,7 +428,7 @@ class _DeckTreeState extends State<_DeckTree> {
     super.dispose();
   }
 
-  Widget _buildBadges(DeckResponse deck, CardStateProvider cardState) {
+  Widget _buildBadges(DeckResponse deck, CardStore cardState) {
     final newCount = cardState.deckNewCount(deck.id);
     final learnCount = cardState.deckLearningCount(deck.id);
     final dueCount = cardState.deckDueCount(deck.id);
@@ -496,7 +496,7 @@ class _DeckTreeState extends State<_DeckTree> {
                     },
                   )
                 : null,
-            trailing: Consumer<CardStateProvider>(
+            trailing: Consumer<CardStore>(
               builder: (context, cardState, _) => _buildBadges(deck, cardState),
             ),
             child: Text(

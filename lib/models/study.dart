@@ -1,5 +1,6 @@
 class StudyCard {
   final int cardId;
+  final int? noteId;
   final String front;
   final String back;
   final String state;
@@ -15,6 +16,7 @@ class StudyCard {
 
   StudyCard({
     required this.cardId,
+    this.noteId,
     required this.front,
     required this.back,
     required this.state,
@@ -31,6 +33,7 @@ class StudyCard {
 
   factory StudyCard.fromJson(Map<String, dynamic> json) => StudyCard(
         cardId: json['card_id'],
+        noteId: json['note_id'] as int?,
         front: json['front'],
         back: json['back'],
         state: json['state'],
@@ -51,6 +54,7 @@ class StudyCard {
   StudyCard copyWith({String? state, int? flag}) {
     return StudyCard(
       cardId: cardId,
+      noteId: noteId,
       front: front,
       back: back,
       state: state ?? this.state,
