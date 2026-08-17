@@ -10,6 +10,10 @@ class NoteRecord {
   final List<int> cardIds;
 
   /// True when every card in the note is suspended.
+  ///
+  /// NOTE: This is the legacy `provider`-store shape. The Riverpod migration
+  /// derives scheduling state instead (see `note_scheduling_provider.dart`),
+  /// so these fields will be removed once the legacy stores are deleted.
   final bool suspended;
 
   /// Non-null when every card in the note is buried (the shared timestamp).

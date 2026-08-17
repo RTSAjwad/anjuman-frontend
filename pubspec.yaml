@@ -46,6 +46,8 @@ dependencies:
 
   # Lucide icons
   lucide_icons: ^0.257.0
+  riverpod: ^3.4.2
+  flutter_riverpod: ^3.4.2
 
 dev_dependencies:
   flutter_test:
