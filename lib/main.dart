@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'providers/browser_provider.dart';
@@ -23,7 +24,7 @@ import 'screens/note_types_screen.dart';
 import 'screens/stubs.dart';
 
 void main() {
-  runApp(const AnkiClassroomApp());
+  runApp(const ProviderScope(child: AnkiClassroomApp()));
 }
 
 final _interTypography = Typography.geist().copyWith(
