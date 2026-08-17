@@ -144,6 +144,7 @@ class CardStore extends ChangeNotifier with SafeNotify {
       lapses: existing.lapses,
       predictedInterval: existing.predictedInterval,
       stepIndex: existing.stepIndex,
+      createdAt: existing.createdAt,
     );
     notifyListeners();
   }

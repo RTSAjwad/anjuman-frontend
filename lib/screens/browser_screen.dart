@@ -5,7 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
 import '../providers/card_store.dart';
 import '../providers/deck_provider.dart';
-import '../models/browser_card.dart';
+import '../models/card_record.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/drawer_context.dart';
@@ -69,14 +69,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
   int _activeTab = 0; // 0 = Cards, 1 = Notes
   int? _lastTargetDeckId;
   _CompactView _compactView = _CompactView.table;
-  BrowserCard? get _selectedCard {
+  CardRecord? get _selectedCard {
     if (_selectedCardIndex == null) return null;
     final cards = context.read<BrowserProvider>().cards;
     if (_selectedCardIndex! >= cards.length) return null;
     return cards[_selectedCardIndex!];
   }
 
-  List<BrowserCard> get _selectedNoteCards {
+  List<CardRecord> get _selectedNoteCards {
     final card = _selectedCard;
     if (card == null) return [];
     final cards = context.read<BrowserProvider>().cards;
@@ -398,7 +398,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     context.read<BrowserProvider>().setSort('$order$field');
   }
 
-  TableCell _buildFlagCell(BrowserCard card, {VoidCallback? onTap}) {
+  TableCell _buildFlagCell(CardRecord card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
     final flagColor =
         card.flag != null && card.flag! > 0 ? _flagColors[card.flag] : null;
@@ -530,7 +530,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _buildNoteRows(BrowserProvider provider, ColorScheme colors,
       bool isTeacher, List<TableRow> rows) {
-    final grouped = <int, List<BrowserCard>>{};
+    final grouped = <int, List<CardRecord>>{};
     for (final card in provider.cards) {
       grouped.putIfAbsent(card.noteId, () => []).add(card);
     }
@@ -988,7 +988,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  void _showEditNoteDialog(BrowserCard card) {
+  void _showEditNoteDialog(CardRecord card) {
     final provider = context.read<DeckProvider>();
     final noteCards = _selectedNoteCards;
     final note = NoteResponse(
@@ -1005,7 +1005,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 back: c.back,
               ))
           .toList(),
-      createdAt: card.createdAt,
+      createdAt: card.createdAt ?? DateTime.now(),
     );
     showResponsiveDialog(
       context,
@@ -1027,22 +1027,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
   /// Card-level suspend/bury are rendered as checkable toggles only when the
   /// card carries study state (student view); teachers/admins get `null` for
   /// these fields and see no card-level toggle.
-  void _showCardActionsMenu(BuildContext context, BrowserCard card,
+  void _showCardActionsMenu(BuildContext context, CardRecord card,
       {required bool includeNote}) {
     final browser = context.read<BrowserProvider>();
     final cardStore = context.read<CardStore>();
+    final role = context.read<AuthProvider>().role;
+    final isStudent = role == 'student';
 
     showDropdown(
       context: context,
       builder: (context) {
         // Read suspend/bury from the shared CardStore (single source of
-        // truth), falling back to the card itself for student cards whose
-        // scheduling state is present on the browse response.
-        final fresh = browser.cards.firstWhere(
-          (c) => c.cardId == card.cardId,
-          orElse: () => card,
-        );
-        final isStudent = fresh.suspended != null || fresh.buriedUntil != null;
+        // truth).
         final suspended = cardStore.isSuspended(card.cardId);
         final buried = cardStore.isBuried(card.cardId);
 
@@ -1093,7 +1089,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  void _showRescheduleDialog(BuildContext context, BrowserCard card) {
+  void _showRescheduleDialog(BuildContext context, CardRecord card) {
     final controller = TextEditingController();
     final browser = context.read<BrowserProvider>();
     showResponsiveDialog(
@@ -1150,7 +1146,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  Widget _buildCardDetail(BrowserCard card) {
+  Widget _buildCardDetail(CardRecord card) {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -1232,7 +1228,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  Widget _buildNoteDetail(BrowserCard card) {
+  Widget _buildNoteDetail(CardRecord card) {
     final colors = Theme.of(context).colorScheme;
     final noteCards = _selectedNoteCards;
 
@@ -1402,7 +1398,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  TableCell _buildStateCell(BrowserCard card, {VoidCallback? onTap}) {
+  TableCell _buildStateCell(CardRecord card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
 
     final TableCellTheme cellTheme = TableCellTheme(
@@ -1446,7 +1442,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  TableCell _buildDueCell(BrowserCard card, {VoidCallback? onTap}) {
+  TableCell _buildDueCell(CardRecord card, {VoidCallback? onTap}) {
     final colors = Theme.of(context).colorScheme;
 
     return TableCell(

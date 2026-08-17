@@ -33,6 +33,9 @@ class CardRecord {
   final Map<String, int>? predictedInterval;
   final int stepIndex;
 
+  /// Creation timestamp (present on the browse projection).
+  final DateTime? createdAt;
+
   const CardRecord({
     required this.cardId,
     required this.noteId,
@@ -55,6 +58,7 @@ class CardRecord {
     required this.lapses,
     this.predictedInterval,
     this.stepIndex = 0,
+    this.createdAt,
   });
 
   CardRecord copyWith({
@@ -78,6 +82,7 @@ class CardRecord {
     int? lapses,
     Map<String, int>? predictedInterval,
     int? stepIndex,
+    DateTime? createdAt,
   }) {
     return CardRecord(
       cardId: cardId,
@@ -101,6 +106,7 @@ class CardRecord {
       lapses: lapses ?? this.lapses,
       predictedInterval: predictedInterval ?? this.predictedInterval,
       stepIndex: stepIndex ?? this.stepIndex,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

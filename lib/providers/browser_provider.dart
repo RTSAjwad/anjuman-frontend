@@ -20,7 +20,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
 
   set store(CardStore value) => _store = value;
 
-  List<BrowserCard> _cards = [];
+  List<int> _cardIds = [];
   bool _isLoading = false;
   String? _error;
   int _page = 1;
@@ -34,7 +34,8 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
   List<int> _noteTypeIds = [];
   List<int> _flags = [];
 
-  List<BrowserCard> get cards => _cards;
+  List<CardRecord> get cards =>
+      _cardIds.map((id) => _store.card(id)).whereType<CardRecord>().toList();
   bool get isLoading => _isLoading;
   String? get error => _error;
   int get page => _page;
@@ -69,9 +70,9 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
         flags: _flags.isEmpty ? null : _flags,
       );
       if (append) {
-        _cards = [..._cards, ...response.cards];
+        _cardIds = [..._cardIds, ...response.cards.map((c) => c.cardId)];
       } else {
-        _cards = response.cards;
+        _cardIds = response.cards.map((c) => c.cardId).toList();
       }
       _total = response.total;
 
@@ -106,6 +107,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
         difficulty: c.difficulty,
         reps: c.reps,
         lapses: c.lapses,
+        createdAt: c.createdAt,
       );
 
   void toggleDeckId(int deckId) {
@@ -204,30 +206,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
 
   void updateCardFlag(int cardId, int flag) {
     _store.setCardFlag(cardId, flag);
-    final idx = _cards.indexWhere((c) => c.cardId == cardId);
-    if (idx >= 0) {
-      _cards[idx] = BrowserCard(
-        cardId: _cards[idx].cardId,
-        noteId: _cards[idx].noteId,
-        deckId: _cards[idx].deckId,
-        deckTitle: _cards[idx].deckTitle,
-        templateIndex: _cards[idx].templateIndex,
-        front: _cards[idx].front,
-        back: _cards[idx].back,
-        noteTypeName: _cards[idx].noteTypeName,
-        fields: _cards[idx].fields,
-        state: _cards[idx].state,
-        dueAt: _cards[idx].dueAt,
-        stability: _cards[idx].stability,
-        difficulty: _cards[idx].difficulty,
-        reps: _cards[idx].reps,
-        lapses: _cards[idx].lapses,
-        createdAt: _cards[idx].createdAt,
-        newCardPosition: _cards[idx].newCardPosition,
-        flag: flag,
-      );
-      notifyListeners();
-    }
+    notifyListeners();
   }
 
   /// Applies a card-level scheduling response to the shared CardStore
