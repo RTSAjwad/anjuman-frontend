@@ -130,51 +130,6 @@ class DeckProvider extends ChangeNotifier with SafeNotify {
     }
   }
 
-  Future<NoteResponse?> createNote(
-      int deckId, int noteTypeId, Map<String, dynamic> fields) async {
-    try {
-      final note = await _deckService.createNote(
-          deckId, CreateNote(noteTypeId: noteTypeId, fields: fields));
-      return note;
-    } on Exception catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return null;
-    }
-  }
-
-  Future<List<NoteResponse>?> listNotes(int deckId) async {
-    try {
-      return await _deckService.listNotes(deckId);
-    } on Exception catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return null;
-    }
-  }
-
-  Future<NoteResponse?> updateNote(
-      int deckId, int noteId, UpdateNote update) async {
-    try {
-      return await _deckService.updateNote(deckId, noteId, update);
-    } on Exception catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return null;
-    }
-  }
-
-  Future<bool> deleteNote(int deckId, int noteId) async {
-    try {
-      await _deckService.deleteNote(deckId, noteId);
-      return true;
-    } on Exception catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
   Future<bool> shareDeck(int deckId, int userId) async {
     try {
       await _deckService.shareDeck(deckId, userId);

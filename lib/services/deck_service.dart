@@ -88,35 +88,6 @@ class DeckService {
     return _client.delete(ApiConfig.deckClass(deckId, classId));
   }
 
-  // Notes
-
-  Future<NoteResponse> createNote(int deckId, CreateNote note) async {
-    final json =
-        await _client.post(ApiConfig.notes(deckId), body: note.toJson());
-    return NoteResponse.fromJson(json);
-  }
-
-  Future<List<NoteResponse>> listNotes(int deckId) async {
-    final list = await _client.getList(ApiConfig.notes(deckId));
-    return list.map((n) => NoteResponse.fromJson(n)).toList();
-  }
-
-  Future<NoteResponse> getNote(int deckId, int noteId) async {
-    final json = await _client.getMap(ApiConfig.note(deckId, noteId));
-    return NoteResponse.fromJson(json);
-  }
-
-  Future<NoteResponse> updateNote(
-      int deckId, int noteId, UpdateNote update) async {
-    final json = await _client.patch(ApiConfig.note(deckId, noteId),
-        body: update.toJson());
-    return NoteResponse.fromJson(json);
-  }
-
-  Future<dynamic> deleteNote(int deckId, int noteId) async {
-    return _client.delete(ApiConfig.note(deckId, noteId));
-  }
-
   // Note Types
 
   Future<List<NoteType>> listNoteTypes() async {

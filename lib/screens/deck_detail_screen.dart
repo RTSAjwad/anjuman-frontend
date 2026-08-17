@@ -7,8 +7,10 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
+import '../providers/note_provider.dart';
 import '../models/deck.dart';
 import '../models/class_info.dart';
+import '../models/note_record.dart';
 import '../models/search_result.dart';
 import '../services/user_service.dart';
 import '../widgets/deck_tree.dart';
@@ -35,7 +37,7 @@ class DeckDetailScreen extends StatefulWidget {
 class _DeckDetailScreenState extends State<DeckDetailScreen> {
   late String _deckTitle;
   DeckDetailResponse? _detail;
-  List<NoteResponse> _notes = [];
+  List<NoteRecord> _notes = [];
   bool _isLoading = true;
   String? _error;
 
@@ -61,7 +63,9 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       return;
     }
 
-    final notes = await widget.provider.listNotes(widget.deck.id) ?? [];
+    if (!mounted) return;
+    final notes =
+        await context.read<NoteProvider>().listNotes(deckId: widget.deck.id);
 
     setState(() {
       _detail = detail;
@@ -143,7 +147,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
   Widget _buildContent(
     BuildContext context,
     DeckDetailResponse detail,
-    List<NoteResponse> notes,
+    List<NoteRecord> notes,
     bool canManage,
     bool isTeacher,
     ColorScheme colors,
@@ -195,7 +199,8 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       context,
       builder: (ctx, _) => NoteFormDialog(
         deckId: widget.deck.id,
-        provider: widget.provider,
+        deckProvider: widget.provider,
+        noteProvider: context.read<NoteProvider>(),
         onSuccess: () {
           safeCloseOverlay(ctx);
           _load();
@@ -826,13 +831,15 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
 
 class NoteFormDialog extends StatefulWidget {
   final int deckId;
-  final DeckProvider provider;
-  final NoteResponse? existingNote;
+  final DeckProvider deckProvider;
+  final NoteProvider noteProvider;
+  final NoteRecord? existingNote;
   final VoidCallback onSuccess;
 
   const NoteFormDialog({
     required this.deckId,
-    required this.provider,
+    required this.deckProvider,
+    required this.noteProvider,
     this.existingNote,
     required this.onSuccess,
   });
@@ -861,10 +868,10 @@ class _NoteFormDialogState extends State<NoteFormDialog> {
   }
 
   Future<void> _loadNoteTypes() async {
-    await widget.provider.loadNoteTypes();
+    await widget.deckProvider.loadNoteTypes();
     if (!mounted) return;
     setState(() {
-      _noteTypes = widget.provider.noteTypes;
+      _noteTypes = widget.deckProvider.noteTypes;
       _loadingTypes = false;
 
       if (_isEditing && widget.existingNote != null) {
@@ -936,13 +943,17 @@ class _NoteFormDialogState extends State<NoteFormDialog> {
     };
 
     final ok = _isEditing
-        ? await widget.provider.updateNote(
-            widget.deckId,
-            widget.existingNote!.id,
+        ? await widget.noteProvider.updateNote(
+            widget.existingNote!.noteId,
             UpdateNote(fields: fields),
           )
-        : await widget.provider
-            .createNote(widget.deckId, _selectedType!.id, fields);
+        : await widget.noteProvider.createNote(
+            CreateNote(
+              noteTypeId: _selectedType!.id,
+              fields: fields,
+              deckId: widget.deckId,
+            ),
+          );
 
     if (mounted) {
       if (ok != null) {
@@ -951,7 +962,7 @@ class _NoteFormDialogState extends State<NoteFormDialog> {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.provider.error ?? 'Operation failed'),
+            content: Text(widget.noteProvider.error ?? 'Operation failed'),
             behavior: SnackBarBehavior.floating,
           ),
         );

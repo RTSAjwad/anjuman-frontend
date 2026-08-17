@@ -1,7 +1,9 @@
-/// Authoritative record of a note, held in the store.
+/// Authoritative record of a note, held in [NoteStore].
+///
+/// Notes are deck-agnostic here: each note's cards carry their own `deck_id`
+/// on [CardRecord]. This record links a note to its generated card ids.
 class NoteRecord {
   final int noteId;
-  final int deckId;
   final int noteTypeId;
   final String noteTypeName;
   final Map<String, dynamic> fields;
@@ -9,7 +11,6 @@ class NoteRecord {
 
   const NoteRecord({
     required this.noteId,
-    required this.deckId,
     required this.noteTypeId,
     required this.noteTypeName,
     required this.fields,
@@ -17,7 +18,6 @@ class NoteRecord {
   });
 
   NoteRecord copyWith({
-    int? deckId,
     int? noteTypeId,
     String? noteTypeName,
     Map<String, dynamic>? fields,
@@ -25,7 +25,6 @@ class NoteRecord {
   }) {
     return NoteRecord(
       noteId: noteId,
-      deckId: deckId ?? this.deckId,
       noteTypeId: noteTypeId ?? this.noteTypeId,
       noteTypeName: noteTypeName ?? this.noteTypeName,
       fields: fields ?? this.fields,

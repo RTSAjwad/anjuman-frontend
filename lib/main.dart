@@ -7,6 +7,8 @@ import 'providers/browser_provider.dart';
 import 'providers/card_store.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
+import 'providers/note_provider.dart';
+import 'providers/note_store.dart';
 import 'providers/study_provider.dart';
 import 'providers/user_provider.dart';
 import 'widgets/narrow_app_bar.dart';
@@ -66,6 +68,16 @@ class AnkiClassroomApp extends StatelessWidget {
                       ),
                       ChangeNotifierProvider(
                         create: (_) => CardStore(),
+                      ),
+                      ChangeNotifierProvider(
+                        create: (_) => NoteStore(),
+                      ),
+                      ChangeNotifierProvider<NoteProvider>(
+                        create: (_) => NoteProvider(
+                          context.read<AuthProvider>().apiClient,
+                          NoteStore(),
+                          CardStore(),
+                        ),
                       ),
                       ChangeNotifierProxyProvider<CardStore, StudyProvider>(
                         create: (_) => StudyProvider(

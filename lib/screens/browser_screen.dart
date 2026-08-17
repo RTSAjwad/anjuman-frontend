@@ -5,8 +5,11 @@ import '../providers/auth_provider.dart';
 import '../providers/browser_provider.dart';
 import '../providers/card_store.dart';
 import '../providers/deck_provider.dart';
+import '../providers/note_provider.dart';
+import '../providers/note_store.dart';
 import '../models/card_record.dart';
 import '../models/deck.dart';
+import '../models/note_record.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/drawer_context.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -989,30 +992,27 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _showEditNoteDialog(CardRecord card) {
-    final provider = context.read<DeckProvider>();
+    final deckProvider = context.read<DeckProvider>();
+    final noteProvider = context.read<NoteProvider>();
+    final noteStore = context.read<NoteStore>();
     final noteCards = _selectedNoteCards;
-    final note = NoteResponse(
-      id: card.noteId,
-      deckIds: [card.deckId],
-      noteTypeId: 0,
-      noteTypeName: card.noteTypeName,
-      fields: card.fields,
-      cards: noteCards
-          .map((c) => CardSummary(
-                id: c.cardId,
-                templateIndex: c.templateIndex,
-                front: c.front,
-                back: c.back,
-              ))
-          .toList(),
-      createdAt: card.createdAt ?? DateTime.now(),
-    );
+    final existing = noteStore.note(card.noteId) ??
+        NoteRecord(
+          noteId: card.noteId,
+          // The browse projection doesn't carry note_type_id; fall back to 0
+          // (the form selects the first available type when editing).
+          noteTypeId: 0,
+          noteTypeName: card.noteTypeName,
+          fields: card.fields,
+          cardIds: noteCards.map((c) => c.cardId).toList(),
+        );
     showResponsiveDialog(
       context,
       builder: (ctx, _) => NoteFormDialog(
         deckId: card.deckId,
-        provider: provider,
-        existingNote: note,
+        deckProvider: deckProvider,
+        noteProvider: noteProvider,
+        existingNote: existing,
         onSuccess: () {
           safeCloseOverlay(ctx);
           context.read<BrowserProvider>().loadCards();

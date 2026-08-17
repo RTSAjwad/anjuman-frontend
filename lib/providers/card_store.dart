@@ -1,19 +1,16 @@
 import 'package:flutter/foundation.dart';
 import '../models/card_record.dart';
-import '../models/note_record.dart';
 import '../widgets/safe_notify.dart';
 
-/// Single source of truth for all cards and notes.
+/// Single source of truth for all cards.
 ///
-/// Screens read from this store and every mutation (from study, browser, or
-/// deck screens) writes through it, so a change made anywhere propagates
-/// everywhere without each provider re-fetching its own copy.
+/// Notes are tracked separately in [NoteStore]. Screens read from this store
+/// and every mutation (study, browser, or deck screens) writes through it, so a
+/// change made anywhere propagates everywhere without each provider re-fetching
+/// its own copy.
 class CardStore extends ChangeNotifier with SafeNotify {
   /// cardId → full card record.
   final Map<int, CardRecord> _cards = {};
-
-  /// noteId → full note record.
-  final Map<int, NoteRecord> _notes = {};
 
   // ── Card reads ──────────────────────────────────────────────────────────
 
@@ -26,10 +23,6 @@ class CardStore extends ChangeNotifier with SafeNotify {
 
   List<CardRecord> cardsByNote(int noteId) =>
       _cards.values.where((c) => c.noteId == noteId).toList();
-
-  // ── Note reads ──────────────────────────────────────────────────────────
-
-  NoteRecord? note(int noteId) => _notes[noteId];
 
   // ── Card writes ─────────────────────────────────────────────────────────
 
@@ -47,18 +40,6 @@ class CardStore extends ChangeNotifier with SafeNotify {
 
   void removeCard(int cardId) {
     _cards.remove(cardId);
-    notifyListeners();
-  }
-
-  // ── Note writes ─────────────────────────────────────────────────────────
-
-  void upsertNote(NoteRecord note) {
-    _notes[note.noteId] = note;
-    notifyListeners();
-  }
-
-  void removeNote(int noteId) {
-    _notes.remove(noteId);
     notifyListeners();
   }
 
@@ -210,7 +191,6 @@ class CardStore extends ChangeNotifier with SafeNotify {
   /// Clear all tracked state (e.g. on logout).
   void clear() {
     _cards.clear();
-    _notes.clear();
     notifyListeners();
   }
 }

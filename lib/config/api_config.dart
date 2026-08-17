@@ -40,9 +40,10 @@ class ApiConfig {
       '/decks/$deckId/classes/$classId';
   static String deckStudy(int id) => '/decks/$id/study';
 
-  // Notes
-  static String notes(int deckId) => '/decks/$deckId/notes';
-  static String note(int deckId, int noteId) => '/decks/$deckId/notes/$noteId';
+  // Notes (note-centric)
+  static const String notes = '/notes';
+  static String notesByDeck(int deckId) => '/notes?deck_id=$deckId';
+  static String note(int noteId) => '/notes/$noteId';
 
   // Note Types
   static const String noteTypes = '/note-types';
