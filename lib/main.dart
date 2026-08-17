@@ -72,12 +72,21 @@ class AnkiClassroomApp extends StatelessWidget {
                       ChangeNotifierProvider(
                         create: (_) => NoteStore(),
                       ),
-                      ChangeNotifierProvider<NoteProvider>(
+                      ChangeNotifierProxyProvider2<CardStore, NoteStore,
+                          NoteProvider>(
                         create: (_) => NoteProvider(
                           context.read<AuthProvider>().apiClient,
                           NoteStore(),
                           CardStore(),
                         ),
+                        update: (_, cardStore, noteStore, note) {
+                          // Keep note-level suspended/buried flags in sync
+                          // with their cards.
+                          cardStore.noteStore = noteStore;
+                          return note!
+                            ..cardStore = cardStore
+                            ..noteStore = noteStore;
+                        },
                       ),
                       ChangeNotifierProxyProvider<CardStore, StudyProvider>(
                         create: (_) => StudyProvider(

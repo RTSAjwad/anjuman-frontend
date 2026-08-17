@@ -302,6 +302,12 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
   Future<void> suspendNote(int noteId) =>
       _applyNoteAction(() async => _cardService.suspendNote(noteId));
 
+  Future<void> unsuspendNote(int noteId) =>
+      _applyNoteAction(() async => _cardService.unsuspendNote(noteId));
+
   Future<void> buryNote(int noteId) =>
       _applyNoteAction(() async => _cardService.buryNote(noteId));
+
+  Future<void> unburyNote(int noteId) =>
+      _applyNoteAction(() async => _cardService.unburyNote(noteId));
 }

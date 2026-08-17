@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/card_record.dart';
 import '../widgets/safe_notify.dart';
+import 'note_store.dart';
 
 /// Single source of truth for all cards.
 ///
@@ -11,6 +12,12 @@ import '../widgets/safe_notify.dart';
 class CardStore extends ChangeNotifier with SafeNotify {
   /// cardId → full card record.
   final Map<int, CardRecord> _cards = {};
+
+  /// Optional reference to [NoteStore], wired at app startup so note-level
+  /// suspended/buried flags stay in sync with their cards.
+  NoteStore? _noteStore;
+
+  set noteStore(NoteStore value) => _noteStore = value;
 
   // ── Card reads ──────────────────────────────────────────────────────────
 
@@ -28,18 +35,23 @@ class CardStore extends ChangeNotifier with SafeNotify {
 
   void upsertCard(CardRecord card) {
     _cards[card.cardId] = card;
+    _syncNoteForCards([card.cardId]);
     notifyListeners();
   }
 
   void upsertCards(Iterable<CardRecord> cards) {
+    final ids = <int>[];
     for (final c in cards) {
       _cards[c.cardId] = c;
+      ids.add(c.cardId);
     }
+    _syncNoteForCards(ids);
     notifyListeners();
   }
 
   void removeCard(int cardId) {
     _cards.remove(cardId);
+    _syncNoteForCards([cardId]);
     notifyListeners();
   }
 
@@ -54,6 +66,23 @@ class CardStore extends ChangeNotifier with SafeNotify {
   int? buriedUntil(int cardId) => _cards[cardId]?.buriedUntil;
 
   bool isBuried(int cardId) => _cards[cardId]?.buriedUntil != null;
+
+  // ── Note sync ───────────────────────────────────────────────────────────
+
+  /// Recomputes the owning note's suspended/buried flags after any card's
+  /// suspend/bury state changes. No-op if [NoteStore] isn't wired.
+  void _syncNoteForCards(Iterable<int> cardIds) {
+    final store = _noteStore;
+    if (store == null) return;
+    final noteIds = <int>{};
+    for (final id in cardIds) {
+      final noteId = _cards[id]?.noteId;
+      if (noteId != null && noteId != 0) noteIds.add(noteId);
+    }
+    for (final noteId in noteIds) {
+      store.recomputeNoteState(noteId, this);
+    }
+  }
 
   // ── Targeted mutations (operate on full records) ────────────────────────
 
@@ -80,6 +109,7 @@ class CardStore extends ChangeNotifier with SafeNotify {
       suspended: suspended == 1,
       buriedUntil: buriedUntil,
     );
+    _syncNoteForCards([cardId]);
     notifyListeners();
   }
 
@@ -128,6 +158,7 @@ class CardStore extends ChangeNotifier with SafeNotify {
       stepIndex: existing.stepIndex,
       createdAt: existing.createdAt,
     );
+    _syncNoteForCards([cardId]);
     notifyListeners();
   }
 
@@ -145,6 +176,7 @@ class CardStore extends ChangeNotifier with SafeNotify {
   /// Seeds suspend/bury state for a batch of browse cards.
   void seedSchedulingState(
       Iterable<({int cardId, int? suspended, int? buriedUntil})> cards) {
+    final ids = <int>[];
     for (final c in cards) {
       final existing = _cards[c.cardId];
       if (existing == null) continue;
@@ -152,7 +184,9 @@ class CardStore extends ChangeNotifier with SafeNotify {
         suspended: c.suspended == 1,
         buriedUntil: c.buriedUntil,
       );
+      ids.add(c.cardId);
     }
+    _syncNoteForCards(ids);
     notifyListeners();
   }
 

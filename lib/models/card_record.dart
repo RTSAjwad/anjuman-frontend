@@ -24,6 +24,8 @@ class CardRecord {
   final int? buriedUntil; // Unix seconds, null = not buried
   final int? newCardPosition;
 
+  bool get isBuried => buriedUntil != null;
+
   // FSRS learning stats (read-only from the UI; refreshed by the store)
   final double stability;
   final double difficulty;

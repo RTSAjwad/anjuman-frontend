@@ -81,5 +81,7 @@ class ApiConfig {
   static String cardUnbury(int cardId) => '/cards/$cardId/unbury';
   static String cardReschedule(int cardId) => '/cards/$cardId/reschedule';
   static String noteSuspend(int noteId) => '/notes/$noteId/suspend';
+  static String noteUnsuspend(int noteId) => '/notes/$noteId/unsuspend';
   static String noteBury(int noteId) => '/notes/$noteId/bury';
+  static String noteUnbury(int noteId) => '/notes/$noteId/unbury';
 }

@@ -36,6 +36,12 @@ class CardService {
   Future<Map<String, dynamic>> suspendNote(int noteId) =>
       _client.post(ApiConfig.noteSuspend(noteId));
 
+  Future<Map<String, dynamic>> unsuspendNote(int noteId) =>
+      _client.post(ApiConfig.noteUnsuspend(noteId));
+
   Future<Map<String, dynamic>> buryNote(int noteId) =>
       _client.post(ApiConfig.noteBury(noteId));
+
+  Future<Map<String, dynamic>> unburyNote(int noteId) =>
+      _client.post(ApiConfig.noteUnbury(noteId));
 }

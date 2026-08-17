@@ -748,12 +748,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   List<Widget> _buildDetailActions(CardRecord card) {
-    final includeNote = _activeTab == 0;
+    final isNoteView = _activeTab == 1;
     return [
       IconButton.outline(
         icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
         onPressed: () =>
-            _showCardActionsMenu(context, card, includeNote: includeNote),
+            _showCardActionsMenu(context, card, isNoteView: isNoteView),
       ),
       IconButton.outline(
         icon: const Icon(LucideIcons.pencil, size: 20),
@@ -1050,16 +1050,21 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  /// Opens the card/note actions dropdown. [includeNote] controls whether the
-  /// note-level entries (bury note / suspend note) are shown.
+  /// Opens the actions dropdown for the selected card (in the Cards tab) or
+  /// note (in the Notes tab).
+  ///
+  /// - Card view shows card-level actions (bury/suspend/reschedule card) plus
+  ///   the note-level actions.
+  /// - Note view shows only the note-level actions (bury/suspend note).
   ///
   /// Card-level suspend/bury are rendered as checkable toggles only when the
   /// card carries study state (student view); teachers/admins get `null` for
   /// these fields and see no card-level toggle.
   void _showCardActionsMenu(BuildContext context, CardRecord card,
-      {required bool includeNote}) {
+      {required bool isNoteView}) {
     final browser = context.read<BrowserProvider>();
     final cardStore = context.read<CardStore>();
+    final noteStore = context.read<NoteStore>();
     final role = context.read<AuthProvider>().role;
     final isStudent = role == 'student';
 
@@ -1071,9 +1076,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
         final suspended = cardStore.isSuspended(card.cardId);
         final buried = cardStore.isBuried(card.cardId);
 
+        // Note-level state is read from NoteStore (kept in sync with cards).
+        final noteSuspended = noteStore.isNoteSuspended(card.noteId);
+        final noteBuried = noteStore.isNoteBuried(card.noteId);
+
         return DropdownMenu(
           children: [
-            if (isStudent)
+            if (!isNoteView && isStudent)
               MenuCheckbox(
                 value: buried,
                 onChanged: (context, value) {
@@ -1083,7 +1092,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 },
                 child: const Text('Bury card'),
               ),
-            if (isStudent)
+            if (!isNoteView && isStudent)
               MenuCheckbox(
                 value: suspended,
                 onChanged: (context, value) {
@@ -1093,25 +1102,33 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 },
                 child: const Text('Suspend card'),
               ),
-            if (isStudent)
+            if (!isNoteView && isStudent)
               MenuButton(
                 leading: const Icon(LucideIcons.calendar, size: 16),
                 onPressed: (_) => _showRescheduleDialog(context, card),
                 child: const Text('Reschedule card'),
               ),
-            if (includeNote) ...[
-              if (isStudent) const MenuDivider(),
-              MenuButton(
-                leading: const Icon(LucideIcons.calendarOff, size: 16),
-                onPressed: (_) => browser.buryNote(card.noteId),
+            if (!isNoteView && isStudent) const MenuDivider(),
+            if (isStudent)
+              MenuCheckbox(
+                value: noteBuried,
+                onChanged: (context, value) {
+                  value
+                      ? browser.buryNote(card.noteId)
+                      : browser.unburyNote(card.noteId);
+                },
                 child: const Text('Bury note'),
               ),
-              MenuButton(
-                leading: const Icon(LucideIcons.ban, size: 16),
-                onPressed: (_) => browser.suspendNote(card.noteId),
+            if (isStudent)
+              MenuCheckbox(
+                value: noteSuspended,
+                onChanged: (context, value) {
+                  value
+                      ? browser.suspendNote(card.noteId)
+                      : browser.unsuspendNote(card.noteId);
+                },
                 child: const Text('Suspend note'),
               ),
-            ],
           ],
         );
       },
