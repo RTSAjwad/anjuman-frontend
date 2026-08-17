@@ -14,6 +14,7 @@ class CardRecord {
   final String noteTypeName;
   final Map<String, dynamic> fields;
   final int templateIndex;
+  final String templateName;
 
   // Mutable scheduling state
   final String? state; // new / learning / review / relearning
@@ -46,6 +47,7 @@ class CardRecord {
     required this.noteTypeName,
     required this.fields,
     required this.templateIndex,
+    this.templateName = '',
     this.state,
     this.dueAt,
     this.flag,
@@ -70,6 +72,7 @@ class CardRecord {
     int? deckId,
     Map<String, dynamic>? fields,
     int? templateIndex,
+    String? templateName,
     String? state,
     int? dueAt,
     int? flag,
@@ -94,6 +97,7 @@ class CardRecord {
       noteTypeName: noteTypeName ?? this.noteTypeName,
       fields: fields ?? this.fields,
       templateIndex: templateIndex ?? this.templateIndex,
+      templateName: templateName ?? this.templateName,
       state: state ?? this.state,
       dueAt: dueAt ?? this.dueAt,
       flag: flag ?? this.flag,

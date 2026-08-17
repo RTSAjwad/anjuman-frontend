@@ -5,6 +5,7 @@ class BrowserCard {
   final int deckId;
   final String deckTitle;
   final int templateIndex;
+  final String templateName;
   final String front;
   final String back;
   final String noteTypeName;
@@ -28,6 +29,7 @@ class BrowserCard {
     required this.deckId,
     required this.deckTitle,
     required this.templateIndex,
+    required this.templateName,
     required this.front,
     required this.back,
     required this.noteTypeName,
@@ -52,6 +54,7 @@ class BrowserCard {
         deckId: json['deck_id'],
         deckTitle: json['deck_title'],
         templateIndex: json['template_index'],
+        templateName: json['template_name'] ?? '',
         front: json['front'],
         back: json['back'],
         noteTypeName: json['note_type_name'],

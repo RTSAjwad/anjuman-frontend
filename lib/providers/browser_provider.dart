@@ -122,6 +122,7 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
         noteTypeName: c.noteTypeName,
         fields: c.fields,
         templateIndex: c.templateIndex,
+        templateName: c.templateName,
         state: c.state,
         dueAt: c.dueAt,
         flag: c.flag,

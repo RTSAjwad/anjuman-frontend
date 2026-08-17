@@ -122,6 +122,7 @@ class NoteProvider extends ChangeNotifier with SafeNotify {
         noteTypeName: n.noteTypeName,
         fields: n.fields,
         templateIndex: c.templateIndex,
+        templateName: c.templateName,
         stability: 0,
         difficulty: 0,
         reps: 0,

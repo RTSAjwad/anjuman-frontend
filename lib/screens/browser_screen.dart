@@ -531,8 +531,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
-  void _buildNoteRows(BrowserProvider provider, ColorScheme colors,
-      bool isTeacher, List<TableRow> rows) {
+  void _buildNoteRows(
+      BrowserProvider provider, ColorScheme colors, List<TableRow> rows) {
     final noteStore = context.read<NoteStore>();
     // Preserve the order notes appear in the card list while de-duplicating
     // by noteId.
@@ -569,22 +569,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       final cardCount = note?.cardIds.length ?? noteCards.length;
       final cardsLabel = '$cardCount card${cardCount == 1 ? '' : 's'}';
       final noteTypeName = note?.noteTypeName ?? firstCard.noteTypeName;
-      final deckTitle = firstCard.deckTitle;
 
-      if (isTeacher) {
-        rows.add(TableRow(cells: [
-          _buildCell(sortField, onTap: onTap),
-          _buildCell(cardsLabel, onTap: onTap),
-          _buildCell(noteTypeName, onTap: onTap),
-        ]));
-      } else {
-        rows.add(TableRow(cells: [
-          _buildCell(sortField, onTap: onTap),
-          _buildCell(cardsLabel, onTap: onTap),
-          _buildCell(noteTypeName, onTap: onTap),
-          _buildCell(deckTitle, onTap: onTap),
-        ]));
-      }
+      rows.add(TableRow(cells: [
+        _buildCell(sortField, onTap: onTap),
+        _buildCell(cardsLabel, onTap: onTap),
+        _buildCell(noteTypeName, onTap: onTap),
+      ]));
     }
   }
 
@@ -963,7 +953,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         if (_activeTab == 0) {
           _buildCardRows(provider, colors, isTeacher, rows);
         } else {
-          _buildNoteRows(provider, colors, isTeacher, rows);
+          _buildNoteRows(provider, colors, rows);
         }
 
         return Stack(
@@ -1232,6 +1222,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
                 children: [
                   _infoRow('Deck', card.deckTitle, colors),
                   _infoRow('Note Type', card.noteTypeName, colors),
+                  _infoRow('Template', card.templateName, colors),
                   _infoRow('State', card.state ?? 'new', colors),
                   _infoRow('Reps', card.reps.toString(), colors),
                   _infoRow('Lapses', card.lapses.toString(), colors),
@@ -1292,7 +1283,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
             OutlinedContainer(
               child: Column(
                 children: [
-                  _infoRow('Deck', card.deckTitle, colors),
                   _infoRow('Note Type', noteTypeName, colors),
                   _infoRow('Cards', cardCount.toString(), colors),
                 ],
@@ -1327,13 +1317,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                c.front
-                                    .replaceAll(RegExp(r'<[^>]*>'), ' ')
-                                    .trim(),
+                                'Template: ${c.templateName}',
                                 style: TextStyle(
                                     color: colors.mutedForeground,
                                     fontSize: 13),
                                 maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Deck: ${c.deckTitle}',
+                                style: TextStyle(
+                                    color: colors.mutedForeground,
+                                    fontSize: 12),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],

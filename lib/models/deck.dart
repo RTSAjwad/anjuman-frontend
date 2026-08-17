@@ -283,6 +283,7 @@ class UpdateNote {
 class CardSummary {
   final int id;
   final int templateIndex;
+  final String templateName;
   final int? deckId;
   final String front;
   final String back;
@@ -290,6 +291,7 @@ class CardSummary {
   CardSummary({
     required this.id,
     required this.templateIndex,
+    this.templateName = '',
     this.deckId,
     required this.front,
     required this.back,
@@ -298,6 +300,7 @@ class CardSummary {
   factory CardSummary.fromJson(Map<String, dynamic> json) => CardSummary(
         id: json['id'],
         templateIndex: json['template_index'],
+        templateName: json['template_name'] ?? '',
         deckId: json['deck_id'] as int?,
         front: json['front'],
         back: json['back'],

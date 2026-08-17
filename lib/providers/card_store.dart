@@ -113,6 +113,7 @@ class CardStore extends ChangeNotifier with SafeNotify {
       noteTypeName: existing.noteTypeName,
       fields: existing.fields,
       templateIndex: existing.templateIndex,
+      templateName: existing.templateName,
       state: state ?? existing.state,
       dueAt: dueAt ?? existing.dueAt,
       flag: existing.flag,
