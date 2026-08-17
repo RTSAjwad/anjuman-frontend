@@ -1,24 +1,28 @@
 import 'package:flutter/foundation.dart';
 import '../models/browser_card.dart';
 import '../models/card_record.dart';
+import '../models/note_record.dart';
 import '../services/api_client.dart';
 import '../services/browser_service.dart';
 import '../services/card_service.dart';
 import '../widgets/safe_notify.dart';
 import 'card_store.dart';
+import 'note_store.dart';
 
 class BrowserProvider extends ChangeNotifier with SafeNotify {
   final ApiClient _apiClient;
   late CardStore _store;
+  late NoteStore _noteStore;
   late final BrowserService _browserService;
   late final CardService _cardService;
 
-  BrowserProvider(this._apiClient, this._store) {
+  BrowserProvider(this._apiClient, this._store, this._noteStore) {
     _browserService = BrowserService(_apiClient);
     _cardService = CardService(_apiClient);
   }
 
   set store(CardStore value) => _store = value;
+  set noteStore(NoteStore value) => _noteStore = value;
 
   List<int> _cardIds = [];
   bool _isLoading = false;
@@ -79,6 +83,29 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
       // Upsert full CardRecords into the store so screens that read the store
       // (e.g. Due/State/Flag columns) reflect the current authoritative state.
       _store.upsertCards(response.cards.map(_toRecord));
+
+      // Upsert derived NoteRecords into NoteStore so the Notes tab and note
+      // details are driven from the same single source of truth as cards.
+      // (The browse projection has no note_type_id, so we keep 0 as a
+      // placeholder; the note edit dialog falls back to the first type.)
+      final notesById = <int, NoteRecord>{};
+      for (final c in response.cards) {
+        final note = notesById[c.noteId];
+        if (note == null) {
+          notesById[c.noteId] = NoteRecord(
+            noteId: c.noteId,
+            noteTypeId: 0,
+            noteTypeName: c.noteTypeName,
+            fields: c.fields,
+            cardIds: [c.cardId],
+          );
+        } else {
+          notesById[c.noteId] = note.copyWith(
+            cardIds: [...note.cardIds, c.cardId],
+          );
+        }
+      }
+      _noteStore.upsertNotes(notesById.values);
     } on Exception catch (e) {
       _error = e.toString();
     }

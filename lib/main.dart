@@ -85,11 +85,15 @@ class AnkiClassroomApp extends StatelessWidget {
                             CardStore()),
                         update: (_, store, study) => study!..store = store,
                       ),
-                      ChangeNotifierProxyProvider<CardStore, BrowserProvider>(
+                      ChangeNotifierProxyProvider2<CardStore, NoteStore,
+                          BrowserProvider>(
                         create: (_) => BrowserProvider(
                             context.read<AuthProvider>().apiClient,
-                            CardStore()),
-                        update: (_, store, browser) => browser!..store = store,
+                            CardStore(),
+                            NoteStore()),
+                        update: (_, store, noteStore, browser) => browser!
+                          ..store = store
+                          ..noteStore = noteStore,
                       ),
                       ChangeNotifierProvider(
                         create: (_) => UserProvider(

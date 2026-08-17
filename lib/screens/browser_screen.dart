@@ -533,21 +533,29 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _buildNoteRows(BrowserProvider provider, ColorScheme colors,
       bool isTeacher, List<TableRow> rows) {
-    final grouped = <int, List<CardRecord>>{};
+    final noteStore = context.read<NoteStore>();
+    // Preserve the order notes appear in the card list while de-duplicating
+    // by noteId.
+    final seen = <int>{};
+    final noteIds = <int>[];
     for (final card in provider.cards) {
-      grouped.putIfAbsent(card.noteId, () => []).add(card);
+      if (seen.add(card.noteId)) noteIds.add(card.noteId);
     }
 
-    final entries = grouped.entries.toList();
-    for (var i = 0; i < entries.length; i++) {
-      final cards = entries[i].value;
-      final firstCard = cards.first;
-      final sortField =
-          firstCard.front.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+    for (var i = 0; i < noteIds.length; i++) {
+      final noteId = noteIds[i];
+      final note = noteStore.note(noteId);
+      final noteCards =
+          provider.cards.where((c) => c.noteId == noteId).toList();
+      final firstCard = noteCards.first;
 
+      // Sort field: prefer a human-readable fallback from the note's fields,
+      // otherwise the first card's front (same as before).
+      final sortField = _noteSortField(note, firstCard);
+
+      // Card index within provider.cards for selection (used by detail pane).
+      final cardIndex = provider.cards.indexWhere((c) => c.noteId == noteId);
       final onTap = () {
-        final cardIndex =
-            provider.cards.indexWhere((c) => c.noteId == firstCard.noteId);
         setState(() {
           if (_selectedCardIndex == cardIndex) {
             _selectedCardIndex = null;
@@ -558,23 +566,35 @@ class _BrowserScreenState extends State<BrowserScreen> {
         });
       };
 
-      final cardsLabel = '${cards.length} card${cards.length == 1 ? '' : 's'}';
+      final cardCount = note?.cardIds.length ?? noteCards.length;
+      final cardsLabel = '$cardCount card${cardCount == 1 ? '' : 's'}';
+      final noteTypeName = note?.noteTypeName ?? firstCard.noteTypeName;
+      final deckTitle = firstCard.deckTitle;
 
       if (isTeacher) {
         rows.add(TableRow(cells: [
           _buildCell(sortField, onTap: onTap),
           _buildCell(cardsLabel, onTap: onTap),
-          _buildCell(firstCard.noteTypeName, onTap: onTap),
+          _buildCell(noteTypeName, onTap: onTap),
         ]));
       } else {
         rows.add(TableRow(cells: [
           _buildCell(sortField, onTap: onTap),
           _buildCell(cardsLabel, onTap: onTap),
-          _buildCell(firstCard.noteTypeName, onTap: onTap),
-          _buildCell(firstCard.deckTitle, onTap: onTap),
+          _buildCell(noteTypeName, onTap: onTap),
+          _buildCell(deckTitle, onTap: onTap),
         ]));
       }
     }
+  }
+
+  String _noteSortField(NoteRecord? note, CardRecord firstCard) {
+    if (note != null && note.fields.isNotEmpty) {
+      final first = note.fields.values.first;
+      final text = first?.toString().replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+    return firstCard.front.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
   }
 
   @override
@@ -1230,7 +1250,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildNoteDetail(CardRecord card) {
     final colors = Theme.of(context).colorScheme;
+    final noteStore = context.read<NoteStore>();
+    final note = noteStore.note(card.noteId);
     final noteCards = _selectedNoteCards;
+    final fields = note?.fields ?? card.fields;
+    final noteTypeName = note?.noteTypeName ?? card.noteTypeName;
+    final cardCount = note?.cardIds.length ?? noteCards.length;
 
     return Scaffold(
       headers: [
@@ -1260,7 +1285,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           children: [
             const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 8),
-            _buildFieldsTable(card.fields, colors),
+            _buildFieldsTable(fields, colors),
             const SizedBox(height: 16),
             const Text('Note Info', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 8),
@@ -1268,8 +1293,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
               child: Column(
                 children: [
                   _infoRow('Deck', card.deckTitle, colors),
-                  _infoRow('Note Type', card.noteTypeName, colors),
-                  _infoRow('Cards', noteCards.length.toString(), colors),
+                  _infoRow('Note Type', noteTypeName, colors),
+                  _infoRow('Cards', cardCount.toString(), colors),
                 ],
               ),
             ),
