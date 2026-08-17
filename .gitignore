@@ -63,3 +63,5 @@ local.properties
 # as a readme.
 api.yaml
 ARCHITECTURE.md
+STATE_ARCHITECTURE.md
+RIVERPOD_MIGRATION.md
