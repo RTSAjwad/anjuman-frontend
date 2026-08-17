@@ -86,15 +86,13 @@ class BrowserProvider extends ChangeNotifier with SafeNotify {
 
       // Upsert derived NoteRecords into NoteStore so the Notes tab and note
       // details are driven from the same single source of truth as cards.
-      // (The browse projection has no note_type_id, so we keep 0 as a
-      // placeholder; the note edit dialog falls back to the first type.)
       final notesById = <int, NoteRecord>{};
       for (final c in response.cards) {
         final note = notesById[c.noteId];
         if (note == null) {
           notesById[c.noteId] = NoteRecord(
             noteId: c.noteId,
-            noteTypeId: 0,
+            noteTypeId: c.noteTypeId,
             noteTypeName: c.noteTypeName,
             fields: c.fields,
             cardIds: [c.cardId],

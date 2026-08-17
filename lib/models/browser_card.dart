@@ -1,6 +1,7 @@
 class BrowserCard {
   final int cardId;
   final int noteId;
+  final int noteTypeId;
   final int deckId;
   final String deckTitle;
   final int templateIndex;
@@ -23,6 +24,7 @@ class BrowserCard {
   BrowserCard({
     required this.cardId,
     required this.noteId,
+    required this.noteTypeId,
     required this.deckId,
     required this.deckTitle,
     required this.templateIndex,
@@ -46,6 +48,7 @@ class BrowserCard {
   factory BrowserCard.fromJson(Map<String, dynamic> json) => BrowserCard(
         cardId: json['card_id'],
         noteId: json['note_id'],
+        noteTypeId: json['note_type_id'] ?? 0,
         deckId: json['deck_id'],
         deckTitle: json['deck_title'],
         templateIndex: json['template_index'],

@@ -1019,8 +1019,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final existing = noteStore.note(card.noteId) ??
         NoteRecord(
           noteId: card.noteId,
-          // The browse projection doesn't carry note_type_id; fall back to 0
-          // (the form selects the first available type when editing).
+          // Fallback should be rare now: the browse projection carries
+          // note_type_id, so NoteStore is normally populated on load.
           noteTypeId: 0,
           noteTypeName: card.noteTypeName,
           fields: card.fields,
