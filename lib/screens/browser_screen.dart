@@ -681,14 +681,14 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
 
       return AppBar(
-        title: const Text('Details'),
+        title: Text(_activeTab == 0 ? 'Card Details' : 'Note Details'),
         leading: [
           IconButton.outline(
             icon: const Icon(LucideIcons.arrowLeft, size: 20),
             onPressed: () => setState(() => _compactView = _CompactView.table),
           ),
         ],
-        trailing: _buildAppBarActions(colors),
+        trailing: _buildDetailActions(_selectedCard!),
       );
     }
 
@@ -745,6 +745,25 @@ class _BrowserScreenState extends State<BrowserScreen> {
       ),
     ];
     return actions;
+  }
+
+  List<Widget> _buildDetailActions(CardRecord card) {
+    final includeNote = _activeTab == 0;
+    return [
+      IconButton.outline(
+        icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
+        onPressed: () =>
+            _showCardActionsMenu(context, card, includeNote: includeNote),
+      ),
+      IconButton.outline(
+        icon: const Icon(LucideIcons.pencil, size: 20),
+        onPressed: () => _showEditNoteDialog(card),
+      ),
+      IconButton.outline(
+        icon: const Icon(LucideIcons.x, size: 20),
+        onPressed: () => setState(() => _selectedCardIndex = null),
+      ),
+    ];
   }
 
   Widget _buildCompactContent(ColorScheme colors) {
@@ -1149,92 +1168,82 @@ class _BrowserScreenState extends State<BrowserScreen> {
       return const Center(child: Text('Select an item to view details'));
     }
 
-    if (_activeTab == 0) {
-      return _buildCardDetail(card);
-    } else {
-      return _buildNoteDetail(card);
-    }
+    final detail =
+        _activeTab == 0 ? _buildCardDetail(card) : _buildNoteDetail(card);
+
+    // Compact widths rely on the outer "Details" app bar for the title and
+    // actions; desktop renders a header inside this (third) pane.
+    final isCompact = MediaQuery.of(context).size.width < Breakpoints.expanded;
+    if (isCompact) return detail;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: Text(_activeTab == 0 ? 'Card Details' : 'Note Details'),
+          trailing: _buildDetailActions(card),
+        ),
+      ],
+      child: detail,
+    );
   }
 
   Widget _buildCardDetail(CardRecord card) {
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('Card Details'),
-          trailing: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
-              onPressed: () =>
-                  _showCardActionsMenu(context, card, includeNote: true),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Front', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              color: colors.muted.withAlpha(50),
+              borderRadius: BorderRadius.circular(8),
             ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.pencil, size: 20),
-              onPressed: () => _showEditNoteDialog(card),
+            clipBehavior: Clip.antiAlias,
+            child: CardHtmlView(html: card.front),
+          ),
+          const SizedBox(height: 16),
+          const Text('Back', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              color: colors.muted.withAlpha(50),
+              borderRadius: BorderRadius.circular(8),
             ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.x, size: 20),
-              onPressed: () => setState(() => _selectedCardIndex = null),
+            clipBehavior: Clip.antiAlias,
+            child: CardHtmlView(html: card.back),
+          ),
+          const SizedBox(height: 16),
+          const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 8),
+          _buildFieldsTable(card.fields, colors),
+          const SizedBox(height: 16),
+          const Text('Card Info', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 8),
+          OutlinedContainer(
+            child: Column(
+              children: [
+                _infoRow('Deck', card.deckTitle, colors),
+                _infoRow('Note Type', card.noteTypeName, colors),
+                _infoRow('Template', card.templateName, colors),
+                _infoRow('State', card.state ?? 'new', colors),
+                _infoRow('Reps', card.reps.toString(), colors),
+                _infoRow('Lapses', card.lapses.toString(), colors),
+                _infoRow(
+                    'Stability', card.stability.toStringAsFixed(2), colors),
+                _infoRow(
+                    'Difficulty', card.difficulty.toStringAsFixed(2), colors),
+              ],
             ),
-          ],
-        ),
-      ],
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Front', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                color: colors.muted.withAlpha(50),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: CardHtmlView(html: card.front),
-            ),
-            const SizedBox(height: 16),
-            const Text('Back', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                color: colors.muted.withAlpha(50),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: CardHtmlView(html: card.back),
-            ),
-            const SizedBox(height: 16),
-            const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 8),
-            _buildFieldsTable(card.fields, colors),
-            const SizedBox(height: 16),
-            const Text('Card Info', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 8),
-            OutlinedContainer(
-              child: Column(
-                children: [
-                  _infoRow('Deck', card.deckTitle, colors),
-                  _infoRow('Note Type', card.noteTypeName, colors),
-                  _infoRow('Template', card.templateName, colors),
-                  _infoRow('State', card.state ?? 'new', colors),
-                  _infoRow('Reps', card.reps.toString(), colors),
-                  _infoRow('Lapses', card.lapses.toString(), colors),
-                  _infoRow(
-                      'Stability', card.stability.toStringAsFixed(2), colors),
-                  _infoRow(
-                      'Difficulty', card.difficulty.toStringAsFixed(2), colors),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1248,106 +1257,82 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final noteTypeName = note?.noteTypeName ?? card.noteTypeName;
     final cardCount = note?.cardIds.length ?? noteCards.length;
 
-    return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('Note Details'),
-          trailing: [
-            IconButton.outline(
-              icon: const Icon(LucideIcons.ellipsisVertical, size: 20),
-              onPressed: () =>
-                  _showCardActionsMenu(context, card, includeNote: false),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 8),
+          _buildFieldsTable(fields, colors),
+          const SizedBox(height: 16),
+          const Text('Note Info', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 8),
+          OutlinedContainer(
+            child: Column(
+              children: [
+                _infoRow('Note Type', noteTypeName, colors),
+                _infoRow('Cards', cardCount.toString(), colors),
+              ],
             ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.pencil, size: 20),
-              onPressed: () => _showEditNoteDialog(card),
-            ),
-            IconButton.outline(
-              icon: const Icon(LucideIcons.x, size: 20),
-              onPressed: () => setState(() => _selectedCardIndex = null),
-            ),
-          ],
-        ),
-      ],
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Fields', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 8),
-            _buildFieldsTable(fields, colors),
-            const SizedBox(height: 16),
-            const Text('Note Info', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 8),
-            OutlinedContainer(
-              child: Column(
-                children: [
-                  _infoRow('Note Type', noteTypeName, colors),
-                  _infoRow('Cards', cardCount.toString(), colors),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Cards', style: TextStyle(fontSize: 13)).semiBold(),
-            const SizedBox(height: 8),
-            OutlinedContainer(
-              child: Column(
-                children: noteCards.asMap().entries.map((e) {
-                  final c = e.value;
-                  final displayState = c.state ?? 'new';
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: colors.border, width: 0.5),
+          ),
+          const SizedBox(height: 16),
+          const Text('Cards', style: TextStyle(fontSize: 13)).semiBold(),
+          const SizedBox(height: 8),
+          OutlinedContainer(
+            child: Column(
+              children: noteCards.asMap().entries.map((e) {
+                final c = e.value;
+                final displayState = c.state ?? 'new';
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: colors.border, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Card ${e.key + 1}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Template: ${c.templateName}',
+                              style: TextStyle(
+                                  color: colors.mutedForeground, fontSize: 13),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Deck: ${c.deckTitle}',
+                              style: TextStyle(
+                                  color: colors.mutedForeground, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Card ${e.key + 1}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600, fontSize: 13),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Template: ${c.templateName}',
-                                style: TextStyle(
-                                    color: colors.mutedForeground,
-                                    fontSize: 13),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Deck: ${c.deckTitle}',
-                                style: TextStyle(
-                                    color: colors.mutedForeground,
-                                    fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlineBadge(
-                          child: Text(displayState),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
+                      const SizedBox(width: 8),
+                      OutlineBadge(
+                        child: Text(displayState),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
