@@ -13,9 +13,6 @@ dependencies:
   # HTTP client for backend API communication
   http: ^1.2.0
 
-  # State management
-  provider: ^6.1.0
-
   # JSON serialization
   json_annotation: ^4.9.0
 
