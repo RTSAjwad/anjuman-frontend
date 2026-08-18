@@ -27,10 +27,12 @@ class AuthState {
     bool? isLoading,
     String? error,
     bool clearError = false,
+    bool clearUser = false,
+    bool clearToken = false,
   }) {
     return AuthState(
-      user: user ?? this.user,
-      token: token ?? this.token,
+      user: clearUser ? null : (user ?? this.user),
+      token: clearToken ? null : (token ?? this.token),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -73,8 +75,8 @@ class AuthNotifier extends Notifier<AuthState> {
     }
     ref.read(apiClientProvider).setToken(null);
     state = state.copyWith(
-      user: null,
-      token: null,
+      clearUser: true,
+      clearToken: true,
       clearError: true,
       isLoading: false,
     );
