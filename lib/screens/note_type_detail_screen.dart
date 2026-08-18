@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' show Colors;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../models/deck.dart';
-import '../providers/deck_provider.dart';
+import '../providers/riverpod/deck_provider.dart';
 import 'template_detail_screen.dart';
 
 /// The editable, in-progress state for a note type being viewed/edited.
@@ -117,7 +117,7 @@ class NoteTypeDraft {
 /// All editable state lives in the [NoteTypeDraft] passed in by the parent.
 /// This widget renders the form and reports mutations upward.
 class NoteTypeDetailScreen extends StatefulWidget {
-  final DeckProvider provider;
+  final DeckNotifier provider;
   final NoteType noteType;
   final NoteTypeDraft draft;
   final VoidCallback onChanged;

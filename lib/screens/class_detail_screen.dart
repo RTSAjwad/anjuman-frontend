@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/class_provider.dart';
+import '../providers/riverpod/class_provider.dart';
 import '../models/class.dart';
 import '../models/search_result.dart';
-import '../services/api_client.dart';
 import '../services/user_service.dart';
+import '../providers/riverpod/api_client_provider.dart';
 import '../widgets/responsive_dialog.dart';
 import '../widgets/shadcn_search_dropdown.dart';
 
 class ClassDetailScreen extends ConsumerStatefulWidget {
   final ClassResponse classResponse;
-  final ClassProvider provider;
+  final ClassNotifier provider;
   final VoidCallback? onClose;
   final bool showBack;
 
@@ -45,7 +45,7 @@ class _ClassDetailScreenState extends ConsumerState<ClassDetailScreen> {
     },
   );
 
-  late ClassProvider _provider;
+  late ClassNotifier _provider;
 
   @override
   void initState() {
@@ -415,7 +415,6 @@ class _ClassDetailScreenState extends ConsumerState<ClassDetailScreen> {
       builder: (ctx, _) => _AddMemberDialog(
         classId: widget.classResponse.id,
         provider: _provider,
-        apiClient: _provider.apiClient,
         onMemberAdded: () {
           setState(() {
             _rosterFuture = _provider.loadRoster(widget.classResponse.id);
@@ -444,30 +443,28 @@ class _RoleBadge extends StatelessWidget {
   }
 }
 
-class _AddMemberDialog extends StatefulWidget {
+class _AddMemberDialog extends ConsumerStatefulWidget {
   final int classId;
-  final ClassProvider provider;
-  final ApiClient apiClient;
+  final ClassNotifier provider;
   final VoidCallback onMemberAdded;
 
   const _AddMemberDialog({
     required this.classId,
     required this.provider,
-    required this.apiClient,
     required this.onMemberAdded,
   });
 
   @override
-  State<_AddMemberDialog> createState() => _AddMemberDialogState();
+  ConsumerState<_AddMemberDialog> createState() => _AddMemberDialogState();
 }
 
-class _AddMemberDialogState extends State<_AddMemberDialog> {
+class _AddMemberDialogState extends ConsumerState<_AddMemberDialog> {
   late final UserService _service;
 
   @override
   void initState() {
     super.initState();
-    _service = UserService(widget.apiClient);
+    _service = UserService(ref.read(apiClientProvider));
   }
 
   int? _selectedUserId;

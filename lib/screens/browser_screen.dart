@@ -1,9 +1,8 @@
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/deck_provider.dart';
+import '../providers/riverpod/deck_provider.dart';
 import '../providers/riverpod/note_provider.dart';
 import '../providers/riverpod/browser_provider.dart';
 import '../providers/riverpod/card_store_provider.dart' as card_store;
@@ -119,9 +118,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
         ],
       ),
     ];
-    final deckProvider = context.read<DeckProvider>();
-    deckProvider.addListener(_onDecksChanged);
-    deckProvider.addListener(_onNoteTypesChanged);
+    final deckNotifier = ref.read(deckProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final deckParam = GoRouterState.of(context).uri.queryParameters['deck'];
       if (deckParam != null) {
@@ -132,18 +129,14 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
       } else {
         ref.read(browserProvider.notifier).loadCards();
       }
-      deckProvider.loadDecks();
-      deckProvider.loadNoteTypes();
-      deckProvider.loadDecks();
+      deckNotifier.loadDecks();
+      deckNotifier.loadNoteTypes();
+      deckNotifier.loadDecks();
     });
   }
 
-  void _onDecksChanged() {
-    _rebuildDeckTree();
-  }
-
   void _rebuildDeckTree() {
-    final decks = context.read<DeckProvider>().decks;
+    final decks = ref.read(deckProvider).decks;
     if (decks.isEmpty) return;
     final selectedIds = ref.read(browserProvider).deckIds.toSet();
     setState(() {
@@ -222,7 +215,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   }
 
   void _onNoteTypesChanged() {
-    final noteTypes = context.read<DeckProvider>().noteTypes;
+    final noteTypes = ref.read(deckProvider).noteTypes;
     if (noteTypes.isEmpty) return;
     setState(() {
       final ntChildren = noteTypes
@@ -597,6 +590,11 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
+    ref.listen(deckProvider, (previous, next) {
+      _rebuildDeckTree();
+      _onNoteTypesChanged();
+    });
 
     final deckParam = GoRouterState.of(context).uri.queryParameters['deck'];
     final targetDeckId = deckParam != null ? int.tryParse(deckParam) : null;
@@ -1038,7 +1036,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   }
 
   void _showEditNoteDialog(CardRecord card) {
-    final deckProvider = context.read<DeckProvider>();
+    final deckNotifier = ref.read(deckProvider.notifier);
     final noteNotifier = ref.read(noteProvider.notifier);
     final noteStore = ref.read(note_store.noteStoreProvider.notifier);
     final noteCards = _selectedNoteCards;
@@ -1056,7 +1054,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
       context,
       builder: (ctx, _) => NoteFormDialog(
         deckId: card.deckId,
-        deckProvider: deckProvider,
+        deckProvider: deckNotifier,
         noteProvider: noteNotifier,
         existingNote: existing,
         onSuccess: () {

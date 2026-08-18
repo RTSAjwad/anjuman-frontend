@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart' show Colors;
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
-import '../providers/deck_provider.dart';
+import '../providers/riverpod/deck_provider.dart';
 import '../models/deck.dart';
 import '../config/breakpoints.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -10,18 +10,14 @@ import '../widgets/responsive_dialog.dart';
 import 'note_type_detail_screen.dart';
 import 'template_detail_screen.dart';
 
-class NoteTypesScreen extends StatefulWidget {
-  final DeckProvider? provider;
-
-  const NoteTypesScreen({super.key, this.provider});
+class NoteTypesScreen extends ConsumerStatefulWidget {
+  const NoteTypesScreen({super.key});
 
   @override
-  State<NoteTypesScreen> createState() => _NoteTypesScreenState();
+  ConsumerState<NoteTypesScreen> createState() => _NoteTypesScreenState();
 }
 
-class _NoteTypesScreenState extends State<NoteTypesScreen> {
-  DeckProvider get _provider => widget.provider ?? context.read<DeckProvider>();
-  late final DeckProvider _cachedProvider;
+class _NoteTypesScreenState extends ConsumerState<NoteTypesScreen> {
   bool _saveEnabled = false;
   int? _lastNoteTypeId;
   final Map<int, NoteTypeDraft> _drafts = {};
@@ -32,27 +28,15 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
   @override
   void initState() {
     super.initState();
-    _cachedProvider = _provider;
-    _cachedProvider.addListener(_onChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _cachedProvider.loadNoteTypes();
+      if (mounted) ref.read(deckProvider.notifier).loadNoteTypes();
     });
-  }
-
-  @override
-  void dispose() {
-    _cachedProvider.removeListener(_onChanged);
-    super.dispose();
-  }
-
-  void _onChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final noteTypes = _provider.noteTypes;
+    final noteTypes = ref.watch(deckProvider).noteTypes;
 
     final detailIdStr = GoRouterState.of(context).uri.queryParameters['detail'];
     final detailId = detailIdStr != null ? int.tryParse(detailIdStr) : null;
@@ -196,7 +180,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       child: KeyedSubtree(
         key: ValueKey(noteType.id),
         child: NoteTypeDetailScreen(
-          provider: _provider,
+          provider: ref.read(deckProvider.notifier),
           noteType: noteType,
           draft: draft,
           onChanged: () {
@@ -241,16 +225,17 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
       draft.error = null;
     });
 
-    final ok = await _provider.updateNoteType(
+    final notifier = ref.read(deckProvider.notifier);
+    final ok = await notifier.updateNoteType(
         _lastNoteTypeId!, draft.toCreateNoteType());
     if (mounted) {
       if (ok) {
-        _provider.loadNoteTypes();
+        notifier.loadNoteTypes();
         setState(() => _saveEnabled = false);
       } else {
         setState(() {
           draft.isSubmitting = false;
-          draft.error = _provider.error ?? 'Failed to update note type';
+          draft.error = notifier.error ?? 'Failed to update note type';
         });
       }
     }
@@ -340,7 +325,8 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
               ),
               IconButton.outline(
                 icon: const Icon(LucideIcons.refreshCw, size: 20),
-                onPressed: () => _provider.loadNoteTypes(),
+                onPressed: () =>
+                    ref.read(deckProvider.notifier).loadNoteTypes(),
               ),
             ],
           ),
@@ -375,7 +361,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
             ),
             IconButton.outline(
               icon: const Icon(LucideIcons.refreshCw, size: 20),
-              onPressed: () => _provider.loadNoteTypes(),
+              onPressed: () => ref.read(deckProvider.notifier).loadNoteTypes(),
             ),
           ],
         ),
@@ -439,7 +425,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
     showResponsiveDialog(
       context,
       builder: (ctx, _) => _CreateNoteTypeDialog(
-        provider: _provider,
+        provider: ref.read(deckProvider.notifier),
         onSuccess: () {
           safeCloseOverlay(ctx);
           setState(() {});
@@ -462,7 +448,9 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
           ),
           Button.destructive(
             onPressed: () async {
-              final ok = await _provider.deleteNoteType(noteType.id);
+              final ok = await ref
+                  .read(deckProvider.notifier)
+                  .deleteNoteType(noteType.id);
               if (ctx.mounted) {
                 safeCloseOverlay(ctx);
                 if (ok) {
@@ -479,7 +467,7 @@ class _NoteTypesScreenState extends State<NoteTypesScreen> {
 }
 
 class _CreateNoteTypeDialog extends StatefulWidget {
-  final DeckProvider provider;
+  final DeckNotifier provider;
   final VoidCallback onSuccess;
 
   const _CreateNoteTypeDialog({

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
-import 'package:provider/provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/user_provider.dart';
+import '../providers/riverpod/user_provider.dart';
 import '../models/user.dart';
 import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
@@ -37,7 +36,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProvider>().loadUsers();
+      ref.read(userProvider.notifier).loadUsers();
     });
   }
 
@@ -52,6 +51,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final provider = ref.watch(userProvider);
 
     return Scaffold(
       child: Column(
@@ -65,14 +65,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               ),
               IconButton.outline(
                 icon: const Icon(LucideIcons.refreshCw, size: 20),
-                onPressed: () => context.read<UserProvider>().loadUsers(),
+                onPressed: () => ref.read(userProvider.notifier).loadUsers(),
               ),
             ],
           ),
           const Divider(),
           Expanded(
-            child: Consumer<UserProvider>(
-              builder: (context, provider, _) {
+            child: Builder(
+              builder: (context) {
                 if (provider.isLoading && provider.users.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -96,7 +96,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                               textAlign: TextAlign.center),
                           const SizedBox(height: 16),
                           Button.secondary(
-                            onPressed: () => provider.loadUsers(),
+                            onPressed: () =>
+                                ref.read(userProvider.notifier).loadUsers(),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -349,7 +350,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       context,
       builder: (ctx, _) => _UserFormDialog(
         title: 'Create User',
-        provider: context.read<UserProvider>(),
+        provider: ref.read(userProvider.notifier),
         schoolId: schoolId,
         onSuccess: () => safeCloseOverlay(ctx),
       ),
@@ -361,7 +362,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       context,
       builder: (ctx, _) => _UserFormDialog(
         title: 'Edit User',
-        provider: context.read<UserProvider>(),
+        provider: ref.read(userProvider.notifier),
         existingUser: user,
         onSuccess: () => safeCloseOverlay(ctx),
       ),
@@ -382,7 +383,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
           ),
           Button.destructive(
             onPressed: () async {
-              final provider = context.read<UserProvider>();
+              final provider = ref.read(userProvider.notifier);
               final success = await provider.deleteUser(user.id);
               if (ctx.mounted) {
                 safeCloseOverlay(ctx);
@@ -419,7 +420,7 @@ class _RoleBadge extends StatelessWidget {
 
 class _UserFormDialog extends StatefulWidget {
   final String title;
-  final UserProvider provider;
+  final UserNotifier provider;
   final UserDetail? existingUser;
   final int schoolId;
   final VoidCallback onSuccess;

@@ -1,14 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart' hide Consumer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'providers/card_store.dart';
-import 'providers/class_provider.dart';
-import 'providers/deck_provider.dart';
-import 'providers/riverpod/api_client_provider.dart';
 import 'providers/riverpod/auth_provider.dart';
-import 'providers/user_provider.dart';
 import 'widgets/narrow_app_bar.dart';
 import 'widgets/drawer_context.dart';
 import 'config/breakpoints.dart';
@@ -67,28 +61,7 @@ class _AnkiClassroomAppState extends ConsumerState<AnkiClassroomApp> {
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
-            // Reuse the single authenticated ApiClient from apiClientProvider
-            // so the legacy Deck/Class/User providers use the same token that
-            // AuthNotifier sets on login, until those providers are migrated.
-            final apiClient =
-                ProviderScope.containerOf(context).read(apiClientProvider);
-            return MultiProvider(
-              providers: [
-                ChangeNotifierProvider(
-                  create: (_) => ClassProvider(apiClient),
-                ),
-                ChangeNotifierProvider(
-                  create: (_) => DeckProvider(apiClient),
-                ),
-                ChangeNotifierProvider(
-                  create: (_) => CardStore(),
-                ),
-                ChangeNotifierProvider(
-                  create: (_) => UserProvider(apiClient),
-                ),
-              ],
-              child: _ShellScaffold(navigationShell: navigationShell),
-            );
+            return _ShellScaffold(navigationShell: navigationShell);
           },
           branches: [
             // 0: Dashboard
@@ -132,8 +105,7 @@ class _AnkiClassroomAppState extends ConsumerState<AnkiClassroomApp> {
               routes: [
                 GoRoute(
                   path: '/note-types',
-                  builder: (context, state) =>
-                      const NoteTypesScreen(provider: null),
+                  builder: (context, state) => const NoteTypesScreen(),
                 ),
               ],
             ),

@@ -1,11 +1,10 @@
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/card_store.dart';
-import '../providers/class_provider.dart';
-import '../providers/deck_provider.dart';
+import '../providers/riverpod/class_provider.dart';
+import '../providers/riverpod/deck_provider.dart';
+import '../providers/riverpod/card_store_provider.dart' as card_store;
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -28,7 +27,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
   void _reloadDecks() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<DeckProvider>().loadDecks();
+        ref.read(deckProvider.notifier).loadDecks();
       }
     });
   }
@@ -70,10 +69,11 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
     final auth = ref.watch(authProvider);
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
+    final provider = ref.watch(deckProvider);
 
     return Scaffold(
-      child: Consumer<DeckProvider>(
-        builder: (context, provider, _) {
+      child: Builder(
+        builder: (context) {
           if (provider.isLoading && provider.decks.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -108,8 +108,8 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
                     key: ValueKey(selectedDeck.id),
                     child: DeckDetailScreen(
                       deck: selectedDeck,
-                      provider: provider,
-                      classProvider: context.read<ClassProvider>(),
+                      provider: ref.read(deckProvider.notifier),
+                      classProvider: ref.read(classProvider.notifier),
                       onDeleted: () => context.go('/decks'),
                     ),
                   );
@@ -127,8 +127,8 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
                     ],
                     child: DeckDetailScreen(
                       deck: selectedDeck,
-                      provider: provider,
-                      classProvider: context.read<ClassProvider>(),
+                      provider: ref.read(deckProvider.notifier),
+                      classProvider: ref.read(classProvider.notifier),
                       onDeleted: () => context.go('/decks'),
                     ),
                   );
@@ -190,7 +190,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
                         IconButton.outline(
                           icon: const Icon(LucideIcons.refreshCw, size: 20),
                           onPressed: () =>
-                              context.read<DeckProvider>().loadDecks(),
+                              ref.read(deckProvider.notifier).loadDecks(),
                         ),
                       ],
                     ),
@@ -238,7 +238,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
                             IconButton.outline(
                               icon: const Icon(LucideIcons.refreshCw, size: 20),
                               onPressed: () =>
-                                  context.read<DeckProvider>().loadDecks(),
+                                  ref.read(deckProvider.notifier).loadDecks(),
                             ),
                           ],
                         ),
@@ -279,7 +279,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
   }
 
   Widget _errorView(
-      BuildContext context, DeckProvider provider, ColorScheme colors) {
+      BuildContext context, DeckState provider, ColorScheme colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -289,7 +289,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
           const Text('Failed to load decks'),
           const SizedBox(height: 8),
           Button.secondary(
-            onPressed: () => provider.loadDecks(),
+            onPressed: () => ref.read(deckProvider.notifier).loadDecks(),
             child: const Text('Retry'),
           ),
         ],
@@ -321,7 +321,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
     showResponsiveDialog(
       context,
       builder: (ctx, _) {
-        final provider = context.read<DeckProvider>();
+        final provider = ref.read(deckProvider.notifier);
         return _DeckFormDialog(
           title: 'Create Deck',
           provider: provider,
@@ -344,7 +344,8 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
           ),
           Button.destructive(
             onPressed: () async {
-              final ok = await context.read<DeckProvider>().deleteDeck(deck.id);
+              final ok =
+                  await ref.read(deckProvider.notifier).deleteDeck(deck.id);
               if (ok && ctx.mounted) safeCloseOverlay(ctx);
             },
             child: const Text('Delete'),
@@ -355,7 +356,7 @@ class _DecksScreenState extends ConsumerState<DecksScreen> {
   }
 }
 
-class _DeckTree extends StatefulWidget {
+class _DeckTree extends ConsumerStatefulWidget {
   final List<DeckResponse> decks;
   final bool isTeacher;
   final void Function(DeckResponse) onSelect;
@@ -374,10 +375,10 @@ class _DeckTree extends StatefulWidget {
   });
 
   @override
-  State<_DeckTree> createState() => _DeckTreeState();
+  ConsumerState<_DeckTree> createState() => _DeckTreeState();
 }
 
-class _DeckTreeState extends State<_DeckTree> {
+class _DeckTreeState extends ConsumerState<_DeckTree> {
   List<TreeNode<DeckResponse>> _treeNodes = [];
 
   void _buildNodes() {
@@ -425,10 +426,10 @@ class _DeckTreeState extends State<_DeckTree> {
     super.dispose();
   }
 
-  Widget _buildBadges(DeckResponse deck, CardStore cardState) {
-    final newCount = cardState.deckNewCount(deck.id);
-    final learnCount = cardState.deckLearningCount(deck.id);
-    final dueCount = cardState.deckDueCount(deck.id);
+  Widget _buildBadges(DeckResponse deck, card_store.CardStore cardStore) {
+    final newCount = cardStore.deckNewCount(deck.id);
+    final learnCount = cardStore.deckLearningCount(deck.id);
+    final dueCount = cardStore.deckDueCount(deck.id);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -482,6 +483,9 @@ class _DeckTreeState extends State<_DeckTree> {
         builder: (context, node) {
           final deck = node.data;
           final hasChildren = node.children.isNotEmpty;
+          // Subscribe to card store changes so badges re-render on updates.
+          ref.watch(card_store.cardStoreProvider);
+          final cardNotifier = ref.read(card_store.cardStoreProvider.notifier);
           return TreeItem(
             onPressed: () {},
             onExpand: hasChildren
@@ -493,9 +497,7 @@ class _DeckTreeState extends State<_DeckTree> {
                     },
                   )
                 : null,
-            trailing: Consumer<CardStore>(
-              builder: (context, cardState, _) => _buildBadges(deck, cardState),
-            ),
+            trailing: _buildBadges(deck, cardNotifier),
             child: Text(
               deck.title,
               overflow: TextOverflow.ellipsis,
@@ -509,7 +511,7 @@ class _DeckTreeState extends State<_DeckTree> {
 
 class _DeckFormDialog extends StatefulWidget {
   final String title;
-  final DeckProvider provider;
+  final DeckNotifier provider;
   final VoidCallback onSuccess;
 
   const _DeckFormDialog({

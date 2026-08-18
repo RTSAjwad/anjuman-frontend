@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart'
     show ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/class_provider.dart';
+import '../providers/riverpod/class_provider.dart';
 import 'class_detail_screen.dart';
 import '../models/class.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -24,7 +23,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ClassProvider>().loadClasses();
+      ref.read(classProvider.notifier).loadClasses();
     });
   }
 
@@ -38,10 +37,11 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
     final auth = ref.watch(authProvider);
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
+    final provider = ref.watch(classProvider);
 
     return Scaffold(
-      child: Consumer<ClassProvider>(
-        builder: (context, provider, _) {
+      child: Builder(
+        builder: (context) {
           if (provider.isLoading && provider.classes.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -57,7 +57,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                   const Text('Failed to load classes'),
                   const SizedBox(height: 8),
                   Button.secondary(
-                    onPressed: () => provider.loadClasses(),
+                    onPressed: () =>
+                        ref.read(classProvider.notifier).loadClasses(),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -103,13 +104,15 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                       .firstWhere((c) => c?.id == detailId, orElse: () => null)
                   : null;
 
+              final classNotifier = ref.read(classProvider.notifier);
+
               Widget? embeddedContent;
               if (selectedClass != null) {
                 embeddedContent = KeyedSubtree(
                   key: ValueKey(selectedClass.id),
                   child: ClassDetailScreen(
                     classResponse: selectedClass,
-                    provider: provider,
+                    provider: classNotifier,
                     onClose: () => context.go('/classes'),
                   ),
                 );
@@ -119,7 +122,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
               if (isCompact && selectedClass != null) {
                 return ClassDetailScreen(
                   classResponse: selectedClass,
-                  provider: provider,
+                  provider: classNotifier,
                   onClose: () => context.go('/classes'),
                   showBack: true,
                 );
@@ -140,7 +143,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                         IconButton.outline(
                           icon: const Icon(LucideIcons.refreshCw, size: 20),
                           onPressed: () =>
-                              context.read<ClassProvider>().loadClasses(),
+                              ref.read(classProvider.notifier).loadClasses(),
                         ),
                       ],
                     ),
@@ -171,8 +174,9 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                               ),
                             IconButton.outline(
                               icon: const Icon(LucideIcons.refreshCw, size: 20),
-                              onPressed: () =>
-                                  context.read<ClassProvider>().loadClasses(),
+                              onPressed: () => ref
+                                  .read(classProvider.notifier)
+                                  .loadClasses(),
                             ),
                           ],
                         ),
@@ -198,7 +202,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   }
 
   Widget _buildClassList(
-      bool isTeacher, ColorScheme colors, ClassProvider provider) {
+      bool isTeacher, ColorScheme colors, ClassState provider) {
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
@@ -275,7 +279,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   }
 
   void _showCreateDialog(BuildContext context) {
-    final provider = context.read<ClassProvider>();
+    final provider = ref.read(classProvider.notifier);
     showResponsiveDialog(
       context,
       builder: (ctx, _) => _CreateClassDialog(provider: provider),
@@ -284,7 +288,7 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
 }
 
 class _CreateClassDialog extends StatefulWidget {
-  final ClassProvider provider;
+  final ClassNotifier provider;
 
   const _CreateClassDialog({required this.provider});
 

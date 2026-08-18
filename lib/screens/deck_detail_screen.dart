@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/riverpod/auth_provider.dart';
-import '../providers/class_provider.dart';
-import '../providers/deck_provider.dart';
+import '../providers/riverpod/class_provider.dart';
+import '../providers/riverpod/deck_provider.dart';
 import '../providers/riverpod/note_provider.dart';
+import '../providers/riverpod/api_client_provider.dart';
 import '../models/deck.dart';
 import '../models/class_info.dart';
 import '../models/note_record.dart';
@@ -18,8 +19,8 @@ import '../widgets/shadcn_search_dropdown.dart';
 
 class DeckDetailScreen extends ConsumerStatefulWidget {
   final DeckResponse deck;
-  final DeckProvider provider;
-  final ClassProvider classProvider;
+  final DeckNotifier provider;
+  final ClassNotifier classProvider;
   final VoidCallback? onDeleted;
 
   const DeckDetailScreen({
@@ -237,7 +238,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
   }
 
   void _showTransferOwnerDialog(BuildContext context) {
-    final service = UserService(widget.provider.apiClient);
+    final service = UserService(ref.read(apiClientProvider));
     int? selectedUserId;
     showResponsiveDialog(
       context,
@@ -297,7 +298,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
   }
 
   void _showShareDialog(BuildContext context) {
-    final service = UserService(widget.provider.apiClient);
+    final service = UserService(ref.read(apiClientProvider));
     int? selectedUserId;
     showResponsiveDialog(
       context,
@@ -577,7 +578,7 @@ class _DeckInfoCard extends StatefulWidget {
   final VoidCallback onTransfer;
   final VoidCallback onAddToClass;
   final void Function(int classId) onRemoveFromClass;
-  final DeckProvider provider;
+  final DeckNotifier provider;
 
   const _DeckInfoCard({
     required this.deck,
@@ -831,7 +832,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
 
 class NoteFormDialog extends StatefulWidget {
   final int deckId;
-  final DeckProvider deckProvider;
+  final DeckNotifier deckProvider;
   final NoteNotifier noteProvider;
   final NoteRecord? existingNote;
   final VoidCallback onSuccess;
@@ -1062,7 +1063,7 @@ class _NoteFormDialogState extends State<NoteFormDialog> {
 
 class _MoveDeckDetailDialog extends StatefulWidget {
   final DeckResponse deck;
-  final DeckProvider provider;
+  final DeckNotifier provider;
   final VoidCallback onSuccess;
 
   const _MoveDeckDetailDialog({
