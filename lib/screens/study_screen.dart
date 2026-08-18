@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/riverpod/study_provider.dart';
-import '../models/card_record.dart';
 import '../models/study.dart';
 import '../widgets/card_html_view.dart';
 import '../widgets/responsive_dialog.dart';
@@ -61,19 +60,22 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(studyProvider);
-    final notifier = ref.read(studyProvider.notifier);
     final title = state.deckTitle ?? 'Study';
     final colors = Theme.of(context).colorScheme;
+
+    final counts = state.counts;
+    final newCount = counts.newCount;
+    final learningCount = counts.learningTotal;
+    final reviewCount = counts.reviewCount;
+    final hasCards = state.currentCard != null;
 
     Widget body;
     if (state.isLoading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (state.error != null) {
       body = _errorView(context, state, colors);
-    } else if (state.isComplete) {
-      body = _completedView(context, state, colors);
-    } else if (state.dueCardIds.isEmpty) {
-      body = _emptyView(context, state, colors);
+    } else if (state.currentCard == null) {
+      body = _doneView(context, state, colors);
     } else {
       body = _cardView(context, state, colors);
     }
@@ -90,10 +92,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
           ],
           title: Text(title),
           trailing: [
-            if (notifier.currentCard != null &&
-                !state.isLoading &&
-                !state.isComplete)
-              _buildFlagMenu(context),
+            if (hasCards && !state.isLoading) _buildFlagMenu(context),
             if (!widget.isFullscreen && widget.onFullscreen != null)
               IconButton.outline(
                 icon: const Icon(LucideIcons.externalLink, size: 20),
@@ -105,11 +104,11 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                 onPressed: () => widget.onClose?.call(),
               ),
           ],
-          subtitle: (!state.isLoading && state.totalCount > 0)
+          subtitle: (hasCards && !state.isLoading)
               ? _CardCountBar(
-                  newCount: notifier.newCount,
-                  learningCount: notifier.learningCount,
-                  dueCount: notifier.dueCount,
+                  newCount: newCount,
+                  learningCount: learningCount,
+                  reviewCount: reviewCount,
                 )
               : null,
         ),
@@ -148,64 +147,47 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     );
   }
 
-  Widget _emptyView(
-      BuildContext context, StudyState state, ColorScheme colors) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.circleCheck,
-              size: 64, color: Color(0xFF22C55E)),
-          const SizedBox(height: 16),
-          const Text('All caught up!').semiBold(),
-          const SizedBox(height: 8),
-          Text(
-            'No cards due right now.',
-            style: TextStyle(color: colors.mutedForeground),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Button.secondary(
-                onPressed: () => ref
-                    .read(studyProvider.notifier)
-                    .startDeckStudy(widget.deckId),
-                child: const Text('Check again'),
-              ),
-              const SizedBox(width: 12),
-              Button.outline(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to decks'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  /// Transient "done for now" view — no cards due right now.
+  Widget _doneView(BuildContext context, StudyState state, ColorScheme colors) {
+    final counts = state.counts;
+    final remaining = counts.newCount +
+        counts.learningCount +
+        counts.reviewCount +
+        counts.relearningCount;
 
-  Widget _completedView(
-      BuildContext context, StudyState state, ColorScheme colors) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(LucideIcons.trophy, size: 64, color: colors.primary),
-          const SizedBox(height: 16),
-          const Text('No cards due').semiBold(),
-          const SizedBox(height: 8),
-          Text(
-            'Come back later for more reviews.',
-            style: TextStyle(color: colors.mutedForeground),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.circleCheck,
+                size: 64, color: Color(0xFF22C55E)),
+            const SizedBox(height: 16),
+            const Text('No cards due right now').semiBold(),
+            const SizedBox(height: 8),
+            Text(
+              remaining > 0
+                  ? 'Some cards have upcoming learning steps. Check back soon.'
+                  : 'Come back later for more reviews.',
+              style: TextStyle(color: colors.mutedForeground),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Button.secondary(
+              onPressed: () => ref
+                  .read(studyProvider.notifier)
+                  .startDeckStudy(widget.deckId),
+              child: const Text('Check again'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _cardView(BuildContext context, StudyState state, ColorScheme colors) {
-    final card = ref.read(studyProvider.notifier).currentCard!;
+    final card = state.currentCard!;
 
     return SafeArea(
       child: Column(
@@ -242,7 +224,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, state.steps, 1),
+                              _ratingLabel(card, 1),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -260,7 +242,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, state.steps, 2),
+                              _ratingLabel(card, 2),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -278,7 +260,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, state.steps, 3),
+                              _ratingLabel(card, 3),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -296,7 +278,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, state.steps, 4),
+                              _ratingLabel(card, 4),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -472,124 +454,52 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     );
   }
 
-  /// Renders the interval sub-label for a rating button, matching Anki.
+  /// Renders the interval sub-label for a rating button.
   ///
-  /// For new/learning/relearning cards the short step intervals come from the
-  /// deck's [steps]; for review (and graduated) buttons the FSRS interval in
-  /// [card.predictedInterval] is used.
-  String _ratingLabel(CardRecord card, StudySteps? steps, int rating) {
+  /// The new contract provides `predicted_interval` directly on each card as a
+  /// `Map<String,int>` mapping rating keys "1".."4" to interval days (or
+  /// seconds for in-session learning steps).
+  String _ratingLabel(StudyCard card, int rating) {
     final predicted = card.predictedInterval;
-    final state = card.state;
+    final days = predicted?['$rating'];
 
-    String formatIntervalDays(int? days, String fallback) {
-      if (days == null) return fallback;
-      if (days == 0) return 'Today';
-      if (days == 1) return '1 day';
-      return '$days days';
-    }
-
-    // FSRS review interval (days) for a rating key.
-    String fsrs(String ratingKey, String fallback) =>
-        formatIntervalDays(predicted?[ratingKey], fallback);
-
-    // Returns the step duration at [index], or falls back to the FSRS interval
-    // (graduate) when the index is beyond the end of the list.
-    String stepOrGraduate(
-        List<int> stepsList, int index, String ratingKey, String fallback) {
-      if (steps == null || stepsList.isEmpty) {
-        return fsrs(ratingKey, fallback);
+    if (days == null) {
+      switch (rating) {
+        case 1:
+          return 'Re-study';
+        case 2:
+          return '~1-2 days';
+        case 3:
+          return 'Growing';
+        case 4:
+          return 'Long';
+        default:
+          return '';
       }
-      if (index < stepsList.length) {
-        return _formatSeconds(stepsList[index]);
-      }
-      return fsrs(ratingKey, fallback);
     }
 
-    // Helper for Again/Hard/Good that advances one step from the current
-    // step_index. Advancing past the last step graduates to review.
-    String nextStep(List<int> stepsList, String ratingKey, String fallback) {
-      final nextIndex = card.stepIndex + 1;
-      return stepOrGraduate(stepsList, nextIndex, ratingKey, fallback);
-    }
-
-    final learning = steps?.learningSteps ?? const <int>[];
-    final relearning = steps?.relearningSteps ?? const <int>[];
-
-    switch (state) {
-      case 'new':
-      case 'learning':
-        switch (rating) {
-          case 1: // Again -> first learning step
-            return stepOrGraduate(learning, 0, '1', 'Re-study');
-          case 2: // Hard -> next learning step (or graduate)
-            return nextStep(learning, '2', '~1-2 days');
-          case 3: // Good -> next learning step (or graduate)
-            return nextStep(learning, '3', 'Growing');
-          case 4: // Easy -> graduate to review
-            return fsrs('4', 'Long');
-        }
-        break;
-      case 'relearning':
-        switch (rating) {
-          case 1: // Again -> first relearning step
-            return stepOrGraduate(relearning, 0, '1', 'Re-study');
-          case 2: // Hard -> next relearning step (or review)
-            return nextStep(relearning, '2', '~1-2 days');
-          case 3: // Good -> next relearning step (or review)
-            return nextStep(relearning, '3', 'Growing');
-          case 4: // Easy -> FSRS review
-            return fsrs('4', 'Long');
-        }
-        break;
-      case 'review':
-      default:
-        switch (rating) {
-          case 1: // Again -> lapse into relearning first step
-            return stepOrGraduate(relearning, 0, '1', 'Re-study');
-          case 2:
-            return fsrs('2', '~1-2 days');
-          case 3:
-            return fsrs('3', 'Growing');
-          case 4:
-            return fsrs('4', 'Long');
-        }
-        break;
-    }
-    return '';
-  }
-
-  String _formatSeconds(int seconds) {
-    if (seconds < 60) return '${seconds}s';
-    final minutes = seconds ~/ 60;
-    if (minutes < 60) return '${minutes}m';
-    final hours = minutes ~/ 60;
-    final remMinutes = minutes % 60;
-    if (hours < 24) {
-      return remMinutes == 0 ? '${hours}h' : '${hours}h ${remMinutes}m';
-    }
-    final days = hours ~/ 24;
-    final remHours = hours % 24;
-    if (remHours == 0) return '${days}d';
-    return '${days}d ${remHours}h';
+    if (days == 0) return 'Today';
+    if (days == 1) return '1 day';
+    return '$days days';
   }
 }
 
 class _CardCountBar extends StatelessWidget {
   final int newCount;
   final int learningCount;
-  final int dueCount;
+  final int reviewCount;
 
   const _CardCountBar({
     required this.newCount,
     required this.learningCount,
-    required this.dueCount,
+    required this.reviewCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasNew = newCount > 0;
     final hasLearning = learningCount > 0;
-    final hasDue = dueCount > 0;
+    final hasReview = reviewCount > 0;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -608,12 +518,12 @@ class _CardCountBar extends StatelessWidget {
                 child: Text('$learningCount learning'),
               ),
             ),
-          if (hasDue)
+          if (hasReview)
             Padding(
               padding: EdgeInsets.only(left: hasNew || hasLearning ? 8 : 0),
               child: OutlineBadge(
                 leading: const Icon(LucideIcons.clock, size: 12),
-                child: Text('$dueCount due'),
+                child: Text('$reviewCount review'),
               ),
             ),
         ],

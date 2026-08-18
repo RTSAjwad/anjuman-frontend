@@ -1,18 +1,23 @@
+/// Full card projection returned by the study endpoints.
+///
+/// Appears as `next_card`. Unlike `reviewed_card`, it carries the HTML
+/// `front`/`back` content needed to render the card.
 class StudyCard {
   final int cardId;
   final int? noteId;
   final String front;
   final String back;
-  final String state;
-  final int? dueAt;
+  final String state; // new | learning | review | relearning
+  final int? dueAt; // Unix seconds
   final double stability;
   final double difficulty;
   final int reps;
   final int lapses;
-  final String deckTitle;
-  final Map<String, int>? predictedInterval;
-  final int stepIndex;
   final int? flag;
+  final int suspended; // 0 | 1
+  final int? buriedUntil; // Unix seconds, null = not buried
+  final int stepIndex;
+  final Map<String, int>? predictedInterval; // rating key -> interval days
 
   StudyCard({
     required this.cardId,
@@ -25,107 +30,137 @@ class StudyCard {
     required this.difficulty,
     required this.reps,
     required this.lapses,
-    required this.deckTitle,
-    this.predictedInterval,
-    this.stepIndex = 0,
     this.flag,
+    this.suspended = 0,
+    this.buriedUntil,
+    this.stepIndex = 0,
+    this.predictedInterval,
   });
 
   factory StudyCard.fromJson(Map<String, dynamic> json) => StudyCard(
         cardId: json['card_id'],
         noteId: json['note_id'] as int?,
-        front: json['front'],
-        back: json['back'],
-        state: json['state'],
-        dueAt: json['due_at'],
-        stability: (json['stability'] as num).toDouble(),
-        difficulty: (json['difficulty'] as num).toDouble(),
-        reps: json['reps'],
-        lapses: json['lapses'],
-        deckTitle: json['deck_title'],
+        front: json['front'] as String? ?? '',
+        back: json['back'] as String? ?? '',
+        state: json['state'] as String? ?? '',
+        dueAt: json['due_at'] as int?,
+        stability: (json['stability'] as num? ?? 0).toDouble(),
+        difficulty: (json['difficulty'] as num? ?? 0).toDouble(),
+        reps: json['reps'] as int? ?? 0,
+        lapses: json['lapses'] as int? ?? 0,
+        flag: json['flag'] as int?,
+        suspended: json['suspended'] as int? ?? 0,
+        buriedUntil: json['buried_until'] as int?,
+        stepIndex: json['step_index'] as int? ?? 0,
         predictedInterval: json['predicted_interval'] != null
             ? (json['predicted_interval'] as Map<String, dynamic>)
                 .map((k, v) => MapEntry(k, (v as num).toInt()))
             : null,
-        stepIndex: json['step_index'] as int? ?? 0,
-        flag: json['flag'],
       );
-
-  StudyCard copyWith({String? state, int? flag}) {
-    return StudyCard(
-      cardId: cardId,
-      noteId: noteId,
-      front: front,
-      back: back,
-      state: state ?? this.state,
-      dueAt: dueAt,
-      stability: stability,
-      difficulty: difficulty,
-      reps: reps,
-      lapses: lapses,
-      deckTitle: deckTitle,
-      predictedInterval: predictedInterval,
-      stepIndex: stepIndex,
-      flag: flag ?? this.flag,
-    );
-  }
 }
 
-class StudySession {
+/// Post-review card state returned as `reviewed_card` on advance. Carries no
+/// `front`/`back` — the current card's content is retained in [StudyState].
+class ReviewedCard {
+  final int cardId;
+  final String state;
+  final int? dueAt;
+  final double stability;
+  final double difficulty;
+  final int reps;
+  final int lapses;
+  final int stepIndex;
+  final int intervalDays;
+
+  ReviewedCard({
+    required this.cardId,
+    required this.state,
+    this.dueAt,
+    required this.stability,
+    required this.difficulty,
+    required this.reps,
+    required this.lapses,
+    this.stepIndex = 0,
+    this.intervalDays = 0,
+  });
+
+  factory ReviewedCard.fromJson(Map<String, dynamic> json) => ReviewedCard(
+        cardId: json['card_id'],
+        state: json['state'] as String? ?? '',
+        dueAt: json['due_at'] as int?,
+        stability: (json['stability'] as num? ?? 0).toDouble(),
+        difficulty: (json['difficulty'] as num? ?? 0).toDouble(),
+        reps: json['reps'] as int? ?? 0,
+        lapses: json['lapses'] as int? ?? 0,
+        stepIndex: json['step_index'] as int? ?? 0,
+        intervalDays: json['interval_days'] as int? ?? 0,
+      );
+}
+
+/// Authoritative, limit-aware per-state card counts for a deck.
+class StudyCounts {
+  final int newCount;
+  final int learningCount;
+  final int reviewCount;
+  final int relearningCount;
+
+  const StudyCounts({
+    this.newCount = 0,
+    this.learningCount = 0,
+    this.reviewCount = 0,
+    this.relearningCount = 0,
+  });
+
+  int get learningTotal => learningCount + relearningCount;
+
+  factory StudyCounts.fromJson(Map<String, dynamic> json) => StudyCounts(
+        newCount: json['new_count'] as int? ?? 0,
+        learningCount: json['learning_count'] as int? ?? 0,
+        reviewCount: json['review_count'] as int? ?? 0,
+        relearningCount: json['relearning_count'] as int? ?? 0,
+      );
+}
+
+/// Response from both `GET /decks/{id}/study` and `POST /decks/{id}/study`.
+///
+/// `done` is transient: `nextCard == null` simply means nothing is due right
+/// now, not that the deck is permanently finished.
+class StudyResponse {
+  final StudyCard? nextCard;
+  final ReviewedCard? reviewedCard;
+  final StudyCounts counts;
   final int? deckId;
   final String? deckTitle;
-  final StudySteps? steps;
-  final List<StudyCard> cards;
-  final int totalCards;
-  final int reviewedCount;
 
-  StudySession({
+  const StudyResponse({
+    this.nextCard,
+    this.reviewedCard,
+    required this.counts,
     this.deckId,
     this.deckTitle,
-    this.steps,
-    required this.cards,
-    required this.totalCards,
-    required this.reviewedCount,
   });
 
-  factory StudySession.fromJson(Map<String, dynamic> json) => StudySession(
-        deckId: json['deck_id'],
-        deckTitle: json['deck_title'],
-        steps: json['steps'] != null
-            ? StudySteps.fromJson(json['steps'] as Map<String, dynamic>)
+  bool get done => nextCard == null;
+
+  factory StudyResponse.fromJson(Map<String, dynamic> json) => StudyResponse(
+        nextCard: json['next_card'] != null
+            ? StudyCard.fromJson(json['next_card'] as Map<String, dynamic>)
             : null,
-        cards:
-            (json['cards'] as List).map((c) => StudyCard.fromJson(c)).toList(),
-        totalCards: json['total_cards'],
-        reviewedCount: json['reviewed_count'],
+        reviewedCard: json['reviewed_card'] != null
+            ? ReviewedCard.fromJson(
+                json['reviewed_card'] as Map<String, dynamic>)
+            : null,
+        counts: StudyCounts.fromJson(
+            json['counts'] as Map<String, dynamic>? ?? const {}),
+        deckId: json['deck_id'] as int?,
+        deckTitle: json['deck_title'] as String?,
       );
 }
 
-/// Deck-level scheduling step intervals (in seconds).
-class StudySteps {
-  final List<int> learningSteps;
-  final List<int> relearningSteps;
-
-  StudySteps({
-    required this.learningSteps,
-    required this.relearningSteps,
-  });
-
-  factory StudySteps.fromJson(Map<String, dynamic> json) => StudySteps(
-        learningSteps: (json['learning_steps'] as List? ?? [])
-            .map((e) => (e as num).toInt())
-            .toList(),
-        relearningSteps: (json['relearning_steps'] as List? ?? [])
-            .map((e) => (e as num).toInt())
-            .toList(),
-      );
-}
-
-// Reviews
-
+/// Body for advancing the study flow by submitting a rating.
 class SubmitReview {
   final int cardId;
-  final int rating;
+  final int rating; // 1-4
   final int? responseTimeMs;
 
   SubmitReview({
@@ -139,37 +174,4 @@ class SubmitReview {
         'rating': rating,
         if (responseTimeMs != null) 'response_time_ms': responseTimeMs,
       };
-}
-
-class ReviewResponse {
-  final int cardId;
-  final String state;
-  final int? dueAt;
-  final double stability;
-  final double difficulty;
-  final int reps;
-  final int lapses;
-  final int intervalDays;
-
-  ReviewResponse({
-    required this.cardId,
-    required this.state,
-    this.dueAt,
-    required this.stability,
-    required this.difficulty,
-    required this.reps,
-    required this.lapses,
-    required this.intervalDays,
-  });
-
-  factory ReviewResponse.fromJson(Map<String, dynamic> json) => ReviewResponse(
-        cardId: json['card_id'],
-        state: json['state'],
-        dueAt: json['due_at'],
-        stability: (json['stability'] as num).toDouble(),
-        difficulty: (json['difficulty'] as num).toDouble(),
-        reps: json['reps'],
-        lapses: json['lapses'],
-        intervalDays: json['interval_days'],
-      );
 }

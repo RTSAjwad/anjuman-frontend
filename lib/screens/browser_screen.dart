@@ -106,7 +106,6 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
           TreeItemNode(data: const StateFilterNode('learning'), children: []),
           TreeItemNode(data: const StateFilterNode('review'), children: []),
           TreeItemNode(data: const StateFilterNode('relearning'), children: []),
-          TreeItemNode(data: const StateFilterNode('due'), children: []),
         ],
       ),
       TreeItemNode<FilterNode>(
@@ -1542,7 +1541,6 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
       'learning' => 'Learning',
       'review' => 'Review',
       'relearning' => 'Relearning',
-      'due' => 'Due',
       _ => state,
     };
   }

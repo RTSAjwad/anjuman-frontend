@@ -431,7 +431,7 @@ class _DeckTreeState extends ConsumerState<_DeckTree> {
     final newCount = counts?.newCount ?? deck.newCount ?? 0;
     final learnCount = counts?.learningTotal ??
         ((deck.learningCount ?? 0) + (deck.relearningCount ?? 0));
-    final dueCount = counts?.dueCount ?? deck.dueCount ?? 0;
+    final reviewCount = counts?.reviewCount ?? deck.reviewCount ?? 0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -454,7 +454,7 @@ class _DeckTreeState extends ConsumerState<_DeckTree> {
           const SizedBox(width: 4),
           OutlineBadge(
             leading: const Icon(LucideIcons.clock, size: 12),
-            child: Text('$dueCount', style: const TextStyle(fontSize: 12)),
+            child: Text('$reviewCount', style: const TextStyle(fontSize: 12)),
           ),
         ],
       ],

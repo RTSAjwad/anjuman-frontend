@@ -183,7 +183,7 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
           (c.state == 'learning' || c.state == 'relearning'))
       .length;
 
-  int deckDueCount(int deckId) => state.values
+  int deckReviewCount(int deckId) => state.values
       .where((c) => c.deckId == deckId && c.state == 'review')
       .length;
 

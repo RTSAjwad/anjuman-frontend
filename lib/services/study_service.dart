@@ -7,14 +7,25 @@ class StudyService {
 
   StudyService(this._client);
 
-  Future<StudySession> getDeckStudy(int deckId) async {
+  /// Starts (or refreshes) the study flow for a deck.
+  ///
+  /// `GET /decks/{id}/study` returns the next due card (or null) plus fresh
+  /// counts. No body.
+  Future<StudyResponse> startStudy(int deckId) async {
     final json = await _client.getMap(ApiConfig.deckStudy(deckId));
-    return StudySession.fromJson(json);
+    return StudyResponse.fromJson(json);
   }
 
-  Future<ReviewResponse> submitReview(SubmitReview review) async {
-    final json = await _client.post(ApiConfig.reviews, body: review.toJson());
-    return ReviewResponse.fromJson(json);
+  /// Submits a rating for the current card and advances the flow.
+  ///
+  /// `POST /decks/{id}/study` returns the same shape with `reviewed_card` set
+  /// to the post-review state of the answered card.
+  Future<StudyResponse> submitReview(int deckId, SubmitReview review) async {
+    final json = await _client.post(
+      ApiConfig.deckStudy(deckId),
+      body: review.toJson(),
+    );
+    return StudyResponse.fromJson(json);
   }
 
   Future<Map<String, dynamic>> setCardFlag(int cardId, int flag) async {

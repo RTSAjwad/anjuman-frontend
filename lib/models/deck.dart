@@ -59,7 +59,7 @@ class DeckResponse {
   final int? newCount;
   final int? learningCount;
   final int? relearningCount;
-  final int? dueCount;
+  final int? reviewCount;
   final int? totalCount;
   final int? parentId;
 
@@ -84,7 +84,7 @@ class DeckResponse {
     this.newCount,
     this.learningCount,
     this.relearningCount,
-    this.dueCount,
+    this.reviewCount,
     this.totalCount,
     this.parentId,
   });
@@ -103,7 +103,7 @@ class DeckResponse {
         newCount: json['new_count'],
         learningCount: json['learning_count'],
         relearningCount: json['relearning_count'],
-        dueCount: json['due_count'],
+        reviewCount: json['review_count'],
         totalCount: json['total_count'],
         parentId: json['parent_id'],
       );
@@ -114,7 +114,7 @@ class DeckCounts {
   final int deckId;
   final int newCount;
   final int learningCount;
-  final int dueCount;
+  final int reviewCount;
   final int relearningCount;
   final int totalCount;
 
@@ -122,7 +122,7 @@ class DeckCounts {
     required this.deckId,
     this.newCount = 0,
     this.learningCount = 0,
-    this.dueCount = 0,
+    this.reviewCount = 0,
     this.relearningCount = 0,
     this.totalCount = 0,
   });
@@ -134,7 +134,7 @@ class DeckCounts {
         deckId: json['deck_id'],
         newCount: json['new_count'] ?? 0,
         learningCount: json['learning_count'] ?? 0,
-        dueCount: json['due_count'] ?? 0,
+        reviewCount: json['review_count'] ?? 0,
         relearningCount: json['relearning_count'] ?? 0,
         totalCount: json['total_count'] ?? 0,
       );
