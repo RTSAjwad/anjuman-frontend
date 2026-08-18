@@ -1,15 +1,14 @@
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' hide Consumer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'providers/auth_provider.dart';
 import 'providers/card_store.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/riverpod/api_client_provider.dart';
+import 'providers/riverpod/auth_provider.dart';
 import 'providers/user_provider.dart';
-import 'services/api_client.dart';
 import 'widgets/narrow_app_bar.dart';
 import 'widgets/drawer_context.dart';
 import 'config/breakpoints.dart';
@@ -22,177 +21,175 @@ import 'screens/note_types_screen.dart';
 import 'screens/stubs.dart';
 
 void main() {
-  // Single shared client, authenticated by AuthProvider (see AnkiClassroomApp).
-  // This is the temporary bridge until auth is migrated to Riverpod.
-  final apiClient = ApiClient();
-  runApp(
-    ProviderScope(
-      overrides: [
-        apiClientProvider.overrideWithValue(apiClient),
-      ],
-      child: AnkiClassroomApp(apiClient: apiClient),
-    ),
-  );
+  runApp(const ProviderScope(child: AnkiClassroomApp()));
 }
 
 final _interTypography = Typography.geist().copyWith(
   sans: () => GoogleFonts.interTextTheme().bodyMedium!,
 );
 
-class AnkiClassroomApp extends StatelessWidget {
-  final ApiClient apiClient;
-  const AnkiClassroomApp({super.key, required this.apiClient});
+class AnkiClassroomApp extends ConsumerStatefulWidget {
+  const AnkiClassroomApp({super.key});
+
+  @override
+  ConsumerState<AnkiClassroomApp> createState() => _AnkiClassroomAppState();
+}
+
+class _AnkiClassroomAppState extends ConsumerState<AnkiClassroomApp> {
+  final ValueNotifier<bool> _authListenable = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _authListenable.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(apiClient: apiClient),
-      child: Builder(
-        builder: (context) {
-          final router = GoRouter(
-            refreshListenable: context.read<AuthProvider>(),
-            initialLocation: '/decks',
-            redirect: (context, state) {
-              final auth = context.read<AuthProvider>();
-              final isLogin = state.matchedLocation == '/login';
-              if (!auth.isAuthenticated && !isLogin) return '/login';
-              if (auth.isAuthenticated && isLogin) return '/decks';
-              return null;
-            },
-            routes: [
-              GoRoute(
-                path: '/login',
-                builder: (context, state) => const LoginScreen(),
-              ),
-              StatefulShellRoute.indexedStack(
-                builder: (context, state, navigationShell) {
-                  return MultiProvider(
-                    providers: [
-                      ChangeNotifierProvider(
-                        create: (_) => ClassProvider(
-                            context.read<AuthProvider>().apiClient),
-                      ),
-                      ChangeNotifierProvider(
-                        create: (_) => DeckProvider(
-                            context.read<AuthProvider>().apiClient),
-                      ),
-                      ChangeNotifierProvider(
-                        create: (_) => CardStore(),
-                      ),
-                      ChangeNotifierProvider(
-                        create: (_) => UserProvider(
-                            context.read<AuthProvider>().apiClient),
-                      ),
-                    ],
-                    child: _ShellScaffold(navigationShell: navigationShell),
-                  );
-                },
-                branches: [
-                  // 0: Dashboard
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/dashboard',
-                        builder: (context, state) => const DashboardStub(),
-                      ),
-                    ],
-                  ),
-                  // 1: Classes
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/classes',
-                        builder: (context, state) => const ClassesScreen(),
-                      ),
-                    ],
-                  ),
-                  // 2: Decks
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/decks',
-                        builder: (context, state) => const DecksScreen(),
-                      ),
-                    ],
-                  ),
-                  // 3: Users
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/users',
-                        builder: (context, state) => const UsersScreen(),
-                      ),
-                    ],
-                  ),
-                  // 4: Note Types
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/note-types',
-                        builder: (context, state) =>
-                            const NoteTypesScreen(provider: null),
-                      ),
-                    ],
-                  ),
-                  // 5: Browser
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/browser',
-                        builder: (context, state) => const BrowserScreen(),
-                      ),
-                    ],
-                  ),
-                  // 6: Me
-                  StatefulShellBranch(
-                    routes: [
-                      GoRoute(
-                        path: '/me',
-                        builder: (context, state) {
-                          return _MeScreen(auth: context.read<AuthProvider>());
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          );
+    ref.listen(authProvider, (previous, next) {
+      _authListenable.value = next.isAuthenticated;
+    });
 
-          return ShadcnApp.router(
-            title: 'Anki Classroom',
-            debugShowCheckedModeBanner: false,
-            builder: (context, child) {
-              // Prevent content from being drawn behind the Android status bar
-              // (Flutter 3.44+ enables edge-to-edge rendering by default).
-              return SafeArea(child: child ?? const SizedBox.shrink());
-            },
-            theme: ThemeData(
-              colorScheme: ColorSchemes.lightNeutral,
-              typography: _interTypography,
+    final router = GoRouter(
+      refreshListenable: _authListenable,
+      initialLocation: '/decks',
+      redirect: (context, state) {
+        final isAuthenticated = ref.read(authProvider).isAuthenticated;
+        final isLogin = state.matchedLocation == '/login';
+        if (!isAuthenticated && !isLogin) return '/login';
+        if (isAuthenticated && isLogin) return '/decks';
+        return null;
+      },
+      routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            // Reuse the single authenticated ApiClient from apiClientProvider
+            // so the legacy Deck/Class/User providers use the same token that
+            // AuthNotifier sets on login, until those providers are migrated.
+            final apiClient =
+                ProviderScope.containerOf(context).read(apiClientProvider);
+            return MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                  create: (_) => ClassProvider(apiClient),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => DeckProvider(apiClient),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => CardStore(),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => UserProvider(apiClient),
+                ),
+              ],
+              child: _ShellScaffold(navigationShell: navigationShell),
+            );
+          },
+          branches: [
+            // 0: Dashboard
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/dashboard',
+                  builder: (context, state) => const DashboardStub(),
+                ),
+              ],
             ),
-            darkTheme: ThemeData.dark(
-              colorScheme: ColorSchemes.darkNeutral,
-              typography: _interTypography,
+            // 1: Classes
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/classes',
+                  builder: (context, state) => const ClassesScreen(),
+                ),
+              ],
             ),
-            themeMode: ThemeMode.dark,
-            routerConfig: router,
-          );
-        },
+            // 2: Decks
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/decks',
+                  builder: (context, state) => const DecksScreen(),
+                ),
+              ],
+            ),
+            // 3: Users
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/users',
+                  builder: (context, state) => const UsersScreen(),
+                ),
+              ],
+            ),
+            // 4: Note Types
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/note-types',
+                  builder: (context, state) =>
+                      const NoteTypesScreen(provider: null),
+                ),
+              ],
+            ),
+            // 5: Browser
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/browser',
+                  builder: (context, state) => const BrowserScreen(),
+                ),
+              ],
+            ),
+            // 6: Me
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/me',
+                  builder: (context, state) => const _MeScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return ShadcnApp.router(
+      title: 'Anki Classroom',
+      debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        // Prevent content from being drawn behind the Android status bar
+        // (Flutter 3.44+ enables edge-to-edge rendering by default).
+        return SafeArea(child: child ?? const SizedBox.shrink());
+      },
+      theme: ThemeData(
+        colorScheme: ColorSchemes.lightNeutral,
+        typography: _interTypography,
       ),
+      darkTheme: ThemeData.dark(
+        colorScheme: ColorSchemes.darkNeutral,
+        typography: _interTypography,
+      ),
+      themeMode: ThemeMode.dark,
+      routerConfig: router,
     );
   }
 }
 
-class _MeScreen extends StatelessWidget {
-  final AuthProvider auth;
-  const _MeScreen({required this.auth});
+class _MeScreen extends ConsumerWidget {
+  const _MeScreen();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final user = auth.user;
+    final user = ref.watch(authProvider).user;
 
     return Scaffold(
       headers: [
@@ -201,7 +198,7 @@ class _MeScreen extends StatelessWidget {
           trailing: [
             IconButton.outline(
               icon: const Icon(LucideIcons.logOut, size: 20, color: Colors.red),
-              onPressed: () => auth.logout(),
+              onPressed: () => ref.read(authProvider.notifier).logout(),
             ),
           ],
         ),
@@ -241,16 +238,16 @@ class _MeScreen extends StatelessWidget {
   }
 }
 
-class _ShellScaffold extends StatefulWidget {
+class _ShellScaffold extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const _ShellScaffold({required this.navigationShell});
 
   @override
-  State<_ShellScaffold> createState() => _ShellScaffoldState();
+  ConsumerState<_ShellScaffold> createState() => _ShellScaffoldState();
 }
 
-class _ShellScaffoldState extends State<_ShellScaffold>
+class _ShellScaffoldState extends ConsumerState<_ShellScaffold>
     with SingleTickerProviderStateMixin {
   bool _drawerOpen = false;
   late final AnimationController _drawerController;
@@ -359,7 +356,7 @@ class _ShellScaffoldState extends State<_ShellScaffold>
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
     final role = auth.role;
     final currentIndex = widget.navigationShell.currentIndex;
 

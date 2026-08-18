@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../models/user.dart';
 import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
 import '../widgets/sortable_table.dart';
 
-class UsersScreen extends StatefulWidget {
+class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
 
   @override
-  State<UsersScreen> createState() => _UsersScreenState();
+  ConsumerState<UsersScreen> createState() => _UsersScreenState();
 }
 
-class _UsersScreenState extends State<UsersScreen> {
+class _UsersScreenState extends ConsumerState<UsersScreen> {
   final _sort =
       TableSort<UserDetail, UserSortField>(UserSortField.lastName, true);
   final _verticalScrollController = ScrollController();
@@ -342,7 +343,7 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   void _showCreateDialog(BuildContext context) {
-    final auth = context.read<AuthProvider>();
+    final auth = ref.read(authProvider);
     final schoolId = auth.user?.schoolId ?? 0;
     showResponsiveDialog(
       context,

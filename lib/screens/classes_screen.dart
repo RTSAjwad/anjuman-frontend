@@ -2,8 +2,9 @@ import 'package:flutter/material.dart'
     show ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/class_provider.dart';
 import 'class_detail_screen.dart';
 import '../models/class.dart';
@@ -11,14 +12,14 @@ import '../widgets/narrow_app_bar.dart';
 import '../widgets/responsive_dialog.dart';
 import '../config/breakpoints.dart';
 
-class ClassesScreen extends StatefulWidget {
+class ClassesScreen extends ConsumerStatefulWidget {
   const ClassesScreen({super.key});
 
   @override
-  State<ClassesScreen> createState() => _ClassesScreenState();
+  ConsumerState<ClassesScreen> createState() => _ClassesScreenState();
 }
 
-class _ClassesScreenState extends State<ClassesScreen> {
+class _ClassesScreenState extends ConsumerState<ClassesScreen> {
   @override
   void initState() {
     super.initState();
@@ -34,7 +35,7 @@ class _ClassesScreenState extends State<ClassesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
 

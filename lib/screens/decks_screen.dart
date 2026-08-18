@@ -1,7 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/card_store.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
@@ -13,14 +14,14 @@ import '../config/breakpoints.dart';
 import 'deck_detail_screen.dart';
 import 'study_screen.dart';
 
-class DecksScreen extends StatefulWidget {
+class DecksScreen extends ConsumerStatefulWidget {
   const DecksScreen({super.key});
 
   @override
-  State<DecksScreen> createState() => _DecksScreenState();
+  ConsumerState<DecksScreen> createState() => _DecksScreenState();
 }
 
-class _DecksScreenState extends State<DecksScreen> {
+class _DecksScreenState extends ConsumerState<DecksScreen> {
   bool _initialLoadDone = false;
   bool _studyFullscreen = false;
 
@@ -66,7 +67,7 @@ class _DecksScreenState extends State<DecksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
 

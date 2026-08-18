@@ -2,10 +2,9 @@ import 'package:anki_classroom_frontend/widgets/responsive_dialog.dart';
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
 import '../providers/riverpod/note_provider.dart';
@@ -77,7 +76,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
     final isOwner = auth.user?.id == widget.deck.createdBy;
     final isAdmin = auth.role == 'admin';
     final canManage = isOwner || isAdmin;

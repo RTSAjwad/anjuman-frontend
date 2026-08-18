@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/deck_provider.dart';
 import '../providers/riverpod/note_provider.dart';
 import '../providers/riverpod/browser_provider.dart';
@@ -344,7 +344,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final role = context.read<AuthProvider>().role;
+    final role = ref.read(authProvider).role;
     final isTeacher = role == 'teacher' || role == 'admin';
     if (isTeacher) {
       _columns = ['Sort Field', 'Deck'];
@@ -983,7 +983,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
           TableHeader(cells: headerCells),
         ];
 
-        final role = context.read<AuthProvider>().role;
+        final role = ref.read(authProvider).role;
         final isTeacher = role == 'teacher' || role == 'admin';
 
         if (_activeTab == 0) {
@@ -1082,7 +1082,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
     final browser = ref.read(browserProvider.notifier);
     final cardStore = ref.read(card_store.cardStoreProvider.notifier);
     final noteScheduling = ref.read(noteSchedulingProvider);
-    final role = context.read<AuthProvider>().role;
+    final role = ref.read(authProvider).role;
     final isStudent = role == 'student';
 
     showDropdown(

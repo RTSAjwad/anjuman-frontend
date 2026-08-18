@@ -1,16 +1,16 @@
 import 'package:flutter/services.dart' show TextInputAction;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   static const _emailKey = TextFieldKey('email');
   static const _passwordKey = TextFieldKey('password');
 
@@ -27,13 +27,13 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
-    final auth = context.read<AuthProvider>();
+    final auth = ref.read(authProvider.notifier);
     final success = await auth.login(email, password);
 
     if (mounted && !success) {
       setState(() {
         _isSubmitting = false;
-        _error = auth.error ?? 'Login failed';
+        _error = ref.read(authProvider).error ?? 'Login failed';
       });
     }
   }
@@ -43,12 +43,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _isSubmitting = true;
       _error = null;
     });
-    final auth = context.read<AuthProvider>();
+    final auth = ref.read(authProvider.notifier);
     await auth.login(email, password);
-    if (mounted && auth.error != null) {
+    if (mounted && ref.read(authProvider).error != null) {
       setState(() {
         _isSubmitting = false;
-        _error = auth.error;
+        _error = ref.read(authProvider).error;
       });
     }
   }

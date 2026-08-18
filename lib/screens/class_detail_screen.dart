@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior;
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
-import '../providers/auth_provider.dart';
+import '../providers/riverpod/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../models/class.dart';
 import '../models/search_result.dart';
@@ -12,7 +12,7 @@ import '../services/user_service.dart';
 import '../widgets/responsive_dialog.dart';
 import '../widgets/shadcn_search_dropdown.dart';
 
-class ClassDetailScreen extends StatefulWidget {
+class ClassDetailScreen extends ConsumerStatefulWidget {
   final ClassResponse classResponse;
   final ClassProvider provider;
   final VoidCallback? onClose;
@@ -27,10 +27,10 @@ class ClassDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<ClassDetailScreen> createState() => _ClassDetailScreenState();
+  ConsumerState<ClassDetailScreen> createState() => _ClassDetailScreenState();
 }
 
-class _ClassDetailScreenState extends State<ClassDetailScreen> {
+class _ClassDetailScreenState extends ConsumerState<ClassDetailScreen> {
   late Future<RosterResponse?> _rosterFuture;
   final _verticalScrollController = ScrollController();
   final _tableScrollController = ScrollController();
@@ -64,7 +64,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = ref.watch(authProvider);
     final isTeacher = auth.role == 'teacher' || auth.role == 'admin';
     final colors = Theme.of(context).colorScheme;
 
