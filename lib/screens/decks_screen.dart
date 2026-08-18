@@ -5,7 +5,6 @@ import '../providers/auth_provider.dart';
 import '../providers/card_store.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
-import '../providers/study_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -137,7 +136,6 @@ class _DecksScreenState extends State<DecksScreen> {
                     key: ValueKey(selectedDeck.id),
                     child: StudyScreen(
                       deckId: selectedDeck.id,
-                      provider: context.read<StudyProvider>(),
                       onClose: () => context.go('/decks'),
                       onFullscreen: width >= Breakpoints.medium
                           ? () => setState(() => _studyFullscreen = true)
@@ -148,7 +146,6 @@ class _DecksScreenState extends State<DecksScreen> {
                     key: ValueKey(selectedDeck.id),
                     child: StudyScreen(
                       deckId: selectedDeck.id,
-                      provider: context.read<StudyProvider>(),
                       isFullscreen: true,
                       onClose: () => context.go('/decks'),
                     ),
@@ -157,7 +154,6 @@ class _DecksScreenState extends State<DecksScreen> {
                     key: ValueKey(selectedDeck.id),
                     child: StudyScreen(
                       deckId: selectedDeck.id,
-                      provider: context.read<StudyProvider>(),
                       isFullscreen: true,
                       onClose: () => setState(() => _studyFullscreen = false),
                     ),

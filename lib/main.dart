@@ -10,7 +10,7 @@ import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
 import 'providers/note_provider.dart';
 import 'providers/note_store.dart';
-import 'providers/study_provider.dart';
+import 'providers/riverpod/api_client_provider.dart';
 import 'providers/user_provider.dart';
 import 'services/api_client.dart';
 import 'widgets/narrow_app_bar.dart';
@@ -100,12 +100,6 @@ class AnkiClassroomApp extends StatelessWidget {
                             ..cardStore = cardStore
                             ..noteStore = noteStore;
                         },
-                      ),
-                      ChangeNotifierProxyProvider<CardStore, StudyProvider>(
-                        create: (_) => StudyProvider(
-                            context.read<AuthProvider>().apiClient,
-                            CardStore()),
-                        update: (_, store, study) => study!..store = store,
                       ),
                       ChangeNotifierProxyProvider2<CardStore, NoteStore,
                           BrowserProvider>(

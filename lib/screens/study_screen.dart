@@ -1,15 +1,13 @@
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../providers/study_provider.dart';
-import '../providers/card_store.dart';
+import '../providers/riverpod/study_provider.dart';
 import '../models/card_record.dart';
 import '../models/study.dart';
 import '../widgets/card_html_view.dart';
 import '../widgets/responsive_dialog.dart';
 
-class StudyScreen extends StatefulWidget {
+class StudyScreen extends ConsumerStatefulWidget {
   final int deckId;
-  final StudyProvider? provider;
   final VoidCallback? onClose;
   final VoidCallback? onFullscreen;
   final bool isFullscreen;
@@ -17,18 +15,16 @@ class StudyScreen extends StatefulWidget {
   const StudyScreen({
     super.key,
     required this.deckId,
-    this.provider,
     this.onClose,
     this.onFullscreen,
     this.isFullscreen = false,
   });
 
   @override
-  State<StudyScreen> createState() => _StudyScreenState();
+  ConsumerState<StudyScreen> createState() => _StudyScreenState();
 }
 
-class _StudyScreenState extends State<StudyScreen> {
-  late StudyProvider _provider;
+class _StudyScreenState extends ConsumerState<StudyScreen> {
   final _menuKey = GlobalKey();
 
   static const _flagColors = {
@@ -54,42 +50,32 @@ class _StudyScreenState extends State<StudyScreen> {
   @override
   void initState() {
     super.initState();
-    _provider = widget.provider ?? context.read<StudyProvider>();
-    _provider.addListener(_onProviderChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _provider.startDeckStudy(widget.deckId);
+        ref.read(studyProvider.notifier).startDeckStudy(widget.deckId);
       }
     });
   }
 
   @override
-  void dispose() {
-    _provider.removeListener(_onProviderChanged);
-    super.dispose();
-  }
-
-  void _onProviderChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final title = _provider.deckTitle ?? 'Study';
+    final state = ref.watch(studyProvider);
+    final notifier = ref.read(studyProvider.notifier);
+    final title = state.deckTitle ?? 'Study';
     final colors = Theme.of(context).colorScheme;
 
     Widget body;
-    if (_provider.isLoading) {
+    if (state.isLoading) {
       body = const Center(child: CircularProgressIndicator());
-    } else if (_provider.error != null) {
-      body = _errorView(context, _provider, colors);
-    } else if (_provider.isComplete) {
-      body = _completedView(context, _provider, colors);
-    } else if (_provider.dueCardIds.isEmpty) {
-      body = _emptyView(context, _provider, colors);
+    } else if (state.error != null) {
+      body = _errorView(context, state, colors);
+    } else if (state.isComplete) {
+      body = _completedView(context, state, colors);
+    } else if (state.dueCardIds.isEmpty) {
+      body = _emptyView(context, state, colors);
     } else {
-      body = _cardView(context, _provider, colors);
+      body = _cardView(context, state, colors);
     }
 
     return Scaffold(
@@ -104,9 +90,9 @@ class _StudyScreenState extends State<StudyScreen> {
           ],
           title: Text(title),
           trailing: [
-            if (_provider.currentCard != null &&
-                !_provider.isLoading &&
-                !_provider.isComplete)
+            if (notifier.currentCard != null &&
+                !state.isLoading &&
+                !state.isComplete)
               _buildFlagMenu(context),
             if (!widget.isFullscreen && widget.onFullscreen != null)
               IconButton.outline(
@@ -119,16 +105,11 @@ class _StudyScreenState extends State<StudyScreen> {
                 onPressed: () => widget.onClose?.call(),
               ),
           ],
-          subtitle: (!_provider.isLoading && _provider.totalCount > 0)
-              ? Consumer<CardStore>(
-                  builder: (context, cardState, _) {
-                    final deckId = _provider.deckId;
-                    if (deckId == null) return const SizedBox.shrink();
-                    return _CardCountBar(
-                      deckId: deckId,
-                      cardState: cardState,
-                    );
-                  },
+          subtitle: (!state.isLoading && state.totalCount > 0)
+              ? _CardCountBar(
+                  newCount: notifier.newCount,
+                  learningCount: notifier.learningCount,
+                  dueCount: notifier.dueCount,
                 )
               : null,
         ),
@@ -138,7 +119,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   Widget _errorView(
-      BuildContext context, StudyProvider provider, ColorScheme colors) {
+      BuildContext context, StudyState state, ColorScheme colors) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -150,13 +131,15 @@ class _StudyScreenState extends State<StudyScreen> {
             const Text('Failed to load cards'),
             const SizedBox(height: 8),
             Text(
-              provider.error ?? '',
+              state.error ?? '',
               style: TextStyle(color: colors.mutedForeground, fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Button.secondary(
-              onPressed: () => _provider.startDeckStudy(widget.deckId),
+              onPressed: () => ref
+                  .read(studyProvider.notifier)
+                  .startDeckStudy(widget.deckId),
               child: const Text('Retry'),
             ),
           ],
@@ -166,7 +149,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   Widget _emptyView(
-      BuildContext context, StudyProvider provider, ColorScheme colors) {
+      BuildContext context, StudyState state, ColorScheme colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -185,7 +168,9 @@ class _StudyScreenState extends State<StudyScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Button.secondary(
-                onPressed: () => _provider.startDeckStudy(widget.deckId),
+                onPressed: () => ref
+                    .read(studyProvider.notifier)
+                    .startDeckStudy(widget.deckId),
                 child: const Text('Check again'),
               ),
               const SizedBox(width: 12),
@@ -201,7 +186,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   Widget _completedView(
-      BuildContext context, StudyProvider provider, ColorScheme colors) {
+      BuildContext context, StudyState state, ColorScheme colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -219,28 +204,27 @@ class _StudyScreenState extends State<StudyScreen> {
     );
   }
 
-  Widget _cardView(
-      BuildContext context, StudyProvider provider, ColorScheme colors) {
-    final card = _provider.currentCard!;
+  Widget _cardView(BuildContext context, StudyState state, ColorScheme colors) {
+    final card = ref.read(studyProvider.notifier).currentCard!;
 
     return SafeArea(
       child: Column(
         children: [
           Expanded(
             child: CardHtmlView(
-              html: _provider.showBack ? card.back : card.front,
+              html: state.showBack ? card.back : card.front,
             ),
           ),
-          if (!provider.showBack && !provider.isSubmitting)
+          if (!state.showBack && !state.isSubmitting)
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Button.primary(
                 leading: const Icon(LucideIcons.hand, size: 18),
-                onPressed: () => _provider.flipCard(),
+                onPressed: () => ref.read(studyProvider.notifier).flipCard(),
                 child: const Text('Show Answer'),
               ),
             ),
-          if (provider.showBack && !provider.isSubmitting)
+          if (state.showBack && !state.isSubmitting)
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: ConstrainedBox(
@@ -258,7 +242,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, _provider.steps, 1),
+                              _ratingLabel(card, state.steps, 1),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -276,7 +260,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, _provider.steps, 2),
+                              _ratingLabel(card, state.steps, 2),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -294,7 +278,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, _provider.steps, 3),
+                              _ratingLabel(card, state.steps, 3),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -312,7 +296,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 style: TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 16)),
                             Text(
-                              _ratingLabel(card, _provider.steps, 4),
+                              _ratingLabel(card, state.steps, 4),
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],
@@ -329,17 +313,17 @@ class _StudyScreenState extends State<StudyScreen> {
   }
 
   void _submitRating(int rating) {
-    _provider.submitRating(rating);
+    ref.read(studyProvider.notifier).submitRating(rating);
   }
 
   Future<void> _setFlag(int flag) async {
-    final card = _provider.currentCard;
+    final card = ref.read(studyProvider.notifier).currentCard;
     if (card == null) return;
-    await _provider.setCardFlag(card.cardId, flag);
+    await ref.read(studyProvider.notifier).setCardFlag(card.cardId, flag);
   }
 
   Widget _buildFlagMenu(BuildContext context) {
-    final currentFlag = _provider.currentCard?.flag;
+    final currentFlag = ref.read(studyProvider.notifier).currentCard?.flag;
 
     final List<MenuItem> flagItems = [];
     for (final entry in _flagColors.entries) {
@@ -399,14 +383,14 @@ class _StudyScreenState extends State<StudyScreen> {
                     MenuButton(
                       leading: const Icon(LucideIcons.calendarOff, size: 16),
                       onPressed: (_) {
-                        _provider.buryCard();
+                        ref.read(studyProvider.notifier).buryCard();
                       },
                       child: const Text('Bury card'),
                     ),
                     MenuButton(
                       leading: const Icon(LucideIcons.ban, size: 16),
                       onPressed: (_) {
-                        _provider.suspendCard();
+                        ref.read(studyProvider.notifier).suspendCard();
                       },
                       child: const Text('Suspend card'),
                     ),
@@ -417,19 +401,20 @@ class _StudyScreenState extends State<StudyScreen> {
                       },
                       child: const Text('Reschedule card'),
                     ),
-                    if (_provider.currentCard?.noteId != null) ...[
+                    if (ref.read(studyProvider.notifier).currentCard?.noteId !=
+                        null) ...[
                       const MenuDivider(),
                       MenuButton(
                         leading: const Icon(LucideIcons.calendarOff, size: 16),
                         onPressed: (_) {
-                          _provider.buryNote();
+                          ref.read(studyProvider.notifier).buryNote();
                         },
                         child: const Text('Bury note'),
                       ),
                       MenuButton(
                         leading: const Icon(LucideIcons.ban, size: 16),
                         onPressed: (_) {
-                          _provider.suspendNote();
+                          ref.read(studyProvider.notifier).suspendNote();
                         },
                         child: const Text('Suspend note'),
                       ),
@@ -478,7 +463,7 @@ class _StudyScreenState extends State<StudyScreen> {
               final days = int.tryParse(controller.text.trim());
               if (days == null) return;
               closeOverlay(ctx);
-              _provider.rescheduleCard(days);
+              ref.read(studyProvider.notifier).rescheduleCard(days);
             },
             child: const Text('Reschedule'),
           ),
@@ -590,18 +575,20 @@ class _StudyScreenState extends State<StudyScreen> {
 }
 
 class _CardCountBar extends StatelessWidget {
-  final int deckId;
-  final CardStore cardState;
+  final int newCount;
+  final int learningCount;
+  final int dueCount;
 
-  const _CardCountBar({required this.deckId, required this.cardState});
+  const _CardCountBar({
+    required this.newCount,
+    required this.learningCount,
+    required this.dueCount,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final newCount = cardState.deckNewCount(deckId);
-    final learnCount = cardState.deckLearningCount(deckId);
-    final dueCount = cardState.deckDueCount(deckId);
     final hasNew = newCount > 0;
-    final hasLearning = learnCount > 0;
+    final hasLearning = learningCount > 0;
     final hasDue = dueCount > 0;
 
     return SingleChildScrollView(
@@ -618,7 +605,7 @@ class _CardCountBar extends StatelessWidget {
               padding: EdgeInsets.only(left: hasNew ? 8 : 0),
               child: OutlineBadge(
                 leading: const Icon(LucideIcons.graduationCap, size: 12),
-                child: Text('$learnCount learning'),
+                child: Text('$learningCount learning'),
               ),
             ),
           if (hasDue)
