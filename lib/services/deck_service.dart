@@ -14,6 +14,14 @@ class DeckService {
     return list.map((d) => DeckResponse.fromJson(d)).toList();
   }
 
+  Future<List<DeckCounts>> fetchDeckCounts({int? deckId}) async {
+    final path = deckId != null
+        ? ApiConfig.deckCountsForDeck(deckId)
+        : ApiConfig.deckCounts;
+    final json = await _client.getMap(path);
+    return DeckCountsResponse.fromJson(json).decks;
+  }
+
   Future<DeckResponse> createDeck(CreateDeck deck) async {
     final json = await _client.post(ApiConfig.decks, body: deck.toJson());
     return DeckResponse.fromJson(json);

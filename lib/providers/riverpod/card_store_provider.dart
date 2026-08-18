@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/card_record.dart';
+import 'deck_counts_provider.dart';
 
 /// Riverpod single source of truth for all cards.
 ///
@@ -41,7 +42,12 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
 
   void removeCard(int cardId) {
     state = {...state}..remove(cardId);
+    _invalidateCounts();
   }
+
+  /// Invalidates the derived deck-counts provider so the deck list re-fetches
+  /// fresh counts after a scheduling-relevant card mutation.
+  void _invalidateCounts() => ref.invalidate(deckCountsProvider);
 
   // ── Derived / convenience reads ─────────────────────────────────────────
 
@@ -65,6 +71,7 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
       cardId:
           (existing ?? _minimalCard(cardId, deckId)).copyWith(state: newState),
     };
+    _invalidateCounts();
   }
 
   void setCardFlag(int cardId, int flag) {
@@ -83,12 +90,14 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
         buriedUntil: buriedUntil,
       ),
     };
+    _invalidateCounts();
   }
 
   void setDueAt(int cardId, int? dueAt) {
     final existing = state[cardId];
     if (existing == null) return;
     state = {...state, cardId: existing.copyWith(dueAt: dueAt)};
+    _invalidateCounts();
   }
 
   /// Applies fields from a card modification response (CardModResponse).
@@ -132,6 +141,7 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
         createdAt: existing.createdAt,
       ),
     };
+    _invalidateCounts();
   }
 
   /// Seeds review state for a batch of study cards.
@@ -159,6 +169,7 @@ class CardStore extends Notifier<Map<int, CardRecord>> {
       );
     }
     state = map;
+    _invalidateCounts();
   }
 
   // ── Per-deck counts ─────────────────────────────────────────────────────

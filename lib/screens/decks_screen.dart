@@ -4,7 +4,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../providers/riverpod/auth_provider.dart';
 import '../providers/riverpod/class_provider.dart';
 import '../providers/riverpod/deck_provider.dart';
-import '../providers/riverpod/card_store_provider.dart' as card_store;
+import '../providers/riverpod/deck_counts_provider.dart';
 import '../models/deck.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/narrow_app_bar.dart';
@@ -425,10 +425,13 @@ class _DeckTreeState extends ConsumerState<_DeckTree> {
     super.dispose();
   }
 
-  Widget _buildBadges(DeckResponse deck, card_store.CardStore cardStore) {
-    final newCount = cardStore.deckNewCount(deck.id);
-    final learnCount = cardStore.deckLearningCount(deck.id);
-    final dueCount = cardStore.deckDueCount(deck.id);
+  Widget _buildBadges(DeckResponse deck) {
+    final countsAsync = ref.watch(deckCountsProvider);
+    final counts = countsAsync.value?[deck.id];
+    final newCount = counts?.newCount ?? deck.newCount ?? 0;
+    final learnCount = counts?.learningTotal ??
+        ((deck.learningCount ?? 0) + (deck.relearningCount ?? 0));
+    final dueCount = counts?.dueCount ?? deck.dueCount ?? 0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -482,9 +485,6 @@ class _DeckTreeState extends ConsumerState<_DeckTree> {
         builder: (context, node) {
           final deck = node.data;
           final hasChildren = node.children.isNotEmpty;
-          // Subscribe to card store changes so badges re-render on updates.
-          ref.watch(card_store.cardStoreProvider);
-          final cardNotifier = ref.read(card_store.cardStoreProvider.notifier);
           return TreeItem(
             onPressed: () {},
             onExpand: hasChildren
@@ -496,7 +496,7 @@ class _DeckTreeState extends ConsumerState<_DeckTree> {
                     },
                   )
                 : null,
-            trailing: _buildBadges(deck, cardNotifier),
+            trailing: _buildBadges(deck),
             child: Text(
               deck.title,
               overflow: TextOverflow.ellipsis,

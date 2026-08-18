@@ -109,6 +109,50 @@ class DeckResponse {
       );
 }
 
+/// Lightweight per-deck card counts from `GET /decks/counts`.
+class DeckCounts {
+  final int deckId;
+  final int newCount;
+  final int learningCount;
+  final int dueCount;
+  final int relearningCount;
+  final int totalCount;
+
+  const DeckCounts({
+    required this.deckId,
+    this.newCount = 0,
+    this.learningCount = 0,
+    this.dueCount = 0,
+    this.relearningCount = 0,
+    this.totalCount = 0,
+  });
+
+  /// The single "learning" bucket used by the UI (learning + relearning).
+  int get learningTotal => learningCount + relearningCount;
+
+  factory DeckCounts.fromJson(Map<String, dynamic> json) => DeckCounts(
+        deckId: json['deck_id'],
+        newCount: json['new_count'] ?? 0,
+        learningCount: json['learning_count'] ?? 0,
+        dueCount: json['due_count'] ?? 0,
+        relearningCount: json['relearning_count'] ?? 0,
+        totalCount: json['total_count'] ?? 0,
+      );
+}
+
+class DeckCountsResponse {
+  final List<DeckCounts> decks;
+
+  DeckCountsResponse({required this.decks});
+
+  factory DeckCountsResponse.fromJson(Map<String, dynamic> json) =>
+      DeckCountsResponse(
+        decks: (json['decks'] as List? ?? [])
+            .map((d) => DeckCounts.fromJson(d))
+            .toList(),
+      );
+}
+
 class CollaboratorResponse {
   final int userId;
   final String email;
