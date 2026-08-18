@@ -454,16 +454,41 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     );
   }
 
+  /// Formats a duration in seconds into a compact, human-readable interval.
+  ///
+  /// Sub-minute becomes `<1m`; minutes/hours/days are whole units; months and
+  /// years use one decimal place.
+  String _formatInterval(int seconds) {
+    if (seconds < 60) return '<1m';
+    final minutes = seconds / 60;
+    if (minutes < 60) {
+      return '${minutes.round()}m';
+    }
+    final hours = minutes / 60;
+    if (hours < 24) {
+      return '${hours.round()}h';
+    }
+    final days = hours / 24;
+    if (days < 30) {
+      return '${days.round()}d';
+    }
+    final months = days / 30;
+    if (months < 12) {
+      return '${months.toStringAsFixed(1)}mo';
+    }
+    final years = days / 365;
+    return '${years.toStringAsFixed(1)}y';
+  }
+
   /// Renders the interval sub-label for a rating button.
   ///
-  /// The new contract provides `predicted_interval` directly on each card as a
-  /// `Map<String,int>` mapping rating keys "1".."4" to interval days (or
-  /// seconds for in-session learning steps).
+  /// `predicted_interval` maps each rating ("1".."4") to its interval in
+  /// seconds.
   String _ratingLabel(StudyCard card, int rating) {
     final predicted = card.predictedInterval;
-    final days = predicted?['$rating'];
+    final seconds = predicted?['$rating'];
 
-    if (days == null) {
+    if (seconds == null) {
       switch (rating) {
         case 1:
           return 'Re-study';
@@ -478,9 +503,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       }
     }
 
-    if (days == 0) return 'Today';
-    if (days == 1) return '1 day';
-    return '$days days';
+    return _formatInterval(seconds);
   }
 }
 

@@ -17,7 +17,7 @@ class StudyCard {
   final int suspended; // 0 | 1
   final int? buriedUntil; // Unix seconds, null = not buried
   final int stepIndex;
-  final Map<String, int>? predictedInterval; // rating key -> interval days
+  final Map<String, int>? predictedInterval; // rating key -> interval seconds
 
   StudyCard({
     required this.cardId,
@@ -70,7 +70,7 @@ class ReviewedCard {
   final int reps;
   final int lapses;
   final int stepIndex;
-  final int intervalDays;
+  final int appliedIntervalSecs;
 
   ReviewedCard({
     required this.cardId,
@@ -81,7 +81,7 @@ class ReviewedCard {
     required this.reps,
     required this.lapses,
     this.stepIndex = 0,
-    this.intervalDays = 0,
+    this.appliedIntervalSecs = 0,
   });
 
   factory ReviewedCard.fromJson(Map<String, dynamic> json) => ReviewedCard(
@@ -93,7 +93,7 @@ class ReviewedCard {
         reps: json['reps'] as int? ?? 0,
         lapses: json['lapses'] as int? ?? 0,
         stepIndex: json['step_index'] as int? ?? 0,
-        intervalDays: json['interval_days'] as int? ?? 0,
+        appliedIntervalSecs: json['applied_interval_secs'] as int? ?? 0,
       );
 }
 
