@@ -4,12 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'providers/auth_provider.dart';
-import 'providers/browser_provider.dart';
 import 'providers/card_store.dart';
 import 'providers/class_provider.dart';
 import 'providers/deck_provider.dart';
-import 'providers/note_provider.dart';
-import 'providers/note_store.dart';
 import 'providers/riverpod/api_client_provider.dart';
 import 'providers/user_provider.dart';
 import 'services/api_client.dart';
@@ -81,35 +78,6 @@ class AnkiClassroomApp extends StatelessWidget {
                       ),
                       ChangeNotifierProvider(
                         create: (_) => CardStore(),
-                      ),
-                      ChangeNotifierProvider(
-                        create: (_) => NoteStore(),
-                      ),
-                      ChangeNotifierProxyProvider2<CardStore, NoteStore,
-                          NoteProvider>(
-                        create: (_) => NoteProvider(
-                          context.read<AuthProvider>().apiClient,
-                          NoteStore(),
-                          CardStore(),
-                        ),
-                        update: (_, cardStore, noteStore, note) {
-                          // Keep note-level suspended/buried flags in sync
-                          // with their cards.
-                          cardStore.noteStore = noteStore;
-                          return note!
-                            ..cardStore = cardStore
-                            ..noteStore = noteStore;
-                        },
-                      ),
-                      ChangeNotifierProxyProvider2<CardStore, NoteStore,
-                          BrowserProvider>(
-                        create: (_) => BrowserProvider(
-                            context.read<AuthProvider>().apiClient,
-                            CardStore(),
-                            NoteStore()),
-                        update: (_, store, noteStore, browser) => browser!
-                          ..store = store
-                          ..noteStore = noteStore,
                       ),
                       ChangeNotifierProvider(
                         create: (_) => UserProvider(

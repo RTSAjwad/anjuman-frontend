@@ -3,11 +3,12 @@ import 'package:flutter/material.dart'
     show Colors, ScaffoldMessenger, SnackBar, SnackBarBehavior, StatefulBuilder;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import '../providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../providers/deck_provider.dart';
-import '../providers/note_provider.dart';
+import '../providers/riverpod/note_provider.dart';
 import '../models/deck.dart';
 import '../models/class_info.dart';
 import '../models/note_record.dart';
@@ -16,7 +17,7 @@ import '../services/user_service.dart';
 import '../widgets/deck_tree.dart';
 import '../widgets/shadcn_search_dropdown.dart';
 
-class DeckDetailScreen extends StatefulWidget {
+class DeckDetailScreen extends ConsumerStatefulWidget {
   final DeckResponse deck;
   final DeckProvider provider;
   final ClassProvider classProvider;
@@ -31,10 +32,10 @@ class DeckDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<DeckDetailScreen> createState() => _DeckDetailScreenState();
+  ConsumerState<DeckDetailScreen> createState() => _DeckDetailScreenState();
 }
 
-class _DeckDetailScreenState extends State<DeckDetailScreen> {
+class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
   late String _deckTitle;
   DeckDetailResponse? _detail;
   List<NoteRecord> _notes = [];
@@ -65,7 +66,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
 
     if (!mounted) return;
     final notes =
-        await context.read<NoteProvider>().listNotes(deckId: widget.deck.id);
+        await ref.read(noteProvider.notifier).listNotes(deckId: widget.deck.id);
 
     setState(() {
       _detail = detail;
@@ -200,7 +201,7 @@ class _DeckDetailScreenState extends State<DeckDetailScreen> {
       builder: (ctx, _) => NoteFormDialog(
         deckId: widget.deck.id,
         deckProvider: widget.provider,
-        noteProvider: context.read<NoteProvider>(),
+        noteProvider: ref.read(noteProvider.notifier),
         onSuccess: () {
           safeCloseOverlay(ctx);
           _load();
@@ -832,7 +833,7 @@ class _DeckInfoCardState extends State<_DeckInfoCard> {
 class NoteFormDialog extends StatefulWidget {
   final int deckId;
   final DeckProvider deckProvider;
-  final NoteProvider noteProvider;
+  final NoteNotifier noteProvider;
   final NoteRecord? existingNote;
   final VoidCallback onSuccess;
 

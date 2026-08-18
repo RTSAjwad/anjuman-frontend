@@ -4,7 +4,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import '../providers/auth_provider.dart';
 import '../providers/deck_provider.dart';
-import '../providers/note_provider.dart';
+import '../providers/riverpod/note_provider.dart';
 import '../providers/riverpod/browser_provider.dart';
 import '../providers/riverpod/card_store_provider.dart' as card_store;
 import '../providers/riverpod/note_store_provider.dart' as note_store;
@@ -1039,7 +1039,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
 
   void _showEditNoteDialog(CardRecord card) {
     final deckProvider = context.read<DeckProvider>();
-    final noteProvider = context.read<NoteProvider>();
+    final noteNotifier = ref.read(noteProvider.notifier);
     final noteStore = ref.read(note_store.noteStoreProvider.notifier);
     final noteCards = _selectedNoteCards;
     final existing = noteStore.note(card.noteId) ??
@@ -1057,7 +1057,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
       builder: (ctx, _) => NoteFormDialog(
         deckId: card.deckId,
         deckProvider: deckProvider,
-        noteProvider: noteProvider,
+        noteProvider: noteNotifier,
         existingNote: existing,
         onSuccess: () {
           safeCloseOverlay(ctx);
