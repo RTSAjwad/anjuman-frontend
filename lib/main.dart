@@ -18,7 +18,7 @@ void main() {
   runApp(const ProviderScope(child: AnkiClassroomApp()));
 }
 
-final _interTypography = Typography.geist().copyWith(
+final _interTypography = const Typography.geist().copyWith(
   sans: () => GoogleFonts.interTextTheme().bodyMedium!,
 );
 
@@ -263,32 +263,32 @@ class _ShellScaffoldState extends ConsumerState<_ShellScaffold>
     final items = <Widget>[];
 
     // Dashboard (standalone)
-    items.add(NavigationItem(
-      key: const ValueKey(0),
-      label: const Text('Dashboard'),
-      child: const Icon(LucideIcons.layoutDashboard),
+    items.add(const NavigationItem(
+      key: ValueKey(0),
+      label: Text('Dashboard'),
+      child: Icon(LucideIcons.layoutDashboard),
     ));
     items.add(const NavigationDivider());
 
     // Content group
     final contentChildren = <Widget>[];
     if (role == 'admin' || role == 'teacher' || role == 'student') {
-      contentChildren.add(NavigationItem(
-        key: const ValueKey(5),
-        label: const Text('Browser'),
-        child: const Icon(LucideIcons.search),
+      contentChildren.add(const NavigationItem(
+        key: ValueKey(5),
+        label: Text('Browser'),
+        child: Icon(LucideIcons.search),
       ));
-      contentChildren.add(NavigationItem(
-        key: const ValueKey(2),
-        label: const Text('Decks'),
-        child: const Icon(LucideIcons.layers),
+      contentChildren.add(const NavigationItem(
+        key: ValueKey(2),
+        label: Text('Decks'),
+        child: Icon(LucideIcons.layers),
       ));
     }
     if (role == 'admin' || role == 'teacher') {
-      contentChildren.add(NavigationItem(
-        key: const ValueKey(4),
-        label: const Text('Note Types'),
-        child: const Icon(LucideIcons.shapes),
+      contentChildren.add(const NavigationItem(
+        key: ValueKey(4),
+        label: Text('Note Types'),
+        child: Icon(LucideIcons.shapes),
       ));
     }
     items.add(NavigationGroup(
@@ -300,23 +300,23 @@ class _ShellScaffoldState extends ConsumerState<_ShellScaffold>
     // Organisation group
     final orgChildren = <Widget>[];
     if (role == 'admin' || role == 'teacher' || role == 'student') {
-      orgChildren.add(NavigationItem(
-        key: const ValueKey(1),
-        label: const Text('Classes'),
-        child: const Icon(LucideIcons.users),
+      orgChildren.add(const NavigationItem(
+        key: ValueKey(1),
+        label: Text('Classes'),
+        child: Icon(LucideIcons.users),
       ));
     }
     if (role == 'admin') {
-      orgChildren.add(NavigationItem(
-        key: const ValueKey(3),
-        label: const Text('Users'),
-        child: const Icon(LucideIcons.users),
+      orgChildren.add(const NavigationItem(
+        key: ValueKey(3),
+        label: Text('Users'),
+        child: Icon(LucideIcons.users),
       ));
     }
-    orgChildren.add(NavigationItem(
-      key: const ValueKey(6),
-      label: const Text('Me'),
-      child: const Icon(LucideIcons.user),
+    orgChildren.add(const NavigationItem(
+      key: ValueKey(6),
+      label: Text('Me'),
+      child: Icon(LucideIcons.user),
     ));
     items.add(NavigationGroup(
       label: const Text('Organisation'),

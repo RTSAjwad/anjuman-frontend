@@ -664,7 +664,7 @@ class _CreateNoteTypeDialogState extends State<_CreateNoteTypeDialog> {
                           child: Text(name),
                         ),
                     ]),
-                  ),
+                  ).call,
                   itemBuilder: (context, value) => Text(value),
                 ),
                 const SizedBox(height: 16),

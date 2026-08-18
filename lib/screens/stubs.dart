@@ -8,7 +8,7 @@ class DashboardStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Dashboard',
       icon: LucideIcons.layoutDashboard,
     );
@@ -20,7 +20,7 @@ class ClassesStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Classes',
       icon: LucideIcons.users,
     );
@@ -32,7 +32,7 @@ class DecksStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Decks',
       icon: LucideIcons.layers,
     );
@@ -44,7 +44,7 @@ class AssignmentsStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Assignments',
       icon: LucideIcons.clipboardList,
     );
@@ -56,7 +56,7 @@ class UsersStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Users',
       icon: LucideIcons.users,
     );
@@ -68,7 +68,7 @@ class StudyStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'Study',
       icon: LucideIcons.brain,
     );
@@ -80,7 +80,7 @@ class MyStatsStub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StubPage(
+    return const _StubPage(
       title: 'My Stats',
       icon: LucideIcons.chartBar,
     );

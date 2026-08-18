@@ -605,7 +605,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               obscureText: true,
             ),
             const SizedBox(height: 16),
-            const Text('Role', style: const TextStyle(fontSize: 13)).semiBold(),
+            const Text('Role', style: TextStyle(fontSize: 13)).semiBold(),
             const SizedBox(height: 6),
             Select<String>(
               value: _role,
@@ -619,7 +619,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   SelectItemButton(value: 'teacher', child: Text('Teacher')),
                   SelectItemButton(value: 'student', child: Text('Student')),
                 ]),
-              ),
+              ).call,
               itemBuilder: (context, value) =>
                   Text(value[0].toUpperCase() + value.substring(1)),
             ),

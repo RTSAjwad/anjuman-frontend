@@ -406,7 +406,7 @@ class _DeckDetailScreenState extends ConsumerState<DeckDetailScreen> {
                       child: Text(c.name),
                     ),
                 ]),
-              ),
+              ).call,
               itemBuilder: (context, value) {
                 final c = classes.where((c) => c.id == value).firstOrNull;
                 return Text(c?.name ?? '');
@@ -837,7 +837,7 @@ class NoteFormDialog extends StatefulWidget {
   final NoteRecord? existingNote;
   final VoidCallback onSuccess;
 
-  const NoteFormDialog({
+  const NoteFormDialog({super.key, 
     required this.deckId,
     required this.deckProvider,
     required this.noteProvider,
@@ -1002,7 +1002,7 @@ class _NoteFormDialogState extends State<NoteFormDialog> {
                       child: Text(t.name),
                     ),
                 ]),
-              ),
+              ).call,
               itemBuilder: (context, value) => Text(value.name),
             ),
             if (_selectedType != null) ...[
@@ -1136,8 +1136,8 @@ class _MoveDeckDetailDialogState extends State<_MoveDeckDetailDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Move into (none = top-level)',
-                    style: const TextStyle(fontSize: 13))
+            const Text('Move into (none = top-level)',
+                    style: TextStyle(fontSize: 13))
                 .semiBold(),
             const SizedBox(height: 6),
             Select<DeckResponse?>(
@@ -1170,7 +1170,7 @@ class _MoveDeckDetailDialogState extends State<_MoveDeckDetailDialog> {
                       ),
                     ),
                 ]),
-              ),
+              ).call,
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),

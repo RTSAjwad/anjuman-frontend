@@ -269,7 +269,7 @@ class _NoteTypeDetailScreenState extends State<NoteTypeDetailScreen> {
                     child: Text(name),
                   ),
               ]),
-            ),
+            ).call,
             itemBuilder: (context, value) => Text(value),
           ),
           const SizedBox(height: 16),

@@ -238,8 +238,8 @@ class _ClassesScreenState extends ConsumerState<ClassesScreen> {
                                           Text(c.name).semiBold(),
                                           if (c.archived) ...[
                                             const SizedBox(width: 8),
-                                            OutlineBadge(
-                                              child: const Text('Archived'),
+                                            const OutlineBadge(
+                                              child: Text('Archived'),
                                             ),
                                           ],
                                         ],

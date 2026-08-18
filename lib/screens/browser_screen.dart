@@ -504,7 +504,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
 
-      final onTap = () {
+      void onTap() {
         setState(() {
           if (_selectedCardIndex == i) {
             _selectedCardIndex = null;
@@ -513,7 +513,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
             _compactView = _CompactView.detail;
           }
         });
-      };
+      }
 
       if (isTeacher) {
         rows.add(TableRow(cells: [
@@ -555,7 +555,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
 
       // Card index within provider.cards for selection (used by detail pane).
       final cardIndex = cards.indexWhere((c) => c.noteId == noteId);
-      final onTap = () {
+      void onTap() {
         setState(() {
           if (_selectedCardIndex == cardIndex) {
             _selectedCardIndex = null;
@@ -564,7 +564,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
             _compactView = _CompactView.detail;
           }
         });
-      };
+      }
 
       final cardCount = note?.cardIds.length ?? noteCards.length;
       final cardsLabel = '$cardCount card${cardCount == 1 ? '' : 's'}';

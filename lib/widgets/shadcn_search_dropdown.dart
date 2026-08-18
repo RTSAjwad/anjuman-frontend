@@ -76,7 +76,7 @@ class ShadcnSearchDropdown<T> extends StatelessWidget {
                 },
               );
             },
-          ),
+          ).call,
         ),
       ],
     );

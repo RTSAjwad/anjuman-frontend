@@ -365,7 +365,6 @@ class _DeckTree extends ConsumerStatefulWidget {
   final ColorScheme colors;
 
   const _DeckTree({
-    super.key,
     required this.decks,
     required this.isTeacher,
     required this.onSelect,
@@ -644,7 +643,7 @@ class _DeckFormDialogState extends State<_DeckFormDialog> {
                         ),
                       ),
                   ]),
-                ),
+                ).call,
               ),
             ],
             if (_error != null) ...[
