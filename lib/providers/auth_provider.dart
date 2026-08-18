@@ -4,13 +4,17 @@ import '../services/api_client.dart';
 import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final ApiClient _apiClient = ApiClient();
-  late final AuthService authService = AuthService(_apiClient);
+  final ApiClient _apiClient;
+  late final AuthService authService;
 
   UserInfo? _user;
   String? _token;
   bool _isLoading = false;
   String? _error;
+
+  AuthProvider({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient() {
+    authService = AuthService(_apiClient);
+  }
 
   UserInfo? get user => _user;
   String? get token => _token;

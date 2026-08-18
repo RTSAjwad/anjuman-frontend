@@ -12,6 +12,7 @@ import 'providers/note_provider.dart';
 import 'providers/note_store.dart';
 import 'providers/study_provider.dart';
 import 'providers/user_provider.dart';
+import 'services/api_client.dart';
 import 'widgets/narrow_app_bar.dart';
 import 'widgets/drawer_context.dart';
 import 'config/breakpoints.dart';
@@ -24,7 +25,17 @@ import 'screens/note_types_screen.dart';
 import 'screens/stubs.dart';
 
 void main() {
-  runApp(const ProviderScope(child: AnkiClassroomApp()));
+  // Single shared client, authenticated by AuthProvider (see AnkiClassroomApp).
+  // This is the temporary bridge until auth is migrated to Riverpod.
+  final apiClient = ApiClient();
+  runApp(
+    ProviderScope(
+      overrides: [
+        apiClientProvider.overrideWithValue(apiClient),
+      ],
+      child: AnkiClassroomApp(apiClient: apiClient),
+    ),
+  );
 }
 
 final _interTypography = Typography.geist().copyWith(
@@ -32,12 +43,13 @@ final _interTypography = Typography.geist().copyWith(
 );
 
 class AnkiClassroomApp extends StatelessWidget {
-  const AnkiClassroomApp({super.key});
+  final ApiClient apiClient;
+  const AnkiClassroomApp({super.key, required this.apiClient});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+      create: (_) => AuthProvider(apiClient: apiClient),
       child: Builder(
         builder: (context) {
           final router = GoRouter(

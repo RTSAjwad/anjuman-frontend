@@ -1,12 +1,14 @@
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Consumer;
 import '../providers/auth_provider.dart';
-import '../providers/browser_provider.dart';
-import '../providers/card_store.dart';
 import '../providers/deck_provider.dart';
 import '../providers/note_provider.dart';
-import '../providers/note_store.dart';
+import '../providers/riverpod/browser_provider.dart';
+import '../providers/riverpod/card_store_provider.dart' as card_store;
+import '../providers/riverpod/note_store_provider.dart' as note_store;
+import '../providers/riverpod/note_scheduling_provider.dart';
 import '../models/card_record.dart';
 import '../models/deck.dart';
 import '../models/note_record.dart';
@@ -42,14 +44,14 @@ class FlagFilterNode extends FilterNode {
   const FlagFilterNode(this.flag);
 }
 
-class BrowserScreen extends StatefulWidget {
+class BrowserScreen extends ConsumerStatefulWidget {
   const BrowserScreen({super.key});
 
   @override
-  State<BrowserScreen> createState() => _BrowserScreenState();
+  ConsumerState<BrowserScreen> createState() => _BrowserScreenState();
 }
 
-class _BrowserScreenState extends State<BrowserScreen> {
+class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _tableScrollController = ScrollController();
@@ -74,16 +76,22 @@ class _BrowserScreenState extends State<BrowserScreen> {
   _CompactView _compactView = _CompactView.table;
   CardRecord? get _selectedCard {
     if (_selectedCardIndex == null) return null;
-    final cards = context.read<BrowserProvider>().cards;
-    if (_selectedCardIndex! >= cards.length) return null;
-    return cards[_selectedCardIndex!];
+    final browser = ref.read(browserProvider);
+    final cardMap = ref.read(card_store.cardStoreProvider);
+    if (_selectedCardIndex! >= browser.cardIds.length) return null;
+    return cardMap[browser.cardIds[_selectedCardIndex!]];
   }
 
   List<CardRecord> get _selectedNoteCards {
     final card = _selectedCard;
     if (card == null) return [];
-    final cards = context.read<BrowserProvider>().cards;
-    return cards.where((c) => c.noteId == card.noteId).toList();
+    final browser = ref.read(browserProvider);
+    final cardMap = ref.read(card_store.cardStoreProvider);
+    return browser.cardIds
+        .map((id) => cardMap[id])
+        .whereType<CardRecord>()
+        .where((c) => c.noteId == card.noteId)
+        .toList();
   }
 
   @override
@@ -119,10 +127,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (deckParam != null) {
         final deckId = int.tryParse(deckParam);
         if (deckId != null) {
-          context.read<BrowserProvider>().setDeckIds([deckId]);
+          ref.read(browserProvider.notifier).setDeckIds([deckId]);
         }
       } else {
-        context.read<BrowserProvider>().loadCards();
+        ref.read(browserProvider.notifier).loadCards();
       }
       deckProvider.loadDecks();
       deckProvider.loadNoteTypes();
@@ -137,7 +145,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void _rebuildDeckTree() {
     final decks = context.read<DeckProvider>().decks;
     if (decks.isEmpty) return;
-    final selectedIds = context.read<BrowserProvider>().deckIds.toSet();
+    final selectedIds = ref.read(browserProvider).deckIds.toSet();
     setState(() {
       var root = _buildDeckTree(decks);
       for (final id in selectedIds) {
@@ -301,7 +309,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     final noteTypeIds = <int>[];
     final flags = <int>[];
     _walkSelected(nodes, deckIds, states, noteTypeIds, flags);
-    context.read<BrowserProvider>().setFilters(
+    ref.read(browserProvider.notifier).setFilters(
           deckIds: deckIds,
           states: states,
           noteTypeIds: noteTypeIds,
@@ -357,12 +365,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _onScroll() {
-    final provider = context.read<BrowserProvider>();
+    final provider = ref.read(browserProvider);
     if (_fetchingMore || !provider.hasNextPage || provider.isLoading) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _fetchingMore = true;
-      provider.nextPage().then((_) {
+      ref.read(browserProvider.notifier).nextPage().then((_) {
         _fetchingMore = false;
       });
     }
@@ -385,7 +393,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _onSearch(String value) {
-    context.read<BrowserProvider>().setQuery(value);
+    ref.read(browserProvider.notifier).setQuery(value);
   }
 
   void _onSort(int index) {
@@ -398,7 +406,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _sortAsc = true;
     }
     final order = _sortAsc ? '' : '-';
-    context.read<BrowserProvider>().setSort('$order$field');
+    ref.read(browserProvider.notifier).setSort('$order$field');
   }
 
   TableCell _buildFlagCell(CardRecord card, {VoidCallback? onTap}) {
@@ -494,10 +502,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
     );
   }
 
-  void _buildCardRows(BrowserProvider provider, ColorScheme colors,
+  void _buildCardRows(List<CardRecord> cards, ColorScheme colors,
       bool isTeacher, List<TableRow> rows) {
-    for (var i = 0; i < provider.cards.length; i++) {
-      final card = provider.cards[i];
+    for (var i = 0; i < cards.length; i++) {
+      final card = cards[i];
       final frontText = card.front
           .replaceAll(RegExp(r'<[^>]*>'), ' ')
           .replaceAll(RegExp(r'\s+'), ' ')
@@ -532,21 +540,20 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   void _buildNoteRows(
-      BrowserProvider provider, ColorScheme colors, List<TableRow> rows) {
-    final noteStore = context.read<NoteStore>();
+      List<CardRecord> cards, ColorScheme colors, List<TableRow> rows) {
+    final noteStore = ref.read(note_store.noteStoreProvider.notifier);
     // Preserve the order notes appear in the card list while de-duplicating
     // by noteId.
     final seen = <int>{};
     final noteIds = <int>[];
-    for (final card in provider.cards) {
+    for (final card in cards) {
       if (seen.add(card.noteId)) noteIds.add(card.noteId);
     }
 
     for (var i = 0; i < noteIds.length; i++) {
       final noteId = noteIds[i];
       final note = noteStore.note(noteId);
-      final noteCards =
-          provider.cards.where((c) => c.noteId == noteId).toList();
+      final noteCards = cards.where((c) => c.noteId == noteId).toList();
       final firstCard = noteCards.first;
 
       // Sort field: prefer a human-readable fallback from the note's fields,
@@ -554,7 +561,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       final sortField = _noteSortField(note, firstCard);
 
       // Card index within provider.cards for selection (used by detail pane).
-      final cardIndex = provider.cards.indexWhere((c) => c.noteId == noteId);
+      final cardIndex = cards.indexWhere((c) => c.noteId == noteId);
       final onTap = () {
         setState(() {
           if (_selectedCardIndex == cardIndex) {
@@ -597,7 +604,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       _lastTargetDeckId = targetDeckId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          context.read<BrowserProvider>().setDeckIds([targetDeckId]);
+          ref.read(browserProvider.notifier).setDeckIds([targetDeckId]);
           _rebuildDeckTree();
         }
       });
@@ -637,12 +644,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('Browser'),
-                Consumer<BrowserProvider>(
-                  builder: (context, provider, _) {
+                Builder(
+                  builder: (context) {
+                    final total = ref.watch(browserProvider).total;
                     return Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: OutlineBadge(
-                        child: Text('${provider.total} selected'),
+                        child: Text('$total selected'),
                       ),
                     );
                   },
@@ -664,12 +672,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Browser'),
-              Consumer<BrowserProvider>(
-                builder: (context, provider, _) {
+              Builder(
+                builder: (context) {
+                  final total = ref.watch(browserProvider).total;
                   return Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: OutlineBadge(
-                      child: Text('${provider.total} selected'),
+                      child: Text('$total selected'),
                     ),
                   );
                 },
@@ -698,13 +707,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('Browser'),
-          Consumer<BrowserProvider>(
-            builder: (context, provider, _) {
+          Builder(
+            builder: (context) {
+              final total = ref.watch(browserProvider).total;
               return Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: OutlineBadge(
-                  child: Text(
-                      '${provider.total} card${provider.total == 1 ? '' : 's'} selected'),
+                  child: Text('$total card${total == 1 ? '' : 's'} selected'),
                 ),
               );
             },
@@ -741,7 +750,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         ),
       IconButton.outline(
         icon: const Icon(LucideIcons.refreshCw, size: 20),
-        onPressed: () => context.read<BrowserProvider>().loadCards(),
+        onPressed: () => ref.read(browserProvider.notifier).loadCards(),
       ),
     ];
     return actions;
@@ -820,7 +829,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildDesktopContent(ColorScheme colors) {
     final selectedCard = _selectedCard;
-    final isLoading = context.watch<BrowserProvider>().isLoading;
+    final isLoading = ref.watch(browserProvider).isLoading;
 
     // Keep the pane count stable. Removing/adding a third ResizablePane on
     // selection makes the shadcn ResizablePanel reuse elements by position
@@ -917,16 +926,23 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Widget _buildTableContent(ColorScheme colors) {
-    return Consumer2<BrowserProvider, CardStore>(
-      builder: (context, provider, store, _) {
-        // Watching CardStore makes the table (and its per-cell views) rebuild
-        // whenever any card state changes from any screen, so reschedules etc.
-        // reflect immediately without re-fetching.
-        if (provider.isLoading && provider.cards.isEmpty) {
+    return Builder(
+      builder: (context) {
+        final provider = ref.watch(browserProvider);
+        final store = ref.watch(card_store.cardStoreProvider);
+        final cards = provider.cardIds
+            .map((id) => store[id])
+            .whereType<CardRecord>()
+            .toList();
+
+        // Watching the card store makes the table (and its per-cell views)
+        // rebuild whenever any card state changes from any screen, so
+        // reschedules etc. reflect immediately without re-fetching.
+        if (provider.isLoading && cards.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (provider.error != null && provider.cards.isEmpty) {
+        if (provider.error != null && cards.isEmpty) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -938,7 +954,8 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         TextStyle(color: colors.mutedForeground, fontSize: 13)),
                 const SizedBox(height: 16),
                 Button.secondary(
-                  onPressed: () => provider.loadCards(),
+                  onPressed: () =>
+                      ref.read(browserProvider.notifier).loadCards(),
                   child: const Text('Retry'),
                 ),
               ],
@@ -946,7 +963,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
           );
         }
 
-        if (provider.cards.isEmpty) {
+        if (cards.isEmpty) {
           return const Center(child: Text('Nothing found'));
         }
 
@@ -970,9 +987,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
         final isTeacher = role == 'teacher' || role == 'admin';
 
         if (_activeTab == 0) {
-          _buildCardRows(provider, colors, isTeacher, rows);
+          _buildCardRows(cards, colors, isTeacher, rows);
         } else {
-          _buildNoteRows(provider, colors, rows);
+          _buildNoteRows(cards, colors, rows);
         }
 
         return Stack(
@@ -1023,7 +1040,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   void _showEditNoteDialog(CardRecord card) {
     final deckProvider = context.read<DeckProvider>();
     final noteProvider = context.read<NoteProvider>();
-    final noteStore = context.read<NoteStore>();
+    final noteStore = ref.read(note_store.noteStoreProvider.notifier);
     final noteCards = _selectedNoteCards;
     final existing = noteStore.note(card.noteId) ??
         NoteRecord(
@@ -1044,7 +1061,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         existingNote: existing,
         onSuccess: () {
           safeCloseOverlay(ctx);
-          context.read<BrowserProvider>().loadCards();
+          ref.read(browserProvider.notifier).loadCards();
         },
       ),
     );
@@ -1062,9 +1079,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
   /// these fields and see no card-level toggle.
   void _showCardActionsMenu(BuildContext context, CardRecord card,
       {required bool isNoteView}) {
-    final browser = context.read<BrowserProvider>();
-    final cardStore = context.read<CardStore>();
-    final noteStore = context.read<NoteStore>();
+    final browser = ref.read(browserProvider.notifier);
+    final cardStore = ref.read(card_store.cardStoreProvider.notifier);
+    final noteScheduling = ref.read(noteSchedulingProvider);
     final role = context.read<AuthProvider>().role;
     final isStudent = role == 'student';
 
@@ -1076,9 +1093,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
         final suspended = cardStore.isSuspended(card.cardId);
         final buried = cardStore.isBuried(card.cardId);
 
-        // Note-level state is read from NoteStore (kept in sync with cards).
-        final noteSuspended = noteStore.isNoteSuspended(card.noteId);
-        final noteBuried = noteStore.isNoteBuried(card.noteId);
+        // Note-level state is derived from card scheduling.
+        final noteSchedule = noteScheduling[card.noteId];
+        final noteSuspended = noteSchedule?.suspended ?? false;
+        final noteBuried = noteSchedule?.isBuried ?? false;
 
         return DropdownMenu(
           children: [
@@ -1137,7 +1155,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   void _showRescheduleDialog(BuildContext context, CardRecord card) {
     final controller = TextEditingController();
-    final browser = context.read<BrowserProvider>();
+    final browser = ref.read(browserProvider.notifier);
     showResponsiveDialog(
       context,
       builder: (ctx, _) => AlertDialog(
@@ -1267,7 +1285,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
   Widget _buildNoteDetail(CardRecord card) {
     final colors = Theme.of(context).colorScheme;
-    final noteStore = context.read<NoteStore>();
+    final noteStore = ref.read(note_store.noteStoreProvider.notifier);
     final note = noteStore.note(card.noteId);
     final noteCards = _selectedNoteCards;
     final fields = note?.fields ?? card.fields;
@@ -1439,9 +1457,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Consumer<CardStore>(
-          builder: (context, store, _) {
-            final record = store.card(card.cardId);
+        child: Builder(
+          builder: (context) {
+            final record = ref.watch(card_store.cardStoreProvider)[card.cardId];
             final state = record?.state ?? card.state;
             final reps = record?.reps ?? card.reps;
             final displayState = state ?? (reps == 0 ? 'new' : null);
@@ -1481,11 +1499,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Consumer<CardStore>(
-          builder: (context, store, _) {
+        child: Builder(
+          builder: (context) {
             // Read live due_at/newCardPosition from the store so a reschedule
             // anywhere reflects here without re-fetching the browse page.
-            final record = store.card(card.cardId);
+            final record = ref.watch(card_store.cardStoreProvider)[card.cardId];
             final dueAt = record?.dueAt ?? card.dueAt;
             final newPos = record?.newCardPosition ?? card.newCardPosition;
             final state = record?.state ?? card.state;
